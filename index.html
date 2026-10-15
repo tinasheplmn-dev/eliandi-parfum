@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eliandi Parfum | Jouw geur. Jouw verhaal. | Handgemaakte parfums in Den Bosch</title>
+  <meta name="description" content="Eliandi Parfum, Vughterstraat 70 in 's-Hertogenbosch. Handgemaakte parfums geworteld in eeuwenoude Arabische tradities, samengesteld waar jij bij staat. Enchantment of Your Senses.">
+  <meta property="og:title" content="Eliandi Parfum | Jouw geur. Jouw verhaal.">
+  <meta property="og:description" content="Handgemaakte parfums in hartje Den Bosch, samengesteld waar jij bij staat. Enchantment of Your Senses.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://eliandi-parfum.vercel.app/">
+  <meta property="og:image" content="https://eliandi-parfum.vercel.app/assets/parfumeur-ruikt-geurstrip-2.jpg">
+  <meta property="og:locale" content="nl_NL">
+  <link rel="canonical" href="https://eliandi-parfum.vercel.app/">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    "name": "Eliandi Parfum",
+    "description": "Handgemaakte parfums geworteld in eeuwenoude Arabische tradities, samengesteld in de winkel in 's-Hertogenbosch.",
+    "slogan": "Enchantment of Your Senses",
+    "telephone": "+31687080256",
+    "email": "info@eliandiparfum.com",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Vughterstraat 70",
+      "postalCode": "5211 GK",
+      "addressLocality": "'s-Hertogenbosch",
+      "addressCountry": "NL"
+    },
+    "openingHoursSpecification": [
+      { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Tuesday","Wednesday","Friday","Saturday"], "opens": "10:00", "closes": "18:00" },
+      { "@type": "OpeningHoursSpecification", "dayOfWeek": "Thursday", "opens": "10:00", "closes": "20:00" },
+      { "@type": "OpeningHoursSpecification", "dayOfWeek": "Sunday", "opens": "11:00", "closes": "17:30" }
+    ],
+    "url": "https://eliandi-parfum.vercel.app/",
+    "image": "https://eliandi-parfum.vercel.app/assets/parfumeur-ruikt-geurstrip-2.jpg",
+    "priceRange": "€€",
+    "hasMap": "https://www.google.com/maps?q=Eliandi+Parfum,+Vughterstraat+70,+5211GK+%27s-Hertogenbosch",
+    "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5.0", "ratingCount": "123" },
+    "sameAs": ["https://www.instagram.com/eliandi_parfum/"]
+  }
+  </script>
+</head>
+<body data-page="index">
+
+  <!-- ══════════ SVG-bibliotheek: ornamenten ══════════ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- Ornamentlijn -->
+      <g id="ornament-divider">
+        <line x1="0" y1="10" x2="52" y2="10"/>
+        <path d="M60 10 l6 -5 6 5 -6 5 z"/>
+        <circle cx="76" cy="10" r="1.6"/>
+        <path d="M84 10 l6 -5 6 5 -6 5 z" transform="translate(-2 0)"/>
+        <line x1="100" y1="10" x2="152" y2="10"/>
+      </g>
+      <!-- Ster -->
+      <path id="ster" d="M12 2 l2.7 6.4 6.9 .6 -5.2 4.6 1.5 6.8 -5.9 -3.6 -5.9 3.6 1.5 -6.8 -5.2 -4.6 6.9 -.6 Z"/>
+    </defs>
+  </svg>
+
+  <!-- ══════════ Intro-overlay ══════════ -->
+  <div class="intro" id="intro" aria-hidden="true">
+    <div class="intro-inner">
+      <span class="intro-mark-wrap">
+        <img class="intro-mark" src="assets/logo-eliandi.png" alt="">
+        <i class="intro-puff"></i>
+      </span>
+      <p class="intro-name">ELIANDI&nbsp;PARFUM</p>
+      <p class="intro-tag">Enchantment of Your Senses</p>
+    </div>
+  </div>
+
+  <!-- Gouden essence: deeltjes-canvas over de hele site -->
+  <canvas id="essence" aria-hidden="true"></canvas>
+
+  <!-- Scrollvoortgang -->
+  <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <!-- Custom cursor (desktop) -->
+  <div class="cursor-dot" aria-hidden="true"></div>
+  <div class="cursor-ring" aria-hidden="true"></div>
+
+  <!-- ══════════ Navigatie ══════════ -->
+  <header class="nav" id="nav">
+    <a class="nav-brand" href="#top" data-magnetic>
+      <span class="nav-mark-wrap"><img class="nav-mark" src="assets/logo-eliandi.png" alt="Eliandi Parfum logo"><i class="nav-puff"></i></span>
+      <span class="nav-wordmark">Eliandi<br><em>Parfum</em></span>
+    </a>
+    <nav class="nav-links" aria-label="Hoofdnavigatie">
+      <a href="#verhaal">Verhaal</a>
+      <a href="#belofte">Belofte</a>
+      <a href="#ritueel">Het ritueel</a>
+      <a href="#angelo">Angelo</a>
+      <a href="experience.html">Experience</a>
+      <a href="#reviews">Reviews</a>
+      <a href="#bezoek">Bezoek ons</a>
+    </nav>
+    <a class="btn btn-outline nav-cta" href="quiz.html" data-magnetic>Vind jouw geur</a>
+    <button class="nav-burger" id="burger" aria-label="Menu openen" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+  </header>
+
+  <!-- Mobiel menu -->
+  <div class="mobmenu" id="mobmenu" aria-hidden="true">
+    <nav aria-label="Mobiele navigatie">
+      <a href="#verhaal" style="--i:0">Verhaal</a>
+      <a href="#belofte" style="--i:1">Belofte</a>
+      <a href="#ritueel" style="--i:2">Het ritueel</a>
+      <a href="quiz.html" style="--i:3" class="is-gold">Vind jouw geur</a>
+      <a href="#angelo" style="--i:4">Angelo</a>
+      <a href="experience.html" style="--i:5" class="is-gold">De Experience</a>
+      <a href="#reviews" style="--i:6">Reviews</a>
+      <a href="#bezoek" style="--i:7">Bezoek ons</a>
+    </nav>
+    <div class="mobmenu-foot" style="--i:8">
+      <a href="tel:+31687080256">06 870 802 56</a>
+      <a href="https://www.instagram.com/eliandi_parfum/" target="_blank" rel="noopener">@eliandi_parfum</a>
+    </div>
+  </div>
+
+  <main id="top">
+
+    <!-- ══════════ HERO ══════════ -->
+    <section class="hero" id="hero">
+      <div class="hero-media" data-depth="0.35">
+        <img src="assets/parfumeur-ruikt-geurstrip-2.jpg" alt="De geurexpert van Eliandi mengt een parfum met pipet en maatcilinder in de winkel in Den Bosch" fetchpriority="high">
+      </div>
+      <div class="hero-grade" aria-hidden="true"></div>
+      <div class="hero-smoke" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="hero-inner">
+        <p class="hero-kicker" data-depth="0.12">Parfumerie · Vughterstraat 70 · ’s-Hertogenbosch</p>
+        <h1 class="hero-title" data-depth="0.08">
+          <span class="line"><span class="cms-t">Jouw geur.</span></span>
+          <span class="line gold"><span class="cms-t">Jouw verhaal.</span></span>
+        </h1>
+        <ul class="hero-usps" data-depth="0.05">
+          <li><span class="hu-ico" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M13 9V5.2a3 3 0 0 1 6 0V9"/><rect x="11.4" y="9" width="9.2" height="2.6" rx=".7"/><path d="M14.4 11.6v8.8L16 23.6l1.6-3.2v-8.8"/><path class="f" d="M16 25.4s-1.7 2-1.7 3.1a1.7 1.7 0 0 0 3.4 0c0-1.1-1.7-3.1-1.7-3.1z"/></svg></span><span class="cms-t">Handgemaakt, samengesteld waar jij bij staat</span></li>
+          <li><span class="hu-ico" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M11.2 8.6l.5-3.6 2.3 1.9L16 4.3l2 2.6 2.3-1.9.5 3.6z"/><rect x="13.2" y="8.6" width="5.6" height="2.4"/><rect x="8.6" y="11" width="14.8" height="17" rx="1.6"/><rect x="12" y="15.4" width="8" height="8.6" rx=".4"/><circle class="f" cx="16" cy="19.7" r="1.3"/></svg></span><span class="cms-t">Extrait de parfum, geworteld in Arabische tradities</span></li>
+          <li><span class="hu-ico" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16.00,8.00 L17.38,11.70 L21.33,11.87 L18.23,14.33 L19.29,18.13 L16.00,15.95 L12.71,18.13 L13.77,14.33 L10.67,11.87 L14.62,11.70Z"/><path d="M14.6 27.6C9.4 26.6 5.6 22.2 6.1 14.6"/><path d="M17.4 27.6c5.2-1 9-5.4 8.5-13"/><ellipse class="f" cx="5.0" cy="17.0" rx="2.1" ry=".85" transform="rotate(-60 5.0 17.0)"/><ellipse class="f" cx="27.0" cy="17.0" rx="2.1" ry=".85" transform="rotate(60 27.0 17.0)"/><ellipse class="f" cx="5.7" cy="21.0" rx="2.1" ry=".85" transform="rotate(-35 5.7 21.0)"/><ellipse class="f" cx="26.3" cy="21.0" rx="2.1" ry=".85" transform="rotate(35 26.3 21.0)"/><ellipse class="f" cx="8.0" cy="24.4" rx="2.1" ry=".85" transform="rotate(-10 8.0 24.4)"/><ellipse class="f" cx="24.0" cy="24.4" rx="2.1" ry=".85" transform="rotate(10 24.0 24.4)"/><ellipse class="f" cx="4.9" cy="13.4" rx="2.1" ry=".85" transform="rotate(-85 4.9 13.4)"/><ellipse class="f" cx="27.1" cy="13.4" rx="2.1" ry=".85" transform="rotate(85 27.1 13.4)"/></svg></span><span class="cms-t">Beoordeeld met 5,0 op Google, 123 reviews</span></li>
+        </ul>
+        <div class="hero-cta" data-depth="0.05">
+          <a class="btn btn-gold" href="quiz.html" data-magnetic>Vind jouw geur</a>
+          <a class="btn btn-ghost" href="#verhaal" data-magnetic>Ontdek ons verhaal</a>
+        </div>
+      </div>
+      <a class="hero-scroll" href="#verhaal" aria-label="Scroll naar ons verhaal">
+        <span class="hero-scroll-line"></span>
+        <span class="hero-scroll-txt">Enchantment of Your Senses</span>
+      </a>
+    </section>
+
+    <!-- ══════════ MARQUEE ══════════ -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Enchantment of Your Senses&ensp;✦&ensp;Handgemaakt&ensp;✦&ensp;Extrait de parfum&ensp;✦&ensp;Den Bosch&ensp;✦&ensp;</span>
+        <span>Enchantment of Your Senses&ensp;✦&ensp;Handgemaakt&ensp;✦&ensp;Extrait de parfum&ensp;✦&ensp;Den Bosch&ensp;✦&ensp;</span>
+      </div>
+    </div>
+
+    <!-- ══════════ ONS VERHAAL ══════════ -->
+    <section class="story section" id="verhaal">
+      <div class="wrap story-grid">
+        <div class="story-head">
+          <p class="kicker" data-reveal>De oorsprong van Eliandi</p>
+          <h2 class="h2" data-reveal style="--d:.08s">Een parfum vertelt <em>altijd</em> een verhaal</h2>
+          <svg class="divider" viewBox="0 0 152 20" data-reveal style="--d:.16s"><use href="#ornament-divider"/></svg>
+          <figure class="story-photo" data-reveal style="--d:.2s">
+            <div class="frame">
+              <img src="assets/parfumeur-ruikt-geurstrip-1.jpg" alt="Geurexpert Angelo beoordeelt een geurstrip voor de flessenwand van Eliandi Parfum" loading="lazy" data-depth-img="0.12">
+            </div>
+            <figcaption>Angelo, geurexpert, in de winkel aan de Vughterstraat</figcaption>
+          </figure>
+        </div>
+        <div class="story-body">
+          <p class="lead dropcap" data-reveal>De vraag is alleen: is het ook <em>jouw</em> verhaal? Elke compositie bij Eliandi wordt met de hand samengesteld als extrait de parfum, geworteld in eeuwenoude Arabische parfumtradities. Niet om even te ruiken, maar om de hele dag bij je te blijven.</p>
+          <p data-reveal>Elk flesje begint bij een gevoel. Een herinnering, een verlangen, een droom, samengesmolten in één geur. Wat je draagt is geen product van een productielijn; het is een moment dat aan jou toebehoort, samengesteld alsof het altijd al voor jou bedoeld was.</p>
+          <p data-reveal>Dat niveau van vakmanschap was lang voorbehouden aan een select publiek. Bij Eliandi is dat anders. Luxe hoeft geen drempel te zijn: een parfum dat <em>jou ademt</em>, in plaats van andersom, is voor iedereen binnen bereik.</p>
+          <blockquote class="story-quote" data-reveal>
+            <p>‘Elke geur vol vakmanschap en een verhaal dat op jou wacht.’</p>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ DE BELOFTE / MERKWAARDEN ══════════ -->
+    <section class="values section" id="belofte">
+      <div class="wrap">
+        <p class="kicker center" data-reveal>Wat wij geloven</p>
+        <h2 class="h2 center" data-reveal style="--d:.08s">De belofte van Eliandi</h2>
+        <svg class="divider center" viewBox="0 0 152 20" data-reveal style="--d:.16s"><use href="#ornament-divider"/></svg>
+        <div class="values-grid">
+          <article class="value" data-reveal style="--d:0s">
+            <img class="value-ico" src="assets/icons/badge-vakmanschap.png" alt="" loading="lazy">
+            <h3>Vakmanschap</h3>
+            <p>Elk parfum wordt met de hand samengesteld. Geen productielijn, maar een ritueel van druppels, geduld en precisie.</p>
+          </article>
+          <article class="value" data-reveal style="--d:.07s">
+            <img class="value-ico" src="assets/icons/badge-authenticiteit.png" alt="" loading="lazy">
+            <h3>Authenticiteit</h3>
+            <p>Geworteld in Arabische parfumtradities die generaties overspannen. Eerlijk, doorleefd en oprecht.</p>
+          </article>
+          <article class="value" data-reveal style="--d:.14s">
+            <img class="value-ico" src="assets/icons/badge-langdurigheid.png" alt="" loading="lazy">
+            <h3>Langdurigheid</h3>
+            <p>Extrait de parfum, de hoogste concentratie. Eén verstuiving draagt je van de ochtend tot ver in de avond.</p>
+          </article>
+          <article class="value" data-reveal style="--d:0s">
+            <img class="value-ico" src="assets/icons/badge-toegankelijkheid.png" alt="" loading="lazy">
+            <h3>Toegankelijkheid</h3>
+            <p>Luxe zonder drempel. Parfum van dit niveau hoort binnen ieders bereik, en bij ons is het dat ook.</p>
+          </article>
+          <article class="value" data-reveal style="--d:.07s">
+            <img class="value-ico" src="assets/icons/badge-tijdloosheid.png" alt="" loading="lazy">
+            <h3>Tijdloosheid</h3>
+            <p>Geuren die generaties overstijgen. Klassiek en onvergankelijk. Nooit trendy, altijd raak.</p>
+          </article>
+          <article class="value" data-reveal style="--d:.14s">
+            <img class="value-ico" src="assets/icons/badge-persoonlijkheid.png" alt="" loading="lazy">
+            <h3>Persoonlijkheid</h3>
+            <p>Elke geur vertelt jouw verhaal. Jij ‘maakt’ het parfum, niet andersom.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ CINEMATIC BREAK ══════════ -->
+    <section class="break">
+      <div class="break-media" data-depth="0.25">
+        <img src="assets/parfumeur-mengt-geur-pipet.jpg" alt="Druppel voor druppel wordt een parfum gemengd bij Eliandi Parfum" loading="lazy">
+      </div>
+      <div class="break-grade" aria-hidden="true"></div>
+      <div class="break-inner wrap">
+        <p class="break-quote" data-reveal>“Sommige herinneringen ruik je<br>voordat je ze ziet.”</p>
+        <p class="break-sub" data-reveal style="--d:.12s">Welk moment draag jij?</p>
+      </div>
+    </section>
+
+    <!-- ══════════ HET RITUEEL ══════════ -->
+    <section class="ritual section" id="ritueel">
+      <div class="wrap">
+        <p class="kicker center" data-reveal>Zo werkt een bezoek</p>
+        <h2 class="h2 center" data-reveal style="--d:.08s">Het ritueel van jouw geur</h2>
+        <svg class="divider center" viewBox="0 0 152 20" data-reveal style="--d:.16s"><use href="#ornament-divider"/></svg>
+      </div>
+      <div class="wrap ritual-grid">
+        <div class="ritual-visual">
+          <div class="ritual-stack">
+            <img src="assets/parfumeur-lachend-geurwaaier.jpg" alt="Lachende geurexpert met geurwaaier voor de gouden flessenwand" class="ritual-img is-active" data-step-img="0" loading="lazy">
+            <img src="assets/parfumeur-ruikt-geurstrip-1.jpg" alt="De geurexpert beoordeelt een geurstrip" class="ritual-img" data-step-img="1" loading="lazy">
+            <img src="assets/parfumeur-mengt-geur-pipet.jpg" alt="Een parfum wordt op maat gemengd met een pipet" class="ritual-img" data-step-img="2" loading="lazy">
+          </div>
+        </div>
+        <div class="ritual-steps">
+          <article class="step" data-step="0">
+            <span class="step-nr">01</span>
+            <h3>Ruik &amp; dwaal</h3>
+            <p>Stap binnen langs de gouden flessenwand: honderden geuren, van vertrouwd tot nooit eerder geroken. Neem de tijd. Dwaal, ruik, laat je verrassen. Dit is geen winkel waar je doorheen rent.</p>
+          </article>
+          <article class="step" data-step="1">
+            <span class="step-nr">02</span>
+            <h3>Vertel jouw verhaal</h3>
+            <p>Geurexpert Angelo luistert. Naar wat je mooi vindt, waar je aan terugdenkt, wie je wilt zijn. Op basis van jouw voorkeuren zoekt of bouwt hij de geur die daarbij hoort. Niche of mainstream: heeft hij het niet, dan maakt hij het.</p>
+          </article>
+          <article class="step" data-step="2">
+            <span class="step-nr">03</span>
+            <h3>Draag jouw geur</h3>
+            <p>Recht voor je neus wordt jouw parfum gemengd, druppel voor druppel, tot hij klopt. Je loopt de deur uit met een geur die nergens anders bestaat. Vanaf ± €29,95 per 50 ml extrait de parfum.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ GEURWIJZER ══════════ -->
+    <section class="finder section" id="geurwijzer">
+      <div class="wrap">
+        <div class="finder-grid">
+          <div class="finder-copy">
+            <p class="kicker" data-reveal>De Eliandi geurwijzer</p>
+            <h2 class="h2" data-reveal style="--d:.08s">Honderden geuren.<br><em>Vijf die bij jou horen.</em></h2>
+            <p data-reveal style="--d:.14s">Online kun je niet ruiken. Daarom draaien we het om: vertel ons in tien korte vragen wie jij bent, en de geurwijzer zoekt uit onze volledige collectie de vijf parfums die het best bij jou passen. Met per geur de reden waarom.</p>
+            <div data-reveal style="--d:.2s">
+              <a class="btn btn-gold finder-btn" href="quiz.html" data-magnetic>Start de geurwijzer</a>
+              <p class="finder-meta">Tien vragen &middot; ongeveer 4 minuten</p>
+            </div>
+          </div>
+          <ol class="finder-steps" aria-label="Zo werkt de geurwijzer">
+            <li data-reveal style="--d:.1s">
+              <span class="finder-nr">01</span>
+              <div><h3>Vertel over jezelf</h3><p>Tien vragen over jouw smaak, stijl en momenten.</p></div>
+            </li>
+            <li data-reveal style="--d:.17s">
+              <span class="finder-nr">02</span>
+              <div><h3>Wij wegen elke geur</h3><p>Jouw antwoorden worden gelegd naast honderden noten en geurfamilies.</p></div>
+            </li>
+            <li data-reveal style="--d:.24s">
+              <span class="finder-nr">03</span>
+              <div><h3>Ontvang jouw vijf</h3><p>Gerangschikt, met per parfum waarom hij bij jou past.</p></div>
+            </li>
+            <li data-reveal style="--d:.31s">
+              <span class="finder-nr">04</span>
+              <div><h3>Kom langs</h3><p>Ontdek jouw signatuur in de winkel aan de Vughterstraat.</p></div>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ OVER ANGELO ══════════ -->
+    <section class="angelo section" id="angelo">
+      <div class="wrap angelo-grid">
+        <figure class="angelo-photo" data-reveal>
+          <div class="frame">
+            <img src="assets/angelo-werkt.jpg" alt="Angelo Mejlawi mengt een parfum achter de toonbank, met een rij Eliandi-flacons met gouden doppen op de voorgrond" loading="lazy" data-depth-img="0.1">
+          </div>
+          <figcaption>Angelo in de winkel aan de Vughterstraat</figcaption>
+        </figure>
+        <div class="angelo-body">
+          <p class="kicker" data-reveal>De parfumeur</p>
+          <h2 class="h2" data-reveal style="--d:.06s">De neus achter Eliandi.</h2>
+          <p class="angelo-name" data-reveal style="--d:.1s">Angelo Mejlawi &middot; oprichter en eigenaar</p>
+          <p data-reveal style="--d:.14s">Sinds zijn jeugd is Angelo gefascineerd door geur. Geen vluchtige hobby, maar een passie die diep vanbinnen zit: als kind speelde hij al met flesjes, mengde bloemen en etherische oli&euml;n en ontwierp geuren alsof hij in een geheime wereld leefde. Elke geur nam hem mee op een denkbeeldige reis.</p>
+          <p data-reveal style="--d:.18s">Die passie liet hem nooit los. In 2023 nam hij de sprong en richtte hij Eliandi Parfum op: hoogwaardige, luxe parfums tegen een eerlijke prijs. Een gedurfde beslissing, maar de passie duwde hem vooruit. Vandaag leeft hij zijn droom in hartje Den Bosch, waar hij elke dag geuren samenstelt voor wie er binnenloopt.</p>
+          <blockquote class="angelo-quote" data-reveal style="--d:.22s">
+            <p>&ldquo;Het zijn niet zomaar glazen flesjes. Het zijn druppels uit mijn eigen wereld, beladen met jouw verhalen, herinneringen en dromen.&rdquo;</p>
+          </blockquote>
+          <p data-reveal style="--d:.26s">Het is een reis die nooit eindigt. En elke dag is hij dankbaar voor de passie die hem hier heeft gebracht.</p>
+          <p class="angelo-sign" data-reveal style="--d:.3s">Angelo Mejlawi</p>
+          <div class="angelo-cta" data-reveal style="--d:.34s">
+            <a class="btn btn-gold" href="#bezoek" data-magnetic>Kom kennismaken</a>
+            <a class="btn btn-ghost" href="quiz.html" data-magnetic>Laat Angelo jouw geur vinden</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ DE ELIANDI EXPERIENCE ══════════ -->
+    <section class="xpt section" id="experience">
+      <div class="wrap xpt-grid">
+        <div class="xpt-body">
+          <p class="kicker" data-reveal>Privé met Angelo</p>
+          <h2 class="h2" data-reveal style="--d:.06s">De Eliandi <em>Experience</em></h2>
+          <p class="xpt-lead" data-reveal style="--d:.12s">De winkel exclusief voor jou: dertig minuten privé met Angelo. Je loopt naar buiten met een extrait de parfum dat nergens anders bestaat.</p>
+          <ul class="xpt-facts" data-reveal style="--d:.18s">
+            <li><b>30</b><span>minuten 1-op-1</span></li>
+            <li><b>50 ml</b><span>extrait op maat</span></li>
+            <li><b>€75</b><span>alles inbegrepen</span></li>
+          </ul>
+          <a class="btn btn-gold" href="experience.html" data-reveal style="--d:.24s" data-magnetic>Boek jouw sessie</a>
+          <p class="xpt-hours" data-reveal style="--d:.3s">Solo, Duo of als <a href="experience.html#cadeau">cadeaubon</a> &middot; dinsdag en donderdag</p>
+        </div>
+        <figure class="xpt-photo frame" data-reveal style="--d:.1s">
+          <img src="assets/parfumeur-mengt-geur-pipet.jpg" alt="Angelo mengt druppel voor druppel een parfum op maat" loading="lazy" data-depth-img="0.1">
+        </figure>
+      </div>
+    </section>
+
+    <!-- ══════════ REVIEWS ══════════ -->
+    <section class="reviews section" id="reviews">
+      <div class="wrap">
+        <p class="kicker center" data-reveal>Google reviews</p>
+        <h2 class="h2 center" data-reveal style="--d:.08s">Wat onze klanten zeggen</h2>
+        <div class="review-score" data-reveal style="--d:.14s">
+          <span class="score-nr">5,0</span>
+          <span class="stars" aria-label="Vijf van vijf sterren">
+            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
+            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
+            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
+            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
+            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
+          </span>
+          <span class="score-sub">op basis van 123 Google reviews</span>
+        </div>
+        <div class="review-grid">
+          <blockquote class="rcard" data-reveal style="--d:0s">
+            <p>“Het is een ervaring op zich om hier recht voor je neus een parfum gemaakt te krijgen. En dan is het ook nog eens zo’n ontzettend lekkere geur die lang blijft zitten. Hij kan je droomgeuren waarmaken.”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.07s">
+            <p>“Oprecht een 10/10. Niche of mainstream: hij heeft het allemaal, en als hij het niet heeft, dan maakt hij het wel. Ik koop nooit meer ergens anders mijn parfum.”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.14s">
+            <p>“Zeer goede kwaliteit, het wordt letterlijk voor je neus gemaakt. Exclusiever kan het gewoon niet. Vijf sterren van mij, de eigenaar is ook echt supertof.”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.05s">
+            <p>“Deze man weet waar hij het over heeft, is mega gepassioneerd en vriendelijk. We zijn met geweldige custom parfums de deur uit gegaan. Echt een aanrader!”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.12s">
+            <p>“Ik zocht een parfum met een ananasgeur die ik ooit in Azië kocht. Angelo vond hem en maakte er een nieuwe parfum van die nog beter rook dan ik ooit had durven verwachten.”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.19s">
+            <p>“Ik ben al een jaar vaste klant. Goede kwaliteit, betaalbaar, maar een luxueuze ervaring. De eigenaar weet wat hij doet. Fijn dat je er bent!”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.1s">
+            <p>“We zijn vandaag in deze prachtige zaak geweest. Super geholpen en heerlijke parfum gekocht. Hij neemt echt de tijd voor je, we komen zeker terug.”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Bennie &amp; Gonnie</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.17s">
+            <p>“Zomaar naar binnen gestapt om even te kijken, we gingen weg met vier parfums. Goed betaalbaar en een gezellige kerel. We komen er helemaal voor uit Rotterdam.”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+          <blockquote class="rcard" data-reveal style="--d:.24s">
+            <p>“Angelo is echt een topper: goede kwaliteit en service. De parfums blijven erg lang hangen. Hij stelt zelf een geur samen die bij je past, heel vriendelijk en meedenkend.”</p>
+            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
+          </blockquote>
+        </div>
+        <div class="review-cta" data-reveal>
+          <a class="btn btn-gold" href="https://www.google.com/search?sa=X&amp;sca_esv=5312503ff2c0a1f7&amp;biw=1440&amp;bih=778&amp;sxsrf=APpeQnuaego9tVYgpmS0DH9TE-PR-b1MOA:1783854483455&amp;q=eliandi%20parfum%C2%AE%20reviews&amp;rflfq=1&amp;num=20&amp;stick=H4sIAAAAAAAAAONgkxI2NjG1NDEysTQxNzY1NDEysrAw38DI-IpRIjUnMzEvJVOhILEorTT30DqFotSyzNTy4kWsOKUAQtFpAVAAAAA&amp;rldimm=3459424947351422887&amp;tbm=lcl&amp;hl=en-NL&amp;ved=0CAcQ5foLahcKEwiAgq3E2syVAxUAAAAAHQAAAAAQBQ#lkt=LocalPoiReviews&amp;arid=Ci9DQUlRQUNvZENodHljRjlvT201S2VFSnVVMVJtWldGWU9XSXpUMlpMU0dkcFpVRRAB" target="_blank" rel="noopener" data-magnetic>Bekijk alle 123 reviews</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ BEZOEK ONS ══════════ -->
+    <section class="visit section" id="bezoek">
+      <div class="wrap">
+        <p class="kicker" data-reveal>Vughterstraat 70 · ’s-Hertogenbosch</p>
+        <h2 class="h2" data-reveal style="--d:.08s">Kom langs<br>in de winkel.</h2>
+        <svg class="divider" viewBox="0 0 152 20" data-reveal style="--d:.16s"><use href="#ornament-divider"/></svg>
+      </div>
+      <div class="wrap visit-grid">
+        <div class="visit-info" data-reveal>
+          <dl class="visit-list">
+            <div>
+              <dt>Adres</dt>
+              <dd>Vughterstraat 70<br>5211 GK ’s-Hertogenbosch</dd>
+            </div>
+            <div>
+              <dt>Contact</dt>
+              <dd>
+                <a href="tel:+31687080256">06 870 802 56</a><br>
+                <a href="mailto:info@eliandiparfum.com">info@eliandiparfum.com</a><br>
+                <a href="https://www.instagram.com/eliandi_parfum/" target="_blank" rel="noopener">Instagram · @eliandi_parfum</a>
+              </dd>
+            </div>
+          </dl>
+          <table class="hours" aria-label="Openingstijden">
+            <caption>Openingstijden</caption>
+            <tbody>
+              <tr data-day="1"><th>Maandag</th><td>Gesloten</td></tr>
+              <tr data-day="2"><th>Dinsdag</th><td>10:00 – 18:00</td></tr>
+              <tr data-day="3"><th>Woensdag</th><td>10:00 – 18:00</td></tr>
+              <tr data-day="4"><th>Donderdag</th><td>10:00 – 20:00</td></tr>
+              <tr data-day="5"><th>Vrijdag</th><td>10:00 – 18:00</td></tr>
+              <tr data-day="6"><th>Zaterdag</th><td>10:00 – 18:00</td></tr>
+              <tr data-day="0"><th>Zondag</th><td>11:00 – 17:30</td></tr>
+            </tbody>
+          </table>
+          <a class="btn btn-gold" href="https://www.google.com/maps/dir/?api=1&destination=Eliandi+Parfum,+Vughterstraat+70,+5211+GK+%27s-Hertogenbosch" target="_blank" rel="noopener" data-magnetic>Plan je route</a>
+        </div>
+        <div class="visit-map" data-reveal style="--d:.12s">
+          <!-- Google Maps-widget, donker gefilterd naar de huisstijl -->
+          <div class="visit-map-embed">
+            <iframe
+              src="https://www.google.com/maps?q=Eliandi+Parfum,+Vughterstraat+70,+5211GK+%27s-Hertogenbosch&output=embed&hl=nl"
+              width="600" height="560" style="border:0" loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade" allowfullscreen
+              title="Kaart met de locatie van Eliandi Parfum, Vughterstraat 70 in Den Bosch"></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <footer class="footer">
+    <div class="wrap footer-grid">
+      <div class="footer-brand">
+        <img class="footer-mark" src="assets/logo-eliandi.png" alt="">
+        <p class="footer-name">Eliandi Parfum</p>
+        <p class="footer-tag">Enchantment of Your Senses<br>Jouw geur. Jouw verhaal.</p>
+      </div>
+      <nav class="footer-nav" aria-label="Voettekstnavigatie">
+        <a href="#verhaal">Verhaal</a>
+        <a href="#belofte">Belofte</a>
+        <a href="#ritueel">Het ritueel</a>
+        <a href="quiz.html">Vind jouw geur</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#bezoek">Bezoek ons</a>
+      </nav>
+      <div class="footer-contact">
+        <p>Vughterstraat 70, 5211 GK ’s-Hertogenbosch</p>
+        <p><a href="tel:+31687080256">06 870 802 56</a> · <a href="mailto:info@eliandiparfum.com">info@eliandiparfum.com</a></p>
+        <p><a href="https://www.instagram.com/eliandi_parfum/" target="_blank" rel="noopener">@eliandi_parfum</a></p>
+      </div>
+    </div>
+    <p class="footer-legal" data-cms-skip>© <span id="year"></span> Eliandi Parfum · Handgemaakte parfums · ’s-Hertogenbosch</p>
+  </footer>
+
+  <script src="js/cms.js" defer></script>
+
+  <script src="js/main.js"></script>
+
+  <!-- WhatsApp-widget -->
+  <a class="wa-widget" href="https://wa.me/31687080256?text=Hoi%20Angelo%2C%20ik%20heb%20een%20vraag%20over%20Eliandi%20Parfum." target="_blank" rel="noopener" aria-label="Stuur Angelo een WhatsApp-bericht">
+    <span class="wa-label">App met Angelo</span>
+    <span class="wa-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg></span>
+  </a>
+  <script src="js/zonder-server.js" defer></script>
+
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beheer | Eliandi Parfum</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/beheer.css">
+</head>
+<body>
+
+  <!-- ══════════ INLOGGEN ══════════ -->
+  <main class="bh-login" id="login">
+    <form class="bh-login-card" id="loginForm">
+      <img src="assets/logo-eliandi.png" alt="" class="bh-login-logo">
+      <h1>Beheer</h1>
+      <p>Eliandi Parfum</p>
+      <input type="password" id="loginPw" placeholder="Wachtwoord" autocomplete="current-password" required>
+      <button type="submit" class="bh-btn bh-gold">Inloggen</button>
+      <p class="bh-err" id="loginErr"></p>
+    </form>
+  </main>
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div class="bh-app" id="app" hidden>
+    <aside class="bh-side">
+      <a class="bh-brand" href="index.html" target="_blank" rel="noopener">
+        <img src="assets/logo-eliandi.png" alt=""><span>Eliandi<br><em>Beheer</em></span>
+      </a>
+      <nav class="bh-nav" id="nav">
+        <button data-tab="boekingen" class="is-on">Boekingen</button>
+        <button data-tab="bestellingen">Bestellingen</button>
+        <button data-tab="producten">Producten</button>
+        <button data-tab="site">Site bewerken</button>
+        <button data-tab="instellingen">Agenda &amp; prijzen</button>
+      </nav>
+      <button class="bh-logout" id="logout">Uitloggen</button>
+    </aside>
+
+    <main class="bh-main">
+      <div class="bh-warn" id="warnStore" hidden>
+        <b>Let op:</b> de opslag is nog niet gekoppeld. Boekingen en wijzigingen verdwijnen bij een herstart.
+        Koppel Upstash Redis in Vercel (zie README) voordat de site live gaat.
+      </div>
+
+      <!-- Boekingen -->
+      <section class="bh-tab" data-tab="boekingen">
+        <header class="bh-head">
+          <h2>Boekingen</h2>
+          <div class="bh-stats" id="bkStats"></div>
+        </header>
+        <div class="bh-filter">
+          <button class="is-on" data-f="komend">Komend</button>
+          <button data-f="alles">Alles</button>
+        </div>
+        <div class="bh-list" id="bkList"></div>
+
+        <h3 class="bh-sub">Agenda</h3>
+        <p class="bh-hint">Klik op een vrij moment om het dicht te zetten (of weer te openen). Geboekte momenten staan in goud.</p>
+        <div class="bh-agenda" id="agenda"></div>
+
+        <h3 class="bh-sub">Zelf inplannen</h3>
+        <p class="bh-hint">Voor een afspraak via telefoon of in de winkel. Er wordt niets afgerekend.</p>
+        <form class="bh-form bh-grid" id="addForm">
+          <label>Formule<select name="variant"><option value="solo">Solo</option><option value="duo">Duo</option></select></label>
+          <label>Moment<select name="slot" id="addSlot"></select></label>
+          <label>Naam<input name="name" required></label>
+          <label>Telefoon<input name="phone"></label>
+          <label>E-mail<input name="email" type="email"></label>
+          <label class="bh-wide">Notitie<input name="note"></label>
+          <button class="bh-btn bh-gold" type="submit">Inplannen</button>
+        </form>
+      </section>
+
+      <!-- Bestellingen -->
+      <section class="bh-tab" data-tab="bestellingen" hidden>
+        <header class="bh-head"><h2>Bestellingen</h2><div class="bh-stats" id="orStats"></div></header>
+        <div class="bh-list" id="orList"></div>
+        <h3 class="bh-sub">Cadeaubonnen</h3>
+        <div class="bh-list" id="vcList"></div>
+      </section>
+
+      <!-- Producten -->
+      <section class="bh-tab" data-tab="producten" hidden>
+        <header class="bh-head"><h2>Producten</h2></header>
+        <h3 class="bh-sub">Nieuw parfum toevoegen</h3>
+        <p class="bh-hint">De geurwijzer leest de noten en de omschrijving en kan het parfum direct aanraden.</p>
+        <form class="bh-form bh-grid" id="prodForm">
+          <input type="hidden" name="id">
+          <label class="bh-wide">Naam<input name="n" required></label>
+          <label>Voor<select name="g"><option value="unisex">Unisex</option><option value="dames">Dames</option><option value="heren">Heren</option></select></label>
+          <label>Geurfamilies<input name="f" placeholder="Oriëntaals, Kruidig"></label>
+          <label>Topnoten<input name="t" placeholder="saffraan, bergamot"></label>
+          <label>Hartnoten<input name="h" placeholder="roos, oud"></label>
+          <label>Basisnoten<input name="b" placeholder="amber, vanille"></label>
+          <label class="bh-wide">Omschrijving<textarea name="i" rows="3" placeholder="Een warme, intense avondgeur…"></textarea></label>
+          <label>Prijs 30 ml<input name="v0" inputmode="decimal" placeholder="24,99"></label>
+          <label>Prijs 50 ml<input name="v1" inputmode="decimal" placeholder="39,95"></label>
+          <label>Prijs 100 ml<input name="v2" inputmode="decimal" placeholder="64,99"></label>
+          <div class="bh-wide bh-actions">
+            <button class="bh-btn bh-gold" type="submit">Opslaan</button>
+            <button class="bh-btn" type="reset" id="prodReset">Leegmaken</button>
+          </div>
+        </form>
+        <div class="bh-list" id="customList"></div>
+
+        <h3 class="bh-sub">Bestaande collectie</h3>
+        <p class="bh-hint">Zoek een parfum om de prijzen aan te passen of het tijdelijk te verbergen.</p>
+        <input class="bh-search" id="prodSearch" placeholder="Zoek op naam…">
+        <div class="bh-list" id="baseList"></div>
+      </section>
+
+      <!-- Site bewerken -->
+      <section class="bh-tab" data-tab="site" hidden>
+        <header class="bh-head"><h2>Site bewerken</h2></header>
+        <p class="bh-lead">Open een pagina in bewerkmodus. Klik op een tekst om hem te veranderen, of op een foto om een nieuwe te kiezen. Druk daarna op <b>Opslaan</b> onderin beeld.</p>
+        <div class="bh-pages">
+          <a class="bh-page" href="index.html?bewerken" target="_blank" rel="noopener"><b>Homepage</b><span>Hero, verhaal, belofte, ritueel, Angelo, bezoek</span></a>
+          <a class="bh-page" href="experience.html?bewerken" target="_blank" rel="noopener"><b>De Experience</b><span>Privé-sessie, formules, cadeau</span></a>
+          <a class="bh-page" href="quiz.html?bewerken" target="_blank" rel="noopener"><b>Geurwijzer</b><span>Introductiescherm</span></a>
+        </div>
+        <p class="bh-hint">Een tekst teruggezet willen? Klik erin en kies "Origineel terug".</p>
+      </section>
+
+      <!-- Instellingen -->
+      <section class="bh-tab" data-tab="instellingen" hidden>
+        <header class="bh-head"><h2>Agenda &amp; prijzen</h2></header>
+        <form class="bh-form" id="setForm">
+          <div class="bh-grid">
+            <label>Solo (€)<input name="priceSolo" inputmode="decimal"></label>
+            <label>Duo (€)<input name="priceDuo" inputmode="decimal"></label>
+            <label>Aanbetaling (%)<input name="depositPct" inputmode="numeric"></label>
+          </div>
+          <h3 class="bh-sub">Tijden per dag</h3>
+          <p class="bh-hint">Starttijden van een halfuur, gescheiden door spaties. Leeg = geen sessies. Een Duo neemt twee aaneengesloten halfuren.</p>
+          <div class="bh-days" id="setDays"></div>
+          <h3 class="bh-sub">Gesloten dagen</h3>
+          <label>Datums (jjjj-mm-dd, gescheiden door spaties)<input name="blockedDates" placeholder="2026-12-24 2026-12-25"></label>
+          <div class="bh-actions"><button class="bh-btn bh-gold" type="submit">Opslaan</button></div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <div class="bh-toast" id="toast"></div>
+  <script src="js/beheer.js"></script>
+  <script src="js/zonder-server.js" defer></script>
+</body>
+</html>

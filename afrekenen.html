@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Afrekenen | Eliandi Parfum</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/quiz.css">
+  <link rel="stylesheet" href="css/cart.css">
+  <link rel="stylesheet" href="css/checkout.css">
+</head>
+<body class="quizpage" data-nocartfab>
+
+  <header class="qnav">
+    <a class="qnav-brand" href="index.html">
+      <img class="qnav-mark" src="assets/logo-eliandi.png" alt="Eliandi Parfum logo">
+      <span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span>
+    </a>
+    <a class="qnav-exit" href="quiz.html">Terug naar jouw selectie</a>
+  </header>
+
+  <main class="co-main">
+    <h1 class="qtitle-l co-title">Afrekenen</h1>
+
+    <div class="co-empty" id="coEmpty" hidden>
+      <p>Je winkelmand is nog leeg.</p>
+      <a class="btn btn-gold" href="quiz.html">Vind jouw geur</a>
+    </div>
+
+    <form class="co-grid" id="coForm" novalidate hidden>
+      <div class="co-left">
+        <fieldset class="co-block">
+          <legend>Jouw gegevens</legend>
+          <label class="ql-field"><span>Naam</span>
+            <input type="text" id="coName" autocomplete="name" required></label>
+          <label class="ql-field"><span>E-mailadres</span>
+            <input type="email" id="coEmail" autocomplete="email" required></label>
+          <label class="ql-field"><span>Telefoonnummer</span>
+            <input type="tel" id="coPhone" autocomplete="tel" required></label>
+        </fieldset>
+
+        <fieldset class="co-block">
+          <legend>Levering</legend>
+          <div class="co-options">
+            <label class="co-option">
+              <input type="radio" name="delivery" value="ship" checked>
+              <span><b>Thuisbezorgd</b><small>PostNL, Nederland en België</small></span>
+              <em id="coShipPrice">€4,95</em>
+            </label>
+            <label class="co-option">
+              <input type="radio" name="delivery" value="pickup">
+              <span><b>Ophalen in de winkel</b><small>Vughterstraat 70, Den Bosch</small></span>
+              <em>Gratis</em>
+            </label>
+          </div>
+          <div class="co-address" id="coAddress">
+            <label class="ql-field"><span>Straat en huisnummer</span>
+              <input type="text" id="coStreet" autocomplete="street-address"></label>
+            <div class="co-row">
+              <label class="ql-field"><span>Postcode</span>
+                <input type="text" id="coPostcode" autocomplete="postal-code"></label>
+              <label class="ql-field"><span>Plaats</span>
+                <input type="text" id="coCity" autocomplete="address-level2"></label>
+            </div>
+            <label class="ql-field"><span>Land</span>
+              <select id="coCountry" autocomplete="country"><option value="NL">Nederland</option><option value="BE">België</option></select></label>
+          </div>
+        </fieldset>
+      </div>
+
+      <aside class="co-summary">
+        <p class="co-sum-title">Jouw bestelling</p>
+        <ul class="co-lines" id="coLines"></ul>
+        <p class="co-row-sum"><span>Subtotaal</span><b id="coSub"></b></p>
+        <p class="co-row-sum"><span>Verzending</span><b id="coShip"></b></p>
+        <p class="co-row-sum co-total"><span>Totaal</span><b id="coTotal"></b></p>
+        <button class="btn btn-gold co-pay" id="coPay" type="submit">Betalen</button>
+        <p class="ql-error" id="coError" role="alert"></p>
+        <p class="co-trust">Veilig betalen met iDEAL of kaart</p>
+      </aside>
+    </form>
+  </main>
+
+  <script src="js/cart.js"></script>
+  <script src="js/checkout.js"></script>
+  <script src="js/zonder-server.js" defer></script>
+</body>
+</html>

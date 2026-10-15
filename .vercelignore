@@ -1,0 +1,8 @@
+server.js
+README.md
+netlify.toml
+.DS_Store
+.env
+.env.*
+.vercel
+.gitignore

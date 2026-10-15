@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vind jouw geur | Eliandi Parfum</title>
+  <meta name="description" content="Beantwoord tien korte vragen en ontdek welke vijf Eliandi-parfums het best bij jou passen. Jij maakt het parfum, niet andersom.">
+  <meta property="og:title" content="Vind jouw geur | Eliandi Parfum">
+  <meta property="og:description" content="De Eliandi geurwijzer: in vier minuten van honderden geuren naar de vijf die bij jou horen.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://eliandi-parfum.vercel.app/quiz">
+  <meta property="og:image" content="https://eliandi-parfum.vercel.app/assets/parfumeur-mengt-geur-pipet.jpg">
+  <meta property="og:locale" content="nl_NL">
+  <link rel="canonical" href="https://eliandi-parfum.vercel.app/quiz">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/quiz.css">
+  <link rel="stylesheet" href="css/cart.css">
+</head>
+<body class="quizpage" data-page="quiz">
+
+  <!-- ambient goudnevel -->
+  <canvas id="qessence" aria-hidden="true"></canvas>
+
+  <!-- minimale navigatie -->
+  <header class="qnav">
+    <a class="qnav-brand" href="index.html">
+      <img class="qnav-mark" src="assets/logo-eliandi.png" alt="Eliandi Parfum logo">
+      <span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span>
+    </a>
+    <a class="qnav-exit" href="index.html">Terug naar de site</a>
+  </header>
+
+  <!-- voortgang -->
+  <div class="qprogress" id="qprogress" aria-hidden="true">
+    <div class="qprogress-bar" id="qprogressBar"></div>
+  </div>
+
+  <main class="qmain" id="qmain">
+
+    <!-- ══════════ INTRO ══════════ -->
+    <section class="qscreen is-active" id="screenIntro">
+      <div class="qintro-media" aria-hidden="true">
+        <img src="assets/parfumeur-mengt-geur-pipet.jpg" alt="">
+      </div>
+      <div class="qintro-inner">
+        <p class="qkicker">De Eliandi geurwijzer</p>
+        <h1 class="qtitle-xl">Laat jouw parfum<br><em>zich aan jou voorstellen.</em></h1>
+        <p class="qintro-lead">Honderden geuren in de winkel, en toch is er maar een handvol dat écht bij jou hoort. Beantwoord tien korte vragen en wij zoeken ze voor je uit. Jij maakt het parfum, niet andersom.</p>
+        <ol class="qsteps" aria-label="Zo werkt het">
+          <li><span>01</span>Beantwoord tien korte vragen over jouw smaak en karakter</li>
+          <li><span>02</span>Onze geurwijzer weegt jouw antwoorden tegen honderden geuren</li>
+          <li><span>03</span>Je ontvangt de vijf parfums die het best bij jou passen</li>
+          <li><span>04</span>Kom langs in de winkel en ontdek jouw signatuur</li>
+        </ol>
+        <button class="btn btn-gold qstart" id="btnStart">Start de geurwijzer</button>
+        <p class="qintro-meta">Tien vragen &middot; ongeveer 4 minuten &middot; vrijblijvend</p>
+      </div>
+    </section>
+
+    <!-- ══════════ VRAGEN (dynamisch) ══════════ -->
+    <section class="qscreen" id="screenQuestion">
+      <div class="qq-inner">
+        <p class="qq-count" id="qqCount">Vraag 1 van 10</p>
+        <h2 class="qq-title" id="qqTitle"></h2>
+        <p class="qq-hint" id="qqHint"></p>
+        <div class="qq-options" id="qqOptions"></div>
+        <div class="qq-nav">
+          <button class="qq-back" id="btnBack" type="button">&larr; Vorige</button>
+          <button class="btn btn-gold qq-next" id="btnNext" type="button">Volgende</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ ANALYSE ══════════ -->
+    <section class="qscreen" id="screenAnalyse">
+      <div class="qa-inner">
+        <img class="qa-mark" src="assets/logo-eliandi.png" alt="">
+        <p class="qa-status" id="qaStatus">Je antwoorden worden gelezen&hellip;</p>
+      </div>
+    </section>
+
+    <!-- ══════════ CONTACT ══════════ -->
+    <section class="qscreen" id="screenLead">
+      <div class="ql-inner">
+        <p class="qkicker">Bijna klaar</p>
+        <h2 class="qtitle-l">Jouw selectie staat klaar.</h2>
+        <p class="ql-lead">Vertel ons waar we jouw geurprofiel heen mogen sturen, dan bewaren we jouw vijf parfums voor je.</p>
+        <form class="ql-form" id="leadForm" novalidate>
+          <label class="ql-field">
+            <span>Voornaam</span>
+            <input type="text" name="name" id="leadName" autocomplete="given-name" placeholder="Jouw naam" required>
+          </label>
+          <label class="ql-field">
+            <span>E-mailadres</span>
+            <input type="email" name="email" id="leadEmail" autocomplete="email" placeholder="jij@voorbeeld.nl" required>
+          </label>
+          <label class="ql-field">
+            <span>Telefoonnummer</span>
+            <input type="tel" name="phone" id="leadPhone" autocomplete="tel" placeholder="06 12 34 56 78" required>
+          </label>
+          <label class="ql-consent">
+            <input type="checkbox" id="leadConsent">
+            <span>Eliandi mag mij mijn geurprofiel sturen en af en toe laten weten wat er nieuw is. Uitschrijven kan altijd.</span>
+          </label>
+          <p class="ql-error" id="leadError" role="alert"></p>
+          <button class="btn btn-gold ql-submit" type="submit">Toon mijn vijf parfums</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ══════════ RESULTAAT (dynamisch) ══════════ -->
+    <section class="qscreen" id="screenResults">
+      <div class="qr-inner">
+        <p class="qkicker">Jouw geurprofiel</p>
+        <h2 class="qtitle-l" id="qrTitle">Vijf geuren die bij jou horen.</h2>
+        <p class="qr-sentence" id="qrSentence"></p>
+        <div class="qr-profile" id="qrProfile"></div>
+        <div class="qr-list" id="qrList"></div>
+
+        <aside class="qr-discovery">
+          <div class="qd-media" aria-hidden="true">
+            <img class="qd-img qd-img-open" src="assets/discovery-open.jpg" alt="">
+            <img class="qd-img qd-img-front" src="assets/discovery-front.jpg" alt="De Eliandi Discovery Set: gouden doos met vijf samples van 10 ml">
+          </div>
+          <div class="qd-body">
+            <div class="qr-discovery-tag">Tijdelijke lanceringsactie</div>
+            <h3>Jouw vijf geuren als Discovery&nbsp;Set</h3>
+            <p class="qd-rationale">Parfum koop je niet van een scherm. Daarom eerst thuis ruiken, in de gouden doos.</p>
+
+            <div class="qd-plans" role="radiogroup" aria-label="Kies jouw formule">
+              <button class="qd-plan is-selected" id="planOnce" type="button" role="radio" aria-checked="true">
+                <span class="qd-plan-name">Eenmalig</span>
+                <span class="qd-plan-price" id="planOncePrice"></span>
+                <span class="qd-plan-sub">Vijf geuren, &eacute;&eacute;n doos</span>
+              </button>
+              <button class="qd-plan is-member" id="planSub" type="button" role="radio" aria-checked="false">
+                <span class="qd-plan-badge">Ledenvoordeel</span>
+                <span class="qd-plan-name">De Geurreis</span>
+                <span class="qd-plan-price" id="planSubPrice"></span>
+                <span class="qd-plan-sub">Elk kwartaal vijf nieuwe</span>
+              </button>
+            </div>
+
+            <div class="qd-timer" id="qdTimerBox">
+              <div class="qd-timer-txt">Vandaag besteld?<br><b>Zesde sample cadeau</b></div>
+              <div class="qd-timer-clock" id="qdTimer" aria-label="Resterende tijd vandaag">--:--:--</div>
+            </div>
+
+            <ul class="qd-usps" id="qdUsps"></ul>
+
+            <p class="qd-guarantee-line">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5.5 V11 c0 5.2 -3.4 9.3 -8 11 c-4.6 -1.7 -8 -5.8 -8 -11 V5.5 Z"/><path d="M8.2 12 l2.6 2.6 5 -5.2"/></svg>
+              <span><b>Signatuur-Garantie:</b> past hij niet, dan bouwt Angelo hem kosteloos opnieuw met je.</span>
+            </p>
+
+            <button class="btn btn-gold qd-order" id="btnOrderSet" type="button">Bestel jouw Discovery Set</button>
+            <button class="btn btn-ghost qd-tocart" id="btnSetToCart" type="button">Zet in de winkelmand</button>
+            <p class="qd-urgency" id="qdUrgency"></p>
+            <p class="ql-error" id="qdError" role="alert"></p>
+          </div>
+        </aside>
+
+        <div class="qr-cta">
+          <a class="btn btn-ghost" href="index.html#bezoek">Kom langs in de winkel</a>
+          <button class="btn btn-ghost" id="btnRestart" type="button">Doe de geurwijzer opnieuw</button>
+        </div>
+        <p class="qr-visit-line">Liever een parfum dat nergens anders bestaat? <a href="experience.html">Boek de Eliandi Experience</a>: dertig minuten 1-op-1 met Angelo.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/catalog.js"></script>
+  <script src="js/quiz.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/cms.js"></script>
+
+  <!-- WhatsApp-widget -->
+  <a class="wa-widget" href="https://wa.me/31687080256?text=Hoi%20Angelo%2C%20ik%20heb%20een%20vraag%20over%20Eliandi%20Parfum." target="_blank" rel="noopener" aria-label="Stuur Angelo een WhatsApp-bericht">
+    <span class="wa-label">App met Angelo</span>
+    <span class="wa-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg></span>
+  </a>
+  <script src="js/zonder-server.js" defer></script>
+
+</body>
+</html>

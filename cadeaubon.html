@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadeaubon | De Eliandi Experience</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/experience.css">
+  <style>
+    body { background: #0f0e0b; min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; }
+    .cb-wrap { width: min(640px, 100%); text-align: center; }
+    .cb-wrap .xp-giftcard { transform: none; max-width: 640px; text-align: left; }
+    .cb-wrap .xp-gc-code { font-size: 1rem; letter-spacing: .26em; color: var(--goud-glans); }
+    .cb-how { margin: 34px auto 26px; max-width: 46ch; color: var(--tekst); line-height: 1.8; }
+    .cb-how b { color: var(--ivoor); font-weight: 500; }
+    .cb-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .cb-state { margin-top: 18px; font-size: .85rem; color: var(--tekst-dim); }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .cb-actions, .cb-state, .wa-widget { display: none !important; }
+      .cb-how { color: #333; }
+      .cb-how b { color: #000; }
+      .xp-giftcard { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none; }
+      .xp-giftcard::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="cb-wrap">
+    <div class="xp-giftcard" id="card">
+      <img src="assets/logo-eliandi.png" alt="" class="xp-gc-logo">
+      <p class="xp-gc-kicker">Cadeaubon</p>
+      <p class="xp-gc-title">De Eliandi Experience</p>
+      <p class="xp-gc-variant" id="cbVariant"></p>
+      <p class="xp-gc-to" id="cbTo"></p>
+      <p class="xp-gc-msg" id="cbMsg"></p>
+      <p class="xp-gc-from" id="cbFrom"></p>
+      <p class="xp-gc-code" id="cbCode"></p>
+    </div>
+    <p class="cb-how" id="cbHow">Boek jouw moment op <b>eliandiparfum.nl/experience</b> en vul daar de code van deze bon in. De winkel aan de Vughterstraat 70 in Den Bosch is dan exclusief voor jou.</p>
+    <div class="cb-actions">
+      <a class="btn btn-gold" id="cbBook" href="experience.html#boeken">Boek met deze bon</a>
+      <button class="btn btn-ghost" type="button" onclick="print()">Printen</button>
+    </div>
+    <p class="cb-state" id="cbState"></p>
+  </main>
+  <script>
+    (async function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var code = new URLSearchParams(location.search).get('code') || '';
+      try {
+        var r = await fetch('/api/voucher?code=' + encodeURIComponent(code));
+        if (!r.ok) throw new Error();
+        var v = await r.json();
+        $('cbVariant').textContent = v.variant === 'duo' ? 'Duo · 60 minuten privé met Angelo, voor twee' : 'Solo · 30 minuten privé met Angelo';
+        $('cbTo').textContent = v.recipient ? 'Voor ' + v.recipient : 'Voor jou';
+        $('cbMsg').textContent = v.message || '';
+        $('cbFrom').textContent = v.from ? 'Van ' + v.from : '';
+        $('cbCode').textContent = v.code;
+        $('cbBook').href = 'experience.html?bon=' + encodeURIComponent(v.code) + '#boeken';
+        $('cbHow').querySelector('b').textContent = location.host + '/experience';
+        if (v.status === 'used') $('cbState').textContent = 'Deze bon is al ingewisseld.';
+        if (v.status === 'pending') $('cbState').textContent = 'Deze bon wordt actief zodra de betaling binnen is.';
+      } catch (e) {
+        $('card').hidden = true;
+        $('cbHow').textContent = 'Deze cadeaubon is niet gevonden. Controleer de link of app Angelo.';
+        $('cbBook').hidden = true;
+      }
+    })();
+  </script>
+  <script src="js/zonder-server.js" defer></script>
+</body>
+</html>

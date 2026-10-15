@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /bedankt
+Disallow: /afrekenen
+Disallow: /beheer
+Disallow: /cadeaubon
+
+Sitemap: https://eliandi-parfum.vercel.app/sitemap.xml
