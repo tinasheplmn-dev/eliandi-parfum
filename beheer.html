@@ -67,7 +67,7 @@
         <h3 class="bh-sub">Zelf inplannen</h3>
         <p class="bh-hint">Voor een afspraak via telefoon of in de winkel. Er wordt niets afgerekend.</p>
         <form class="bh-form bh-grid" id="addForm">
-          <label>Formule<select name="variant"><option value="solo">Solo</option><option value="duo">Duo</option></select></label>
+          <label>Personen<select name="people" id="addPeople"><option value="1">1 persoon</option><option value="2">2 personen</option><option value="3">3 personen</option><option value="4">4 personen</option><option value="5">5 personen</option><option value="6">6 personen</option></select></label>
           <label>Moment<select name="slot" id="addSlot"></select></label>
           <label>Naam<input name="name" required></label>
           <label>Telefoon<input name="phone"></label>
@@ -132,12 +132,18 @@
         <header class="bh-head"><h2>Agenda &amp; prijzen</h2></header>
         <form class="bh-form" id="setForm">
           <div class="bh-grid">
-            <label>Solo (€)<input name="priceSolo" inputmode="decimal"></label>
-            <label>Duo (€)<input name="priceDuo" inputmode="decimal"></label>
             <label>Aanbetaling (%)<input name="depositPct" inputmode="numeric"></label>
+            <label>Minuten per persoon<input name="minutesPerPerson" inputmode="numeric"></label>
+            <label>Maximum aantal personen<input name="maxPeople" inputmode="numeric"></label>
+          </div>
+          <h3 class="bh-sub">Prijs per gezelschap</h3>
+          <p class="bh-hint">Totaalprijs voor het hele gezelschap, inclusief 50 ml per persoon. Boven de tabel komt er per extra persoon een vast bedrag bij.</p>
+          <div class="bh-grid" id="setPrices"></div>
+          <div class="bh-grid">
+            <label>Elke extra persoon daarboven (€)<input name="extraPerPerson" inputmode="decimal"></label>
           </div>
           <h3 class="bh-sub">Tijden per dag</h3>
-          <p class="bh-hint">Starttijden van een halfuur, gescheiden door spaties. Leeg = geen sessies. Een Duo neemt twee aaneengesloten halfuren.</p>
+          <p class="bh-hint">Starttijden van een halfuur, gescheiden door spaties. Leeg = geen sessies. Een gezelschap neemt zoveel aaneengesloten halfuren als het aantal personen keer de minuten per persoon.</p>
           <div class="bh-days" id="setDays"></div>
           <h3 class="bh-sub">Gesloten dagen</h3>
           <label>Datums (jjjj-mm-dd, gescheiden door spaties)<input name="blockedDates" placeholder="2026-12-24 2026-12-25"></label>

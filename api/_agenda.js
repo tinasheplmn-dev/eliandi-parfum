@@ -128,7 +128,7 @@ function omschrijving(b) {
   const euro = c => '€' + (c / 100).toFixed(2).replace('.', ',');
   const regels = [
     `${b.name} · ${b.phone} · ${b.email}`,
-    `Formule: ${b.variant === 'duo' ? 'Duo, twee personen' : 'Solo'}`,
+    `Gezelschap: ${(Number(b.people) || (b.variant === 'duo' ? 2 : 1)) === 1 ? 'alleen' : (Number(b.people) || 2) + ' personen'} · ${b.minutes || 30} minuten`,
     b.voucher ? `Cadeaubon ${b.voucher}` : `Aanbetaald: ${euro(b.paid || 0)} van ${euro(b.price || 0)}, nog te voldoen in de winkel: ${euro((b.price || 0) - (b.paid || 0))}`,
     b.note ? `Opmerking van de klant: ${b.note}` : '',
     b.top5 && b.top5.length ? `Geurwijzer: ${b.top5.join(' · ')}` : '',

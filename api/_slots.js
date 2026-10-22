@@ -1,5 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
-   De Eliandi Experience — agenda en formules
+   The Eliandi Experience — agenda en prijzen per gezelschap
+
+   Een sessie is voor 1 tot en met maxPeople personen. De prijs loopt
+   op per persoon volgens de prijstabel; daarboven komt er een vast
+   bedrag per extra persoon bij. De duur is minutesPerPerson keer het
+   aantal personen, afgerond naar hele halfuren.
 
    Standaardwaarden hieronder; Angelo past ze aan in het dashboard
    (opgeslagen als 'cms:settings'). Alle tijden in Nederlandse tijd,
@@ -8,8 +13,10 @@
 const { store } = require('./_lib');
 
 const DEFAULTS = {
-  priceSolo: 7500,          // €75, één persoon, 50 ml extrait op maat
-  priceDuo: 14000,          // €140, twee personen, twee keer 50 ml
+  prices: [7495, 13995, 19995, 24995, 27995], // 1 t/m 5 personen, in centen
+  extraPerPerson: 5000,     // elke persoon boven de tabel: €50 erbij
+  minutesPerPerson: 30,     // duur van de sessie per persoon
+  maxPeople: 6,             // meer past niet aan de geurtafel
   depositPct: 50,           // aanbetaling online, de rest in de winkel
   schedule: {               // weekdag (0 = zondag) -> starttijden
     2: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'],
@@ -20,24 +27,56 @@ const DEFAULTS = {
   leadMinutes: 180,
 };
 
-const VARIANTS = {
-  solo: { label: 'Solo', slots: 1, minutes: 30, priceKey: 'priceSolo', people: 1 },
-  duo: { label: 'Duo', slots: 2, minutes: 60, priceKey: 'priceDuo', people: 2 },
-};
-
 const HOLD_SECONDS = 32 * 60;
 const TZ = 'Europe/Amsterdam';
 
 async function getSettings() {
   const saved = await store.getJson('cms:settings', {});
-  return { ...DEFAULTS, ...saved, schedule: saved.schedule || DEFAULTS.schedule };
+  const cfg = { ...DEFAULTS, ...saved, schedule: saved.schedule || DEFAULTS.schedule };
+  /* oude instellingen (Solo/Duo) netjes meenemen */
+  if (!Array.isArray(cfg.prices) || !cfg.prices.length) {
+    cfg.prices = DEFAULTS.prices.slice();
+    if (saved.priceSolo) cfg.prices[0] = saved.priceSolo;
+    if (saved.priceDuo) cfg.prices[1] = saved.priceDuo;
+  }
+  cfg.maxPeople = Math.max(1, Math.min(12, parseInt(cfg.maxPeople, 10) || DEFAULTS.maxPeople));
+  cfg.minutesPerPerson = Math.max(10, parseInt(cfg.minutesPerPerson, 10) || DEFAULTS.minutesPerPerson);
+  return cfg;
 }
 
-function priceOf(cfg, variant) {
-  const v = VARIANTS[variant] || VARIANTS.solo;
-  const price = cfg[v.priceKey];
-  return { price, deposit: Math.round(price * cfg.depositPct / 100) };
+/* Hoeveel personen: een getal, of de oude namen uit eerdere boekingen. */
+function peopleFrom(cfg, v) {
+  if (v === 'duo') return 2;
+  if (v === 'solo') return 1;
+  const n = parseInt(v, 10);
+  if (!n || n < 1) return 1;
+  return Math.min(n, cfg.maxPeople);
 }
+
+function priceFor(cfg, people) {
+  const t = cfg.prices;
+  if (people <= t.length) return t[people - 1];
+  return t[t.length - 1] + cfg.extraPerPerson * (people - t.length);
+}
+
+function minutesFor(cfg, people) {
+  return Math.ceil((cfg.minutesPerPerson * people) / 30) * 30;
+}
+
+/* Alles wat een gezelschap van n personen kost en inneemt. */
+function priceOf(cfg, people) {
+  const n = peopleFrom(cfg, people);
+  const price = priceFor(cfg, n);
+  const minutes = minutesFor(cfg, n);
+  return { people: n, price, deposit: Math.round(price * cfg.depositPct / 100), minutes, slots: minutes / 30 };
+}
+
+/* Een regel per gezelschapsgrootte, voor de site en het dashboard. */
+function priceTable(cfg) {
+  return Array.from({ length: cfg.maxPeople }, (_, i) => priceOf(cfg, i + 1));
+}
+
+const label = people => people === 1 ? 'Solo' : `${people} personen`;
 
 function amsKey(date) {
   const o = {};
@@ -71,14 +110,15 @@ function allSlots(cfg, now = new Date()) {
   return out;
 }
 
-/* De sleutels die een formule op dit startmoment bezet (duo = 2 halfuren). */
-function slotsFor(cfg, start, variant, now) {
-  const v = VARIANTS[variant] || VARIANTS.solo;
+/* De halfuren die een gezelschap vanaf dit startmoment bezet; null als
+   ze niet aaneengesloten in de agenda staan. */
+function slotsFor(cfg, start, people, now) {
+  const { slots } = priceOf(cfg, people);
   const all = allSlots(cfg, now);
   if (!all.includes(start)) return null;
   const keys = [start];
   let t = start.slice(11);
-  for (let i = 1; i < v.slots; i++) {
+  for (let i = 1; i < slots; i++) {
     t = plus30(t);
     const next = `${start.slice(0, 10)}T${t}`;
     if (!all.includes(next)) return null;
@@ -93,6 +133,6 @@ const slotStoreKey = key => 'exp:' + key;
 const slotEnd = key => `${key.slice(0, 10)}T${plus30(key.slice(11))}`;
 
 module.exports = {
-  DEFAULTS, VARIANTS, HOLD_SECONDS, TZ, getSettings, priceOf,
-  allSlots, slotsFor, slotStoreKey, amsKey, slotEnd,
+  DEFAULTS, HOLD_SECONDS, TZ, getSettings, peopleFrom, priceOf, priceTable, label,
+  allSlots, slotsFor, slotStoreKey, amsKey, slotEnd, plus30,
 };

@@ -99,6 +99,7 @@
       <a href="#ritueel">Het ritueel</a>
       <a href="#angelo">Angelo</a>
       <a href="experience.html">Experience</a>
+      <a href="shop.html">Shop</a>
       <a href="#reviews">Reviews</a>
       <a href="#bezoek">Bezoek ons</a>
     </nav>
@@ -116,11 +117,12 @@
       <a href="#ritueel" style="--i:2">Het ritueel</a>
       <a href="quiz.html" style="--i:3" class="is-gold">Vind jouw geur</a>
       <a href="#angelo" style="--i:4">Angelo</a>
-      <a href="experience.html" style="--i:5" class="is-gold">De Experience</a>
-      <a href="#reviews" style="--i:6">Reviews</a>
-      <a href="#bezoek" style="--i:7">Bezoek ons</a>
+      <a href="experience.html" style="--i:5" class="is-gold">The Experience</a>
+      <a href="shop.html" style="--i:6">Shop</a>
+      <a href="#reviews" style="--i:7">Reviews</a>
+      <a href="#bezoek" style="--i:8">Bezoek ons</a>
     </nav>
-    <div class="mobmenu-foot" style="--i:8">
+    <div class="mobmenu-foot" style="--i:9">
       <a href="tel:+31687080256">06 870 802 56</a>
       <a href="https://www.instagram.com/eliandi_parfum/" target="_blank" rel="noopener">@eliandi_parfum</a>
     </div>
@@ -284,31 +286,49 @@
         <div class="finder-grid">
           <div class="finder-copy">
             <p class="kicker" data-reveal>De Eliandi geurwijzer</p>
-            <h2 class="h2" data-reveal style="--d:.08s">Honderden geuren.<br><em>Vijf die bij jou horen.</em></h2>
-            <p data-reveal style="--d:.14s">Online kun je niet ruiken. Daarom draaien we het om: vertel ons in tien korte vragen wie jij bent, en de geurwijzer zoekt uit onze volledige collectie de vijf parfums die het best bij jou passen. Met per geur de reden waarom.</p>
-            <div data-reveal style="--d:.2s">
+            <h2 class="h2 finder-h2" data-reveal style="--d:.08s"><span>Honderden geuren.</span><em>Vijf die bij jou horen.</em></h2>
+            <p data-reveal style="--d:.14s">Online kun je niet ruiken. Daarom draaien we het om: vertel in tien korte vragen wie jij bent, en de geurwijzer legt jouw antwoorden naast honderden noten en geurfamilies. Je krijgt vijf parfums terug, met per geur de reden waarom.</p>
+            <ol class="finder-rail" aria-label="Zo werkt de geurwijzer" data-reveal style="--d:.18s">
+              <li><b>01</b><span>Tien vragen over jouw smaak en momenten</span></li>
+              <li><b>02</b><span>Elke geur wordt gewogen tegen jouw antwoorden</span></li>
+              <li><b>03</b><span>Jouw vijf, gerangschikt en uitgelegd</span></li>
+            </ol>
+            <div data-reveal style="--d:.22s">
               <a class="btn btn-gold finder-btn" href="quiz.html" data-magnetic>Start de geurwijzer</a>
-              <p class="finder-meta">Tien vragen &middot; ongeveer 4 minuten</p>
+              <p class="finder-meta">Tien vragen &middot; ongeveer 4 minuten &middot; vrijblijvend</p>
             </div>
           </div>
-          <ol class="finder-steps" aria-label="Zo werkt de geurwijzer">
-            <li data-reveal style="--d:.1s">
-              <span class="finder-nr">01</span>
-              <div><h3>Vertel over jezelf</h3><p>Tien vragen over jouw smaak, stijl en momenten.</p></div>
-            </li>
-            <li data-reveal style="--d:.17s">
-              <span class="finder-nr">02</span>
-              <div><h3>Wij wegen elke geur</h3><p>Jouw antwoorden worden gelegd naast honderden noten en geurfamilies.</p></div>
-            </li>
-            <li data-reveal style="--d:.24s">
-              <span class="finder-nr">03</span>
-              <div><h3>Ontvang jouw vijf</h3><p>Gerangschikt, met per parfum waarom hij bij jou past.</p></div>
-            </li>
-            <li data-reveal style="--d:.31s">
-              <span class="finder-nr">04</span>
-              <div><h3>Kom langs</h3><p>Ontdek jouw signatuur in de winkel aan de Vughterstraat.</p></div>
-            </li>
-          </ol>
+          <div class="finder-visual" data-reveal style="--d:.12s">
+            <svg class="kompas" id="kompas" viewBox="-46 0 612 520" aria-hidden="true">
+              <defs>
+                <radialGradient id="kp-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0" stop-color="#E9C767" stop-opacity=".35"/><stop offset=".55" stop-color="#B8860B" stop-opacity=".08"/><stop offset="1" stop-color="#B8860B" stop-opacity="0"/>
+                </radialGradient>
+                <linearGradient id="kp-line" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E9C767"/><stop offset="1" stop-color="#B8860B"/></linearGradient>
+              </defs>
+              <circle cx="260" cy="260" r="250" fill="url(#kp-glow)"/>
+              <g class="kp-rings">
+                <circle cx="260" cy="260" r="232" fill="none" stroke="#B8860B" stroke-opacity=".22" stroke-width="1"/>
+                <circle cx="260" cy="260" r="196" fill="none" stroke="#D4A73C" stroke-opacity=".3" stroke-width="1" stroke-dasharray="2 9"/>
+                <circle cx="260" cy="260" r="118" fill="none" stroke="#B8860B" stroke-opacity=".22" stroke-width="1"/>
+                <circle cx="260" cy="260" r="60" fill="none" stroke="#D4A73C" stroke-opacity=".35" stroke-width="1"/>
+              </g>
+              <g class="kp-naald">
+                <line x1="260" y1="260" x2="260" y2="76" stroke="url(#kp-line)" stroke-width="1.2" stroke-opacity=".9"/>
+                <path d="M260 66 l5 10 -5 10 -5 -10z" fill="#E9C767"/>
+                <line x1="260" y1="260" x2="260" y2="444" stroke="#B8860B" stroke-width="1" stroke-opacity=".35"/>
+              </g>
+              <polyline class="kp-sterren" id="kpLijn" points="" fill="none" stroke="#E9C767" stroke-opacity=".55" stroke-width="1"/>
+              <g class="kp-node" data-i="0" transform="translate(260.0 64.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="1" transform="translate(358.0 90.3)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="2" transform="translate(429.7 162.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="3" transform="translate(456.0 260.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="4" transform="translate(429.7 358.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="5" transform="translate(358.0 429.7)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="6" transform="translate(260.0 456.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="7" transform="translate(162.0 429.7)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="8" transform="translate(90.3 358.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="9" transform="translate(64.0 260.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="10" transform="translate(90.3 162.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="11" transform="translate(162.0 90.3)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g>
+              <text class="kp-label" x="260.0" y="28.0" text-anchor="middle">Oud</text><text class="kp-label" x="378.0" y="59.6" text-anchor="start">Hout</text><text class="kp-label" x="464.4" y="146.0" text-anchor="start">Amber</text><text class="kp-label" x="496.0" y="264.0" text-anchor="start">Vanille</text><text class="kp-label" x="464.4" y="382.0" text-anchor="start">Gourmand</text><text class="kp-label" x="378.0" y="468.4" text-anchor="start">Bloemig</text><text class="kp-label" x="260.0" y="500.0" text-anchor="middle">Citrus</text><text class="kp-label" x="142.0" y="468.4" text-anchor="end">Kruidig</text><text class="kp-label" x="55.6" y="382.0" text-anchor="end">Fruitig</text><text class="kp-label" x="24.0" y="264.0" text-anchor="end">Musk</text><text class="kp-label" x="55.6" y="146.0" text-anchor="end">Poederig</text><text class="kp-label" x="142.0" y="59.6" text-anchor="end">Leer</text>
+              <g class="kp-hart">
+                <circle cx="260" cy="260" r="46" fill="#141414" stroke="#D4A73C" stroke-opacity=".6"/>
+                <text x="260" y="256" text-anchor="middle" class="kp-vijf">5</text>
+                <text x="260" y="278" text-anchor="middle" class="kp-vijf-sub">voor jou</text>
+              </g>
+            </svg>
+            <p class="finder-visual-note">Twaalf geurfamilies, honderden noten. Vijf lichten op voor jou.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -346,15 +366,15 @@
       <div class="wrap xpt-grid">
         <div class="xpt-body">
           <p class="kicker" data-reveal>Privé met Angelo</p>
-          <h2 class="h2" data-reveal style="--d:.06s">De Eliandi <em>Experience</em></h2>
-          <p class="xpt-lead" data-reveal style="--d:.12s">De winkel exclusief voor jou: dertig minuten privé met Angelo. Je loopt naar buiten met een extrait de parfum dat nergens anders bestaat.</p>
+          <h2 class="h2" data-reveal style="--d:.06s">The Eliandi <em>Experience</em></h2>
+          <p class="xpt-lead" data-reveal style="--d:.12s">De winkel exclusief voor jouw gezelschap: alleen, met z'n tweeën of tot zes personen privé met Angelo. Ieder loopt naar buiten met een extrait de parfum dat nergens anders bestaat.</p>
           <ul class="xpt-facts" data-reveal style="--d:.18s">
-            <li><b>30</b><span>minuten 1-op-1</span></li>
-            <li><b>50 ml</b><span>extrait op maat</span></li>
-            <li><b>€75</b><span>alles inbegrepen</span></li>
+            <li><b>30</b><span>minuten per persoon</span></li>
+            <li><b>50 ml</b><span>extrait per persoon</span></li>
+            <li><b>€74,95</b><span>alleen, alles inbegrepen</span></li>
           </ul>
           <a class="btn btn-gold" href="experience.html" data-reveal style="--d:.24s" data-magnetic>Boek jouw sessie</a>
-          <p class="xpt-hours" data-reveal style="--d:.3s">Solo, Duo of als <a href="experience.html#cadeau">cadeaubon</a> &middot; dinsdag en donderdag</p>
+          <p class="xpt-hours" data-reveal style="--d:.3s">Voor één tot zes personen, ook als <a href="experience.html#cadeau">cadeaubon</a> &middot; dinsdag en donderdag</p>
         </div>
         <figure class="xpt-photo frame" data-reveal style="--d:.1s">
           <img src="assets/parfumeur-mengt-geur-pipet.jpg" alt="Angelo mengt druppel voor druppel een parfum op maat" loading="lazy" data-depth-img="0.1">
@@ -364,61 +384,29 @@
 
     <!-- ══════════ REVIEWS ══════════ -->
     <section class="reviews section" id="reviews">
-      <div class="wrap">
-        <p class="kicker center" data-reveal>Google reviews</p>
-        <h2 class="h2 center" data-reveal style="--d:.08s">Wat onze klanten zeggen</h2>
-        <div class="review-score" data-reveal style="--d:.14s">
-          <span class="score-nr">5,0</span>
-          <span class="stars" aria-label="Vijf van vijf sterren">
-            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
-            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
-            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
-            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
-            <svg viewBox="0 0 24 24"><use href="#ster"/></svg>
-          </span>
-          <span class="score-sub">op basis van 123 Google reviews</span>
+      <div class="rv-glow" aria-hidden="true"></div>
+      <div class="wrap rv-head">
+        <div class="rv-seal" data-reveal aria-label="Beoordeeld met 5,0 op basis van 123 Google reviews">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <path class="rv-laurel" d="M22 86c-9-10-12-24-9-38 10 2 18 10 22 20M28 64c-9-9-11-22-8-34 9 2 16 9 19 18M36 46c-6-10-6-22-1-32 8 4 12 12 13 21M98 86c9-10 12-24 9-38-10 2-18 10-22 20M92 64c9-9 11-22 8-34-9 2-16 9-19 18M84 46c6-10 6-22 1-32-8 4-12 12-13 21"/>
+            <text x="60" y="66" text-anchor="middle" class="rv-seal-nr">5,0</text>
+            <text x="60" y="86" text-anchor="middle" class="rv-seal-sub">★★★★★</text>
+          </svg>
+          <span class="rv-seal-txt">123 Google reviews</span>
         </div>
-        <div class="review-grid">
-          <blockquote class="rcard" data-reveal style="--d:0s">
-            <p>“Het is een ervaring op zich om hier recht voor je neus een parfum gemaakt te krijgen. En dan is het ook nog eens zo’n ontzettend lekkere geur die lang blijft zitten. Hij kan je droomgeuren waarmaken.”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.07s">
-            <p>“Oprecht een 10/10. Niche of mainstream: hij heeft het allemaal, en als hij het niet heeft, dan maakt hij het wel. Ik koop nooit meer ergens anders mijn parfum.”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.14s">
-            <p>“Zeer goede kwaliteit, het wordt letterlijk voor je neus gemaakt. Exclusiever kan het gewoon niet. Vijf sterren van mij, de eigenaar is ook echt supertof.”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.05s">
-            <p>“Deze man weet waar hij het over heeft, is mega gepassioneerd en vriendelijk. We zijn met geweldige custom parfums de deur uit gegaan. Echt een aanrader!”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.12s">
-            <p>“Ik zocht een parfum met een ananasgeur die ik ooit in Azië kocht. Angelo vond hem en maakte er een nieuwe parfum van die nog beter rook dan ik ooit had durven verwachten.”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.19s">
-            <p>“Ik ben al een jaar vaste klant. Goede kwaliteit, betaalbaar, maar een luxueuze ervaring. De eigenaar weet wat hij doet. Fijn dat je er bent!”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.1s">
-            <p>“We zijn vandaag in deze prachtige zaak geweest. Super geholpen en heerlijke parfum gekocht. Hij neemt echt de tijd voor je, we komen zeker terug.”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Bennie &amp; Gonnie</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.17s">
-            <p>“Zomaar naar binnen gestapt om even te kijken, we gingen weg met vier parfums. Goed betaalbaar en een gezellige kerel. We komen er helemaal voor uit Rotterdam.”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-          <blockquote class="rcard" data-reveal style="--d:.24s">
-            <p>“Angelo is echt een topper: goede kwaliteit en service. De parfums blijven erg lang hangen. Hij stelt zelf een geur samen die bij je past, heel vriendelijk en meedenkend.”</p>
-            <footer><span class="rcard-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer>
-          </blockquote>
-        </div>
-        <div class="review-cta" data-reveal>
-          <a class="btn btn-gold" href="https://www.google.com/search?sa=X&amp;sca_esv=5312503ff2c0a1f7&amp;biw=1440&amp;bih=778&amp;sxsrf=APpeQnuaego9tVYgpmS0DH9TE-PR-b1MOA:1783854483455&amp;q=eliandi%20parfum%C2%AE%20reviews&amp;rflfq=1&amp;num=20&amp;stick=H4sIAAAAAAAAAONgkxI2NjG1NDEysTQxNzY1NDEysrAw38DI-IpRIjUnMzEvJVOhILEorTT30DqFotSyzNTy4kWsOKUAQtFpAVAAAAA&amp;rldimm=3459424947351422887&amp;tbm=lcl&amp;hl=en-NL&amp;ved=0CAcQ5foLahcKEwiAgq3E2syVAxUAAAAAHQAAAAAQBQ#lkt=LocalPoiReviews&amp;arid=Ci9DQUlRQUNvZENodHljRjlvT201S2VFSnVVMVJtWldGWU9XSXpUMlpMU0dkcFpVRRAB" target="_blank" rel="noopener" data-magnetic>Bekijk alle 123 reviews</a>
-        </div>
+        <p class="kicker center" data-reveal style="--d:.06s">Wat klanten zeggen</p>
+        <h2 class="h2 center" data-reveal style="--d:.1s">Niemand loopt hier<br><em>onberoerd naar buiten.</em></h2>
+        <blockquote class="rv-featured" data-reveal style="--d:.16s">
+          <p>“Het is een ervaring op zich om hier recht voor je neus een parfum gemaakt te krijgen. En dan is het ook nog eens zo’n ontzettend lekkere geur die lang blijft zitten. Hij kan je droomgeuren waarmaken.”</p>
+          <cite>Google review</cite>
+        </blockquote>
+      </div>
+      <div class="rv-marquee" data-reveal style="--d:.2s">
+        <div class="rv-track rv-track-a"><div class="rv-set"><blockquote class="rv-card"><p>“Het is een ervaring op zich om hier recht voor je neus een parfum gemaakt te krijgen. En dan is het ook nog eens zo’n ontzettend lekkere geur die lang blijft zitten. Hij kan je droomgeuren waarmaken.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Oprecht een 10/10. Niche of mainstream: hij heeft het allemaal, en als hij het niet heeft, dan maakt hij het wel. Ik koop nooit meer ergens anders mijn parfum.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Zeer goede kwaliteit, het wordt letterlijk voor je neus gemaakt. Exclusiever kan het gewoon niet. Vijf sterren van mij, de eigenaar is ook echt supertof.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Deze man weet waar hij het over heeft, is mega gepassioneerd en vriendelijk. We zijn met geweldige custom parfums de deur uit gegaan. Echt een aanrader!”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Ik zocht een parfum met een ananasgeur die ik ooit in Azië kocht. Angelo vond hem en maakte er een nieuwe parfum van die nog beter rook dan ik ooit had durven verwachten.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote></div><div class="rv-set" aria-hidden="true"><blockquote class="rv-card"><p>“Het is een ervaring op zich om hier recht voor je neus een parfum gemaakt te krijgen. En dan is het ook nog eens zo’n ontzettend lekkere geur die lang blijft zitten. Hij kan je droomgeuren waarmaken.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Oprecht een 10/10. Niche of mainstream: hij heeft het allemaal, en als hij het niet heeft, dan maakt hij het wel. Ik koop nooit meer ergens anders mijn parfum.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Zeer goede kwaliteit, het wordt letterlijk voor je neus gemaakt. Exclusiever kan het gewoon niet. Vijf sterren van mij, de eigenaar is ook echt supertof.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Deze man weet waar hij het over heeft, is mega gepassioneerd en vriendelijk. We zijn met geweldige custom parfums de deur uit gegaan. Echt een aanrader!”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Ik zocht een parfum met een ananasgeur die ik ooit in Azië kocht. Angelo vond hem en maakte er een nieuwe parfum van die nog beter rook dan ik ooit had durven verwachten.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote></div></div>
+        <div class="rv-track rv-track-b"><div class="rv-set"><blockquote class="rv-card"><p>“Ik zocht een parfum met een ananasgeur die ik ooit in Azië kocht. Angelo vond hem en maakte er een nieuwe parfum van die nog beter rook dan ik ooit had durven verwachten.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Ik ben al een jaar vaste klant. Goede kwaliteit, betaalbaar, maar een luxueuze ervaring. De eigenaar weet wat hij doet. Fijn dat je er bent!”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“We zijn vandaag in deze prachtige zaak geweest. Super geholpen en heerlijke parfum gekocht. Hij neemt echt de tijd voor je, we komen zeker terug.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Bennie &amp; Gonnie</cite></footer></blockquote><blockquote class="rv-card"><p>“Zomaar naar binnen gestapt om even te kijken, we gingen weg met vier parfums. Goed betaalbaar en een gezellige kerel. We komen er helemaal voor uit Rotterdam.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Angelo is echt een topper: goede kwaliteit en service. De parfums blijven erg lang hangen. Hij stelt zelf een geur samen die bij je past, heel vriendelijk en meedenkend.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote></div><div class="rv-set" aria-hidden="true"><blockquote class="rv-card"><p>“Ik zocht een parfum met een ananasgeur die ik ooit in Azië kocht. Angelo vond hem en maakte er een nieuwe parfum van die nog beter rook dan ik ooit had durven verwachten.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Ik ben al een jaar vaste klant. Goede kwaliteit, betaalbaar, maar een luxueuze ervaring. De eigenaar weet wat hij doet. Fijn dat je er bent!”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“We zijn vandaag in deze prachtige zaak geweest. Super geholpen en heerlijke parfum gekocht. Hij neemt echt de tijd voor je, we komen zeker terug.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Bennie &amp; Gonnie</cite></footer></blockquote><blockquote class="rv-card"><p>“Zomaar naar binnen gestapt om even te kijken, we gingen weg met vier parfums. Goed betaalbaar en een gezellige kerel. We komen er helemaal voor uit Rotterdam.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote><blockquote class="rv-card"><p>“Angelo is echt een topper: goede kwaliteit en service. De parfums blijven erg lang hangen. Hij stelt zelf een geur samen die bij je past, heel vriendelijk en meedenkend.”</p><footer><span class="rv-stars" aria-hidden="true">★★★★★</span><cite>Google review</cite></footer></blockquote></div></div>
+      </div>
+      <div class="wrap review-cta" data-reveal>
+        <a class="btn btn-gold" href="https://www.google.com/search?sa=X&amp;sca_esv=5312503ff2c0a1f7&amp;biw=1440&amp;bih=778&amp;sxsrf=APpeQnuaego9tVYgpmS0DH9TE-PR-b1MOA:1783854483455&amp;q=eliandi%20parfum%C2%AE%20reviews&amp;rflfq=1&amp;num=20&amp;stick=H4sIAAAAAAAAAONgkxI2NjG1NDEysTQxNzY1NDEysrAw38DI-IpRIjUnMzEvJVOhILEorTT30DqFotSyzNTy4kWsOKUAQtFpAVAAAAA&amp;rldimm=3459424947351422887&amp;tbm=lcl&amp;hl=en-NL&amp;ved=0CAcQ5foLahcKEwiAgq3E2syVAxUAAAAAHQAAAAAQBQ#lkt=LocalPoiReviews&amp;arid=Ci9DQUlRQUNvZENodHljRjlvT201S2VFSnVVMVJtWldGWU9XSXpUMlpMU0dkcFpVRRAB" target="_blank" rel="noopener" data-magnetic>Bekijk alle 123 reviews</a>
       </div>
     </section>
 

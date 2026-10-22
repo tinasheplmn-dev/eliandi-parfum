@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop | Alle parfums van Eliandi | Extrait de parfum uit Den Bosch</title>
+  <meta name="description" content="Alle geuren van Eliandi Parfum op een rij: zoek op naam, noot of sfeer, filter op wie je bent en bestel je extrait de parfum in 30, 50 of 100 ml. Handgemaakt in 's-Hertogenbosch.">
+  <meta property="og:title" content="Shop | Alle parfums van Eliandi">
+  <meta property="og:description" content="Honderden handgemaakte geuren. Zoek, filter en bestel je extrait de parfum.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://eliandi-parfum.vercel.app/shop">
+  <meta property="og:image" content="https://eliandi-parfum.vercel.app/assets/parfumeur-ruikt-geurstrip-2.jpg">
+  <meta name="theme-color" content="#141414">
+  <link rel="canonical" href="https://eliandi-parfum.vercel.app/shop">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/cart.css">
+  <link rel="stylesheet" href="css/shop.css">
+</head>
+<body class="shoppage" data-page="shop">
+
+  <header class="qnav sh-nav">
+    <a class="qnav-brand" href="index.html">
+      <img class="qnav-mark" src="assets/logo-eliandi.png" alt="Eliandi Parfum logo">
+      <span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span>
+    </a>
+    <nav class="sh-nav-links" aria-label="Shop">
+      <a href="quiz.html">Geurwijzer</a>
+      <a href="experience.html">Experience</a>
+      <a href="index.html#bezoek">Winkel</a>
+    </nav>
+    <a class="qnav-exit" href="index.html">Terug naar de site</a>
+  </header>
+
+  <main class="sh-main" id="top">
+
+    <!-- ══════════ KOP ══════════ -->
+    <section class="sh-hero">
+      <div class="sh-hero-glow" aria-hidden="true"></div>
+      <div class="wrap sh-hero-inner">
+        <p class="kicker">De collectie</p>
+        <h1 class="sh-h1">Alle geuren<br><em>van Eliandi.</em></h1>
+        <p class="sh-lead">Elke geur hieronder is een extrait de parfum, in de winkel aan de Vughterstraat met de hand samengesteld. Zoek op een naam, een noot of een sfeer, of laat de filters het werk doen.</p>
+        <p class="sh-count" id="shCount" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- ══════════ ZOEKBALK ══════════ -->
+    <div class="sh-toolbar" id="shToolbar">
+      <div class="wrap sh-toolbar-inner">
+        <label class="sh-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+          <input type="search" id="shQuery" placeholder="Zoek op naam, noot of sfeer: oud, vanille, zomer…" autocomplete="off" aria-label="Zoeken in de collectie">
+          <button type="button" class="sh-search-clear" id="shClear" aria-label="Zoekopdracht wissen" hidden>&times;</button>
+        </label>
+        <button type="button" class="sh-filter-toggle" id="shFilterToggle" aria-expanded="false" aria-controls="shFilters">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          Filters <b id="shFilterCount" hidden></b>
+        </button>
+        <label class="sh-sort">
+          <span>Sorteer</span>
+          <select id="shSort" aria-label="Sorteren">
+            <option value="aanbevolen">Aanbevolen</option>
+            <option value="naam">Naam A tot Z</option>
+            <option value="prijs-op">Prijs laag naar hoog</option>
+            <option value="prijs-af">Prijs hoog naar laag</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- ══════════ FILTERS + GRID ══════════ -->
+    <div class="wrap sh-layout">
+      <aside class="sh-filters" id="shFilters" aria-label="Filters">
+        <div class="sh-filters-head">
+          <p class="sh-filters-title">Verfijnen</p>
+          <button type="button" class="sh-reset" id="shReset" hidden>Alles wissen</button>
+        </div>
+
+        <fieldset class="sh-group">
+          <legend>Voor wie</legend>
+          <div class="sh-chips" data-filter="g">
+            <button type="button" data-v="dames">Dames</button>
+            <button type="button" data-v="heren">Heren</button>
+            <button type="button" data-v="unisex">Unisex</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="sh-group">
+          <legend>Karakter</legend>
+          <p class="sh-group-hint">Afgeleid uit de noten en het verhaal van elke geur.</p>
+          <div class="sh-chips" data-filter="k">
+            <button type="button" data-v="warm">Warm</button>
+            <button type="button" data-v="fris">Fris</button>
+            <button type="button" data-v="zoet">Zoet</button>
+            <button type="button" data-v="intens">Intens</button>
+            <button type="button" data-v="zacht">Zacht</button>
+            <button type="button" data-v="avond">Voor de avond</button>
+            <button type="button" data-v="dag">Voor overdag</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="sh-group">
+          <legend>Geurfamilie</legend>
+          <div class="sh-chips" data-filter="f">
+            <button type="button" data-v="oud">Oud</button>
+            <button type="button" data-v="hout">Hout</button>
+            <button type="button" data-v="amber">Amber</button>
+            <button type="button" data-v="bloemig">Bloemig</button>
+            <button type="button" data-v="vanille">Vanille</button>
+            <button type="button" data-v="gourmand">Gourmand</button>
+            <button type="button" data-v="fris">Citrus &amp; fris</button>
+            <button type="button" data-v="kruidig">Kruidig</button>
+            <button type="button" data-v="fruitig">Fruitig</button>
+            <button type="button" data-v="musk">Musk</button>
+            <button type="button" data-v="poederig">Poederig</button>
+            <button type="button" data-v="leer">Leer &amp; rook</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="sh-group">
+          <legend>Vanafprijs</legend>
+          <div class="sh-chips sh-chips-one" data-filter="p">
+            <button type="button" data-v="20">tot €20</button>
+            <button type="button" data-v="25">tot €25</button>
+            <button type="button" data-v="35">tot €35</button>
+          </div>
+        </fieldset>
+
+        <div class="sh-filters-foot">
+          <p>Twijfel je? Doe de <a href="quiz.html">geurwijzer</a>: tien vragen, vijf geuren die bij jou passen.</p>
+        </div>
+      </aside>
+
+      <section class="sh-results" aria-live="polite">
+        <div class="sh-active" id="shActive" hidden></div>
+        <div class="sh-grid" id="shGrid"></div>
+        <div class="sh-empty" id="shEmpty" hidden>
+          <p class="sh-empty-title">Geen geur gevonden.</p>
+          <p>Probeer een ander woord, of haal een filter weg. Of laat Angelo er een voor je maken: in <a href="experience.html">The Eliandi Experience</a> krijg je een geur die nergens anders bestaat.</p>
+          <button type="button" class="btn btn-ghost" id="shEmptyReset">Alle filters wissen</button>
+        </div>
+        <div class="sh-more-wrap">
+          <button type="button" class="btn btn-ghost sh-more" id="shMore" hidden>Toon meer geuren</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ══════════ ONDERAAN ══════════ -->
+    <section class="sh-foot">
+      <div class="wrap sh-foot-grid">
+        <div>
+          <p class="kicker">Liever eerst ruiken?</p>
+          <h2 class="sh-h2">Kom langs aan de Vughterstraat.</h2>
+          <p>Online kun je niet ruiken. In de winkel wel, en Angelo zet er graag een paar voor je klaar. Vughterstraat 70, 's-Hertogenbosch.</p>
+          <a class="btn btn-gold" href="index.html#bezoek">Kom langs in de winkel</a>
+        </div>
+        <div>
+          <p class="kicker">Of iets dat nog niet bestaat</p>
+          <h2 class="sh-h2">Jouw eigen extrait, met Angelo.</h2>
+          <p>Dertig minuten privé aan de geurtafel. Je loopt naar buiten met 50 ml die er voor niemand anders is.</p>
+          <a class="btn btn-ghost" href="experience.html">Ontdek The Eliandi Experience</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="sh-footer">
+    <p>Eliandi Parfum &middot; Vughterstraat 70, 5211 GK 's-Hertogenbosch &middot; <a href="tel:+31687080256">06 870 802 56</a> &middot; <a href="mailto:info@eliandiparfum.com">info@eliandiparfum.com</a></p>
+    <p class="sh-footer-sub">Verzending binnen Nederland en België, of ophalen in de winkel. Betalen met iDEAL, kaart en meer.</p>
+  </footer>
+
+  <a class="wa-widget" href="https://wa.me/31687080256?text=Hoi%20Angelo%2C%20ik%20heb%20een%20vraag%20over%20een%20parfum" target="_blank" rel="noopener" aria-label="Stuur Angelo een WhatsApp-bericht">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9 3 3.3 8.6 3.3 15.5c0 2.4.7 4.7 2 6.7L3.5 29l7-1.8a12.9 12.9 0 0 0 5.5 1.2c7 0 12.7-5.6 12.7-12.5S23 3 16 3zm0 22.8c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-4.2 1.1 1.1-4-.2-.4a10.1 10.1 0 0 1-1.6-5.4C5.6 9.9 10.3 5.3 16 5.3s10.4 4.6 10.4 10.2S21.7 25.8 16 25.8zm5.7-7.6c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-.9-2.3c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1-1.1 2.5s1.1 2.9 1.3 3.1c.2.2 2.2 3.4 5.4 4.7 2 .9 2.8 1 3.8.8.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>
+  </a>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="sh-glass" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity=".18"/>
+        <stop offset=".5" stop-color="#fff" stop-opacity=".04"/>
+        <stop offset="1" stop-color="#000" stop-opacity=".28"/>
+      </linearGradient>
+      <linearGradient id="sh-cap" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#E9C767"/>
+        <stop offset=".55" stop-color="#B8860B"/>
+        <stop offset="1" stop-color="#CD7F32"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <script src="js/catalog.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/shop.js"></script>
+  <script src="js/zonder-server.js" defer></script>
+</body>
+</html>

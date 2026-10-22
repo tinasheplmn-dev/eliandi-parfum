@@ -238,3 +238,26 @@
   /* ── Jaartal ── */
   document.getElementById('year').textContent = new Date().getFullYear();
 })();
+
+/* ── het geurkompas: om de paar seconden lichten vijf andere families op ── */
+(() => {
+  const svg = document.getElementById('kompas');
+  if (!svg) return;
+  const nodes = [...svg.querySelectorAll('.kp-node')];
+  const labels = [...svg.querySelectorAll('.kp-label')];
+  const line = document.getElementById('kpLijn');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* sets die ook echt samen voorkomen in de collectie */
+  const SETS = [[0, 1, 2, 3, 7], [5, 6, 8, 9, 10], [2, 3, 4, 9, 11], [1, 6, 7, 9, 11], [0, 2, 5, 7, 10], [3, 4, 5, 8, 9]];
+  let k = 0;
+  const pos = i => { const m = /translate\(([\d.]+) ([\d.]+)\)/.exec(nodes[i].getAttribute('transform')); return [+m[1], +m[2]]; };
+  const show = set => {
+    nodes.forEach((n, i) => n.classList.toggle('is-lit', set.includes(i)));
+    labels.forEach((l, i) => l.classList.toggle('is-lit', set.includes(i)));
+    const pts = set.map(pos); pts.push(pts[0]);
+    line.setAttribute('points', pts.map(p => p.join(',')).join(' '));
+    if (!reduce) { line.classList.remove('is-drawing'); void line.getBoundingClientRect(); line.classList.add('is-drawing'); }
+  };
+  show(SETS[0]);
+  if (!reduce) setInterval(() => { k = (k + 1) % SETS.length; show(SETS[k]); }, 4200);
+})();

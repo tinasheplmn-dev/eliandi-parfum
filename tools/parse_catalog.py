@@ -2,11 +2,40 @@
 """Eliandi catalogus: Excel -> js/catalog.js met quiz-attributen per parfum."""
 import openpyxl, re, json, unicodedata
 
-SRC = "/Users/onlinerijkdom/Downloads/Webshop producten .xlsx"
-OUT = "/Users/onlinerijkdom/Downloads/files1/websites/eliandi-website/js/catalog.js"
+import os, sys, subprocess, tempfile
 
-wb = openpyxl.load_workbook(SRC, data_only=True)
+# Bron: de Google-sheet van Angelo (tabblad Blad1). Rood gevulde rijen zijn
+# producten die hij niet (meer) verkoopt; die slaan we over. Groen = nieuw,
+# gaat gewoon mee. Aanroepen zonder argument haalt de sheet zelf op;
+# met een pad als argument lees je een lokale xlsx.
+SHEET_ID = "1IKm3bikhHmUS2BNe9sfWxxNRGa3Kq5yrrmWpSwgYlMY"
+HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.join(os.path.dirname(HERE), "js", "catalog.js")
+
+if len(sys.argv) > 1:
+    SRC = sys.argv[1]
+else:
+    SRC = os.path.join(tempfile.gettempdir(), "eliandi-producten.xlsx")
+    subprocess.run(["curl", "-sL", "-o", SRC,
+                    f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"], check=True)
+    print("sheet opgehaald:", SRC)
+
+wb = openpyxl.load_workbook(SRC)   # niet data_only: we hebben de celkleuren nodig
 ws = wb["Blad1"]
+
+ROOD = "FFFF0000"
+def rij_is_rood(cells):
+    for c in cells[:6]:
+        f = c.fill
+        if f is not None and f.fill_type == "solid" and f.fgColor is not None \
+                and f.fgColor.type == "rgb" and str(f.fgColor.rgb) == ROOD:
+            return True
+    return False
+
+# De sheet is ingedeeld in blokken: een rij met alleen een naam in de
+# codekolom ("Men's Perfums") opent een blok. Dat zegt meer over de doelgroep
+# dan de omschrijving, dus dat gebruiken we als eerste bron.
+BLOK_GENDER = {"men": "heren", "women": "dames", "unisex": "unisex", "niche": "unisex"}
 
 def norm(s):
     return unicodedata.normalize("NFKC", str(s)).replace("\r", "\n")
@@ -44,9 +73,14 @@ def parse_notes(desc):
                 cur = None
     return out
 
+def schoon(x):
+    """Markdown-restjes uit de sheet (sterretjes, hekjes) weghalen."""
+    x = re.sub(r"[*#_`]+", "", x).strip(" .>-–:")
+    return "" if re.search(r"geurfamilie|geurprofiel|^voor$", x, re.I) else x.strip()
+
 def split_notes(s):
     parts = re.split(r"[,•/]| en ", s)
-    return [p.strip(" .>*-–").strip() for p in parts if p.strip(" .>*-–").strip()]
+    return [schoon(p) for p in parts if schoon(p)]
 
 def parse_family(desc):
     m = re.search(r"geurfamilie\s*:?\s*\n*(.{0,120})", desc, re.I)
@@ -59,7 +93,7 @@ def parse_family(desc):
                 seg = l
                 break
     parts = re.split(r"[•\-–,·]", seg)
-    fams = [p.strip(" .").strip() for p in parts if p.strip(" .").strip()]
+    fams = [schoon(p) for p in parts if schoon(p)]
     return [f for f in fams if len(f) < 30 and not STOP.match(f)][:6]
 
 def parse_gender(desc):
@@ -122,9 +156,22 @@ def count_hits(text, patterns):
 
 products = []
 seen = set()
-for row in ws.iter_rows(min_row=2, values_only=True):
+rood = []
+blok = None
+blok_gender = None
+for cells in ws.iter_rows(min_row=2):
+    row = [c.value for c in cells]
     code, name, desc, p100, p50, p30 = row[0], row[1], row[2], row[3], row[4], row[5]
+    if code and not name and not desc:
+        kop = str(code).strip().lower()
+        for sleutel, g in BLOK_GENDER.items():
+            if sleutel in kop:
+                blok = str(code).strip(); blok_gender = g
+        continue
     if not name or not str(name).strip() or str(name).strip() == "-":
+        continue
+    if rij_is_rood(cells):
+        rood.append(re.sub(r"\s+", " ", str(name)).strip())
         continue
     name = re.sub(r"\s+", " ", str(name)).strip()
     if not desc or len(str(desc)) < 30:
@@ -139,6 +186,8 @@ for row in ws.iter_rows(min_row=2, values_only=True):
     notes = parse_notes(desc)
     fams = parse_family(desc)
     gender = parse_gender(desc)
+    if blok_gender in ("heren", "dames"):
+        gender = blok_gender
     intro = parse_intro(name, desc)
 
     searchable = (low + " " + " ".join(fams).lower() + " " +
@@ -155,9 +204,17 @@ for row in ws.iter_rows(min_row=2, values_only=True):
         + (1 if dims.get("oud") else 0) + (1 if dims.get("amber") else 0)
     night = count_hits(low, NIGHT_WORDS) - count_hits(low, DAY_WORDS)
 
-    prices = [p for p in (p100, p50, p30) if isinstance(p, (int, float)) and p > 0]
+    def num(v):
+        if isinstance(v, (int, float)):
+            return float(v)
+        try:
+            return float(str(v).replace(",", ".").replace("€", "").strip())
+        except (TypeError, ValueError):
+            return None
+    p100, p50, p30 = num(p100), num(p50), num(p30)
+    prices = [p for p in (p100, p50, p30) if p and p > 0]
     def money(v):
-        return round(float(v), 2) if isinstance(v, (int, float)) and v > 0 else None
+        return round(float(v), 2) if v and v > 0 else None
     products.append({
         "n": name,
         "g": gender,                       # dames | heren | unisex
@@ -175,7 +232,7 @@ for row in ws.iter_rows(min_row=2, values_only=True):
         "o": max(-2, min(3, night)),        # avond (+) vs dag (-)
     })
 
-print("producten:", len(products))
+print("producten:", len(products), "| rood overgeslagen:", len(rood), rood)
 g = {}
 for p in products:
     g[p["g"]] = g.get(p["g"], 0) + 1
@@ -185,7 +242,7 @@ print("met noten:", sum(1 for p in products if p["t"] or p["h"] or p["b"]))
 print("met intro:", sum(1 for p in products if p["i"]))
 print("met prijs:", sum(1 for p in products if p["p"]))
 
-js = ("/* Eliandi productcatalogus — gegenereerd uit 'Webshop producten .xlsx'.\n"
+js = ("/* Eliandi productcatalogus — gegenereerd uit de Google-sheet van Angelo (tools/parse_catalog.py).\n"
       "   Velden: n naam, g doelgroep, f geurfamilies, t/h/b top/hart/basisnoten,\n"
       "   i intro, p vanaf-prijs, d geurdimensies, w warmte, s zoetheid,\n"
       "   x intensiteit, o avond/dag, v prijzen 30/50/100 ml. */\n"

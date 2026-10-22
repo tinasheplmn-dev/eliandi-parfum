@@ -1,10 +1,10 @@
-/* POST /api/book — boekt een Experience (solo of duo).
+/* POST /api/book — boekt een Experience voor 1 tot maxPeople personen.
 
    Met een betaalde cadeaubon-code is er niets meer te betalen: de
    boeking staat direct vast. Anders wordt het moment vastgehouden en
    start de aanbetaling; webhook of terugkeer zet hem op 'geboekt'. */
 const { send, readJson, clean, isEmail, isPhone, createPayment, newId } = require('./_lib');
-const { VARIANTS, HOLD_SECONDS, getSettings, priceOf, slotsFor, amsKey, slotEnd } = require('./_slots');
+const { HOLD_SECONDS, getSettings, peopleFrom, priceOf, slotsFor, label, amsKey, slotEnd } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getVoucher, saveVoucher } = require('./_records');
 const agenda = require('./_agenda');
 
@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
   const b = await readJson(req);
   const cfg = await getSettings();
 
-  const variant = VARIANTS[b.variant] ? b.variant : 'solo';
+  const people = peopleFrom(cfg, b.people !== undefined ? b.people : b.variant);
   const slot = clean(b.slot, 16);
   const name = clean(b.name, 80);
   const email = clean(b.email, 120);
@@ -27,8 +27,8 @@ module.exports = async (req, res) => {
   const profile = Array.isArray(b.profile) ? b.profile.map(s => clean(s, 40)).slice(0, 10).join(', ') : '';
   const top5 = Array.isArray(b.top5) ? b.top5.map(s => clean(s, 80)).slice(0, 5).join(' · ') : '';
 
-  const keys = slotsFor(cfg, slot, variant);
-  if (!keys) return send(res, 400, { error: 'Dit moment is niet (meer) beschikbaar voor deze formule.' });
+  const keys = slotsFor(cfg, slot, people);
+  if (!keys) return send(res, 400, { error: `Dit moment is niet (meer) beschikbaar voor ${label(people).toLowerCase()}. Kies een ander moment.` });
   if (!name) return send(res, 400, { error: 'Vul je naam in.' });
   if (!isEmail(email)) return send(res, 400, { error: 'Vul een geldig e-mailadres in.' });
   if (!isPhone(phone)) return send(res, 400, { error: 'Vul een geldig telefoonnummer in.' });
@@ -38,7 +38,8 @@ module.exports = async (req, res) => {
     voucher = await getVoucher(code);
     if (!voucher || voucher.status === 'pending') return send(res, 400, { error: 'Deze cadeaubon is onbekend of nog niet betaald.' });
     if (voucher.status === 'used') return send(res, 400, { error: 'Deze cadeaubon is al gebruikt.' });
-    if (voucher.variant !== variant) return send(res, 400, { error: `Deze cadeaubon is voor de ${VARIANTS[voucher.variant].label}-formule.` });
+    const vp = peopleFrom(cfg, voucher.people !== undefined ? voucher.people : voucher.variant);
+    if (vp !== people) return send(res, 400, { error: `Deze cadeaubon is voor ${label(vp).toLowerCase()}. Kies dat aantal, dan klopt het.` });
   }
 
   /* staat er in de agenda van Angelo al iets op dit moment, dan kan
@@ -51,19 +52,19 @@ module.exports = async (req, res) => {
     if (botst) return send(res, 409, { error: 'Dit moment is net vervallen. Kies een ander moment.' });
   }
 
-  const { price, deposit } = priceOf(cfg, variant);
+  const { price, deposit, minutes } = priceOf(cfg, people);
   const id = newId(6);
   if (!(await holdSlots(keys, id, HOLD_SECONDS))) {
     return send(res, 409, { error: 'Net te laat: dit moment is zojuist geboekt. Kies een ander moment.' });
   }
 
   const booking = {
-    id, variant, slot, slots: keys, name, email, phone, note, profile, top5,
+    id, people, minutes, slot, slots: keys, name, email, phone, note, profile, top5,
     price, deposit, paid: 0, status: 'wacht op betaling', source: 'website',
     voucher: code || '', created: Date.now(),
   };
   await saveBooking(booking);
-  const success = `/bedankt?type=experience&slot=${encodeURIComponent(slot)}&variant=${variant}`;
+  const success = `/bedankt?type=experience&slot=${encodeURIComponent(slot)}&people=${people}`;
 
   try {
     if (voucher) {
@@ -77,14 +78,14 @@ module.exports = async (req, res) => {
       req,
       email,
       lines: [{
-        name: `Eliandi Experience ${VARIANTS[variant].label} · ${dayLabel(slot)} om ${slot.slice(11)}`,
-        description: `${VARIANTS[variant].minutes} minuten privé met Angelo, inclusief ${VARIANTS[variant].people === 2 ? 'twee keer ' : ''}50 ml extrait de parfum op maat. `
+        name: `The Eliandi Experience ${label(people)} · ${dayLabel(slot)} om ${slot.slice(11)}`,
+        description: `${minutes} minuten privé met Angelo voor ${label(people).toLowerCase()}, inclusief 50 ml extrait de parfum op maat per persoon. `
           + `Aanbetaling ${cfg.depositPct}%; het restant betaal je in de winkel.`,
         cents: deposit,
         qty: 1,
       }],
       metadata: {
-        type: 'experience', bookingId: id, variant, slot, naam: name, telefoon: phone,
+        type: 'experience', bookingId: id, personen: people, slot, naam: name, telefoon: phone,
         opmerkingen: note, geurprofiel: profile, geurwijzer_top5: top5,
       },
       successPath: success,

@@ -2,12 +2,12 @@
    Registraties: boekingen, bestellingen en cadeaubonnen.
    Alles wat het dashboard toont, komt hier vandaan.
 
-   booking:<id>  { id, variant, slots[], slot, name, email, phone, note,
-                   profile, top5, price, deposit, paid, status, sid,
-                   voucher, source, created }
+   booking:<id>  { id, people, minutes, slots[], slot, name, email, phone,
+                   note, profile, top5, price, deposit, paid, status, sid,
+                   voucher, source, created }   (oude records: variant solo|duo)
    order:<id>    { id, items[], total, shipping, delivery, address,
                    name, email, phone, status, sid, created }
-   voucher:<CODE>{ code, variant, price, buyer{}, recipient, message,
+   voucher:<CODE>{ code, people, minutes, price, buyer{}, recipient, message,
                    status: pending|paid|used, bookingId, created }
    ═══════════════════════════════════════════════════════════════ */
 const crypto = require('crypto');
@@ -55,7 +55,7 @@ async function setBookingStatus(id, status, extra = {}) {
     await mail.boekingBevestigd(b);
     await mail.melding(`Nieuwe boeking: ${b.name}, ${mail.datum(b.slot)} om ${b.slot.slice(11)}`, [
       `${b.name} &middot; ${b.phone} &middot; ${b.email}`,
-      `${b.variant === 'duo' ? 'Duo, twee personen' : 'Solo'} &middot; aanbetaald ${mail.euro(b.paid)} van ${mail.euro(b.price)}`,
+      `${mail.gezelschap(b)} &middot; ${b.minutes || 30} minuten &middot; aanbetaald ${mail.euro(b.paid)} van ${mail.euro(b.price)}`,
       b.note ? `Opmerking: ${b.note}` : '',
       b.top5 && b.top5.length ? `Geurwijzer: ${Array.isArray(b.top5) ? b.top5.join(' · ') : b.top5}` : '',
     ].filter(Boolean));
@@ -150,7 +150,7 @@ async function onPaid(session) {
       await mail.bonBetaald(v, process.env.SITE_URL);
       await mail.melding(`Cadeaubon verkocht: ${v.code}`, [
         `${v.buyer && v.buyer.name} &middot; ${v.buyer && v.buyer.email}`,
-        `${v.variant === 'duo' ? 'Duo' : 'Solo'} &middot; ${mail.euro(v.price)}${v.recipient ? ' &middot; voor ' + v.recipient : ''}`,
+        `${mail.gezelschap(v)} &middot; ${mail.euro(v.price)}${v.recipient ? ' &middot; voor ' + v.recipient : ''}`,
       ]);
     }
   }

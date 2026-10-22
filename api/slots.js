@@ -1,6 +1,10 @@
-/* GET /api/slots — beschikbare Experience-tijden en actuele prijzen. */
+/* GET /api/slots — beschikbare Experience-tijden en actuele prijzen.
+
+   Per slot geven we 'run' mee: hoeveel aaneengesloten vrije halfuren
+   er vanaf dat moment zijn. De site weet dan voor elk gezelschap of
+   het past, zonder voor elke grootte apart te hoeven vragen. */
 const { send, store } = require('./_lib');
-const { VARIANTS, getSettings, priceOf, allSlots, slotsFor, slotStoreKey, amsKey, slotEnd } = require('./_slots');
+const { getSettings, priceTable, allSlots, slotStoreKey, amsKey, slotEnd, plus30 } = require('./_slots');
 const agenda = require('./_agenda');
 
 module.exports = async (req, res) => {
@@ -22,23 +26,31 @@ module.exports = async (req, res) => {
         });
       });
     }
+
+    const all = new Set(slots);
+    const runFrom = key => {
+      let n = 0, k = key;
+      while (all.has(k) && free.has(k)) { n++; k = `${k.slice(0, 10)}T${plus30(k.slice(11))}`; }
+      return n;
+    };
+
     const days = [];
     slots.forEach(key => {
       const date = key.slice(0, 10);
       let day = days.find(d => d.date === date);
       if (!day) { day = { date, slots: [] }; days.push(day); }
-      const duo = slotsFor(cfg, key, 'duo');
-      day.slots.push({
-        key, time: key.slice(11),
-        free: free.has(key),
-        duoFree: Boolean(duo && duo.every(k => free.has(k))),
-      });
+      const run = runFrom(key);
+      day.slots.push({ key, time: key.slice(11), free: run > 0, run });
     });
-    const variants = {};
-    Object.entries(VARIANTS).forEach(([k, v]) => {
-      variants[k] = { label: v.label, minutes: v.minutes, people: v.people, ...priceOf(cfg, k) };
+
+    send(res, 200, {
+      people: {
+        min: 1, max: cfg.maxPeople, minutesPerPerson: cfg.minutesPerPerson,
+        extraPerPerson: cfg.extraPerPerson, options: priceTable(cfg),
+      },
+      depositPct: cfg.depositPct,
+      days,
     });
-    send(res, 200, { variants, depositPct: cfg.depositPct, days });
   } catch (e) {
     console.error('slots', e.message);
     send(res, 500, { error: 'De agenda kon niet worden geladen.' });

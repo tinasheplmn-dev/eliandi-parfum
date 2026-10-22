@@ -47,7 +47,7 @@ passende parfums leidt. Tien vragen (één meerkeuze), analyse-tussenscherm,
 lead-capture (naam + e-mail + AVG-vinkje) en een resultaatpagina met
 match-percentages, onderbouwing per parfum en een Discovery Set-teaser.
 
-- `js/catalog.js` — 379 parfums, gegenereerd uit `Webshop producten .xlsx`
+- `js/catalog.js` — 379 parfums, gegenereerd uit de Google-sheet van Angelo (zie `tools/parse_catalog.py`)
   met `tools/parse_catalog.py` (python3 + openpyxl; pas bovenin het pad naar
   de Excel aan en draai opnieuw bij een nieuwe cataloguslijst). Per parfum:
   naam, doelgroep, geurfamilies, noten, intro, vanaf-prijs en afgeleide
@@ -84,7 +84,7 @@ ornament-fallback). De volledige promptset voor het genereren staat in
 
 ## Nog open
 
-- Webshop voor losse flacons komt later (architectuur ligt klaar in api/).
+- Shop staat op `shop.html`: zoeken, filteren op doelgroep, karakter, geurfamilie en prijs, bestellen via de winkelmand.
 - Discovery Set-prijs (€49,95) is een aanname; door eigenaar te bevestigen.
 - Reviews zijn echte Google-reviews, aangeleverd door de eigenaar.
 - Foto's Discovery Set zijn telefoonfoto's; nette productfoto op zwart maakt
@@ -118,17 +118,24 @@ de flow werkt volledig, er wordt niets afgeschreven.
 |---|---|---|
 | Discovery Set / De Geurreis | geurwijzer-resultaat | `api/checkout.js` |
 | Losse parfums (30/50/100 ml) | winkelmand -> `afrekenen.html` | `api/order.js` |
-| De Eliandi Experience, Solo of Duo (aanbetaling) | `experience.html` | `api/slots.js`, `api/book.js` |
+| The Eliandi Experience, 1 tot 6 personen (aanbetaling) | `experience.html` | `api/slots.js`, `api/book.js` |
+| Shop: alle geuren, zoeken, filteren | `shop.html` -> winkelmand -> `afrekenen.html` | `api/products.js`, `api/order.js` |
 | Cadeaubon Experience (volledig betaald) | `experience.html#cadeau` -> `cadeaubon.html` | `api/voucher.js` |
 | Bevestigen na betaling | `bedankt.html` | `api/confirm.js`, `api/mollie-webhook.js`, `api/stripe-webhook.js` |
 | Beheer (Angelo) | `beheer.html` (/beheer) | `api/admin.js`, `api/content.js`, `api/products.js`, `api/media.js` |
 
 Prijzen van losse parfums komen uit `api/_prices.json`, gegenereerd met
-`tools/parse_catalog.py` uit de Excel, plus wat Angelo in het dashboard
+`tools/parse_catalog.py` uit de Google-sheet van Angelo (rood gevulde rijen
+worden overgeslagen; `python3 tools/parse_catalog.py` haalt de sheet zelf op
+en schrijft `js/catalog.js` en `api/_prices.json`), plus wat Angelo in het dashboard
 aanpast of toevoegt (`api/_catalog.js`); de browser kan prijzen niet
 beïnvloeden. De standaard Experience-agenda staat in `api/_slots.js`
-(Solo €75 / 30 min, Duo €140 / 60 min, 50% aanbetaling, di 10-13 en do
-18-20); alles daarvan is in het dashboard aan te passen.
+(1 persoon €74,95, 2 €139,95, 3 €199,95, 4 €249,95, 5 €279,95, daarboven
+€50 per extra persoon; 30 minuten per persoon, 50% aanbetaling, di 10-13 en
+do 18-20); alles daarvan is in het dashboard aan te passen. Een gezelschap
+neemt zoveel aaneengesloten halfuren als personen keer minuten per persoon,
+dus zes personen passen alleen op dinsdag (drie uur). Oude boekingen met
+`variant: solo|duo` worden gelezen als 1 of 2 personen.
 
 ### Betalen via Mollie
 

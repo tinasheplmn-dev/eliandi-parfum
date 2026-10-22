@@ -61,6 +61,9 @@
     if (b.dataset.tab === 'instellingen') loadSettings();
   });
 
+  /* nieuwe records hebben 'people', oude 'variant' */
+  const gezelschap = b => { const n = Number(b.people) || (b.variant === 'duo' ? 2 : 1); return n === 1 ? 'Solo' : n + ' personen'; };
+
   /* ── boekingen ── */
   async function loadOverview() {
     const d = await api({ action: 'overview' });
@@ -96,7 +99,7 @@
       : state.bookings.slice().reverse();
     $('bkList').innerHTML = rows.length ? rows.map(b => `
       <article class="bh-card${b.done ? ' is-done' : ''}">
-        <div class="bh-card-when"><b>${when(b.slot)}</b><span class="bh-pill bh-${b.variant}">${b.variant === 'duo' ? 'Duo · 60 min' : 'Solo · 30 min'}</span></div>
+        <div class="bh-card-when"><b>${when(b.slot)}</b><span class="bh-pill">${gezelschap(b)} · ${b.minutes || 30} min</span></div>
         <div class="bh-card-main">
           <p class="bh-name">${esc(b.name)}</p>
           <p class="bh-contact">${b.phone ? `<a href="tel:${esc(b.phone)}">${esc(b.phone)}</a>` : ''}${b.phone && b.email ? ' · ' : ''}${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>` : ''}</p>
@@ -199,7 +202,7 @@
       </article>`).join('') : '<p class="bh-empty">Nog geen bestellingen.</p>';
     $('vcList').innerHTML = state.vouchers.length ? state.vouchers.map(v => `
       <article class="bh-card">
-        <div class="bh-card-when"><b>${esc(v.code)}</b><span class="bh-pill bh-${v.variant}">${v.variant === 'duo' ? 'Duo' : 'Solo'}</span></div>
+        <div class="bh-card-when"><b>${esc(v.code)}</b><span class="bh-pill">${gezelschap(v)}</span></div>
         <div class="bh-card-main">
           <p class="bh-name">Van ${esc(v.buyer.name)}${v.recipient ? ' voor ' + esc(v.recipient) : ''}</p>
           <p class="bh-contact"><a href="mailto:${esc(v.buyer.email)}">${esc(v.buyer.email)}</a></p>
@@ -298,9 +301,12 @@
   async function loadSettings() {
     const { settings: s } = await api({ action: 'settingsGet' });
     const f = $('setForm').elements;
-    f.priceSolo.value = fmt(s.priceSolo / 100);
-    f.priceDuo.value = fmt(s.priceDuo / 100);
     f.depositPct.value = s.depositPct;
+    f.minutesPerPerson.value = s.minutesPerPerson;
+    f.maxPeople.value = s.maxPeople;
+    f.extraPerPerson.value = fmt(s.extraPerPerson / 100);
+    $('setPrices').innerHTML = (s.prices || []).map((p, i) => `
+      <label>${i + 1} ${i ? 'personen' : 'persoon'} (€)<input data-price="${i}" value="${fmt(p / 100)}" inputmode="decimal"></label>`).join('');
     f.blockedDates.value = (s.blockedDates || []).join(' ');
     $('setDays').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `
       <label><span>${DAYS[d]}</span><input data-day="${d}" value="${(s.schedule[d] || []).join(' ')}" placeholder="gesloten"></label>`).join('');
@@ -311,7 +317,9 @@
     document.querySelectorAll('#setDays input').forEach(i => { schedule[i.dataset.day] = i.value; });
     try {
       await api({ action: 'settingsSave', settings: {
-        priceSolo: f.priceSolo.value, priceDuo: f.priceDuo.value, depositPct: f.depositPct.value,
+        prices: [...document.querySelectorAll('#setPrices input')].map(i => i.value),
+        extraPerPerson: f.extraPerPerson.value, minutesPerPerson: f.minutesPerPerson.value,
+        maxPeople: f.maxPeople.value, depositPct: f.depositPct.value,
         schedule, blockedDates: f.blockedDates.value,
       } });
       toast('Opgeslagen');

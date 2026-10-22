@@ -75,10 +75,11 @@
         var slot = qs.get('slot') || (last && last.slot) || '';
         var when = slot ? new Date(slot.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('nl-NL',
           { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) + ' om ' + slot.slice(11) : '';
-        var duo = qs.get('variant') === 'duo';
-        $('thanksKicker').textContent = duo ? 'Duo-Experience geboekt' : 'Experience geboekt';
+        var personen = parseInt(qs.get('people'), 10) || (qs.get('variant') === 'duo' ? 2 : 1);
+        var duo = personen > 1;
+        $('thanksKicker').textContent = duo ? 'The Eliandi Experience voor ' + personen + ' personen' : 'The Eliandi Experience geboekt';
         $('thanksTitle').innerHTML = 'Tot snel.<br><em>Angelo verwacht ' + (duo ? 'jullie' : 'je') + '.</em>';
-        $('thanksLead').innerHTML = 'Jouw Eliandi Experience staat vast' + (when ? ' op <b>' + when + '</b>' : '') +
+        $('thanksLead').innerHTML = (duo ? 'Jullie' : 'Jouw') + ' Eliandi Experience staat vast' + (when ? ' op <b>' + when + '</b>' : '') +
           ', Vughterstraat 70 in Den Bosch. De winkel is op dat moment exclusief voor ' + (duo ? 'jullie' : 'jou') + ' gereserveerd. ' +
           (qs.get('cadeau') ? 'Je cadeaubon is ingewisseld; er valt niets meer te betalen.' : 'De aanbetaling is ontvangen; het restant betaal je in de winkel.');
         steps(['Je ontvangt de bevestiging per e-mail', 'Angelo bereidt jouw sessie voor', duo ? 'Jullie lopen naar buiten met ieder een eigen 50 ml extrait' : 'Je loopt naar buiten met jouw eigen 50 ml extrait']);
@@ -88,7 +89,7 @@
         var code = qs.get('code') || '';
         $('thanksKicker').textContent = 'Cadeaubon gekocht';
         $('thanksTitle').innerHTML = 'Een mooier cadeau<br><em>bestaat niet.</em>';
-        $('thanksLead').innerHTML = 'Jouw cadeaubon voor de Eliandi Experience is klaar. Code: <b>' + code + '</b>. Print hem of stuur de link door; de ontvanger boekt zelf het moment.';
+        $('thanksLead').innerHTML = 'Jouw cadeaubon voor The Eliandi Experience is klaar. Code: <b>' + code + '</b>. Print hem of stuur de link door; de ontvanger boekt zelf het moment.';
         steps(['Open en print de cadeaubon', 'Geef hem cadeau', 'De ontvanger boekt met de code']);
         $('thanksBox').hidden = true;
         var a = document.createElement('a');

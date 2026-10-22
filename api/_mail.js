@@ -27,6 +27,11 @@ const WINKEL = 'Vughterstraat 70, 5211 GK \'s-Hertogenbosch';
 const TEL = '06 87 08 02 56';
 
 const euro = c => '€' + (Number(c || 0) / 100).toFixed(2).replace('.', ',');
+
+/* Hoeveel personen: nieuwe records hebben 'people', oude 'variant'. */
+const personen = b => Number(b.people) || (b.variant === 'duo' ? 2 : 1);
+const gezelschap = b => { const n = personen(b); return n === 1 ? 'Solo' : `${n} personen`; };
+const WOORD = { 2: 'twee', 3: 'drie', 4: 'vier', 5: 'vijf', 6: 'zes', 7: 'zeven', 8: 'acht' };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function datum(slot) {
@@ -103,7 +108,7 @@ function icsBestand(b) {
     'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z',
     'DTSTART;TZID=Europe/Amsterdam:' + stempel(b.slots[0]),
     'DTEND;TZID=Europe/Amsterdam:' + stempel(eind),
-    'SUMMARY:De Eliandi Experience',
+    'SUMMARY:The Eliandi Experience',
     'LOCATION:Eliandi Parfum\\, ' + WINKEL.replace(/,/g, '\\,'),
     'DESCRIPTION:Jouw privésessie met Angelo. Vragen? Bel ' + TEL,
     'END:VEVENT', 'END:VCALENDAR',
@@ -113,11 +118,16 @@ function icsBestand(b) {
 
 /* ── De mails zelf ── */
 async function boekingBevestigd(b) {
-  const duo = b.variant === 'duo';
+  const n = personen(b);
+  const samen = n > 1;
+  const minuten = b.minutes || 30 * n;
+  const duur = minuten === 30 ? 'een half uur' : minuten === 60 ? 'een uur' : minuten === 90 ? 'anderhalf uur' : `${minuten} minuten`;
   const rest = Math.max(0, (b.price || 0) - (b.paid || 0));
   const regels = [
-    `Je komt op <strong style="color:#f4efe4">${esc(datum(b.slot))} om ${esc(b.slot.slice(11))}</strong> naar ${esc(WINKEL)}. Reken op ${duo ? 'een uur' : 'een half uur'}; de winkel is op dat moment alleen voor ${duo ? 'jullie' : 'jou'}.`,
-    'Angelo neemt met je door wat je mooi vindt en waar je geur bij moet passen. Aan het eind loop je naar buiten met je eigen extrait de parfum van 50 ml.',
+    `${samen ? `Jullie komen met z'n ${WOORD[n] || n}en` : 'Je komt'} op <strong style="color:#f4efe4">${esc(datum(b.slot))} om ${esc(b.slot.slice(11))}</strong> naar ${esc(WINKEL)}. Reken op ${duur}; de winkel is op dat moment alleen voor ${samen ? 'jullie' : 'jou'}.`,
+    samen
+      ? 'Angelo neemt met ieder van jullie door wat je mooi vindt en waar je geur bij moet passen. Aan het eind loopt iedereen naar buiten met een eigen extrait de parfum van 50 ml.'
+      : 'Angelo neemt met je door wat je mooi vindt en waar je geur bij moet passen. Aan het eind loop je naar buiten met je eigen extrait de parfum van 50 ml.',
     b.voucher
       ? `Je betaalde met cadeaubon <strong style="color:#f4efe4">${esc(b.voucher)}</strong>. Er staat niets meer open.`
       : `Je hebt <strong style="color:#f4efe4">${euro(b.paid)}</strong> aanbetaald.${rest ? ` Het restant van ${euro(rest)} voldoe je in de winkel.` : ''}`,
@@ -128,7 +138,7 @@ async function boekingBevestigd(b) {
     to: b.email,
     subject: `Je Eliandi Experience staat vast: ${datum(b.slot)} om ${b.slot.slice(11)}`,
     html: omslag({
-      kicker: duo ? 'Duo-experience geboekt' : 'Experience geboekt',
+      kicker: samen ? `The Eliandi Experience voor ${gezelschap(b).toLowerCase()}` : 'The Eliandi Experience geboekt',
       kop: 'Tot snel.',
       regels,
       naschrift: `Komt het toch niet uit? Bel of app Angelo, dan zoeken we samen een ander moment. In de bijlage zit een afspraak die je in je eigen agenda kunt zetten.`,
@@ -187,19 +197,19 @@ async function bonBetaald(v, site) {
   const link = `${(site || SITE()).replace(/\/$/, '')}/cadeaubon?code=${encodeURIComponent(v.code)}`;
   return verstuur({
     to: v.buyer && v.buyer.email,
-    subject: 'Je cadeaubon voor De Eliandi Experience',
+    subject: 'Je cadeaubon voor The Eliandi Experience',
     html: omslag({
       kicker: 'Cadeaubon',
       kop: 'De bon is van jou.',
       regels: [
-        `Je cadeaubon voor de ${v.variant === 'duo' ? 'Duo' : 'Solo'}-Experience staat klaar${v.recipient ? ` voor ${esc(v.recipient)}` : ''}.`,
+        `Je cadeaubon voor The Eliandi Experience (${esc(gezelschap(v).toLowerCase())}) staat klaar${v.recipient ? ` voor ${esc(v.recipient)}` : ''}.`,
         `De code is <strong style="color:#e9c767;letter-spacing:.14em">${esc(v.code)}</strong>. Daarmee kiest de ontvanger zelf een moment op de site.`,
         'Via de knop hieronder open je de bon om te printen of door te sturen.',
       ],
       knop: { href: link, tekst: 'Open de cadeaubon' },
       naschrift: 'De bon blijft geldig tot hij gebruikt is. Er zit geen houdbaarheidsdatum op.',
     }),
-    text: `Je cadeaubon voor De Eliandi Experience. Code: ${v.code}\nBekijk hem op ${link}\nVragen? Bel ${TEL}.`,
+    text: `Je cadeaubon voor The Eliandi Experience. Code: ${v.code}\nBekijk hem op ${link}\nVragen? Bel ${TEL}.`,
   });
 }
 
@@ -217,5 +227,5 @@ async function melding(onderwerp, regels) {
 
 module.exports = {
   enabled, verstuur, boekingBevestigd, boekingGeannuleerd,
-  bestellingBetaald, bonBetaald, melding, datum, euro,
+  bestellingBetaald, bonBetaald, melding, datum, euro, gezelschap, personen,
 };

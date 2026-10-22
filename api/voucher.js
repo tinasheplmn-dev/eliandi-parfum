@@ -1,10 +1,11 @@
-/* /api/voucher — de Experience als cadeau.
+/* /api/voucher — The Eliandi Experience als cadeau.
 
-   POST: koopt een cadeaubon (volledige prijs, solo of duo) en start de
-         betaling. De code wordt actief zodra er betaald is.
+   POST: koopt een cadeaubon voor 1 tot maxPeople personen (volledige
+         prijs) en start de betaling. De code wordt actief zodra er
+         betaald is.
    GET ?code=: openbare gegevens voor de printbare bon en het boeken. */
 const { send, readJson, clean, isEmail, isPhone, createPayment } = require('./_lib');
-const { VARIANTS, getSettings, priceOf } = require('./_slots');
+const { getSettings, peopleFrom, priceOf, label } = require('./_slots');
 const { newVoucherCode, saveVoucher, getVoucher } = require('./_records');
 
 module.exports = async (req, res) => {
@@ -12,8 +13,10 @@ module.exports = async (req, res) => {
     const code = new URL(req.url, 'http://x').searchParams.get('code') || '';
     const v = await getVoucher(code);
     if (!v) return send(res, 404, { error: 'Onbekende code.' });
+    const cfg = await getSettings();
+    const people = peopleFrom(cfg, v.people !== undefined ? v.people : v.variant);
     return send(res, 200, {
-      code: v.code, variant: v.variant, label: VARIANTS[v.variant].label,
+      code: v.code, people, minutes: v.minutes || priceOf(cfg, people).minutes, label: label(people),
       recipient: v.recipient, message: v.message, from: v.buyer.name,
       status: v.status,
     });
@@ -22,7 +25,7 @@ module.exports = async (req, res) => {
 
   const b = await readJson(req);
   const cfg = await getSettings();
-  const variant = VARIANTS[b.variant] ? b.variant : 'solo';
+  const people = peopleFrom(cfg, b.people !== undefined ? b.people : b.variant);
   const buyer = { name: clean(b.name, 80), email: clean(b.email, 120), phone: clean(b.phone, 30) };
   const recipient = clean(b.recipient, 80);
   const message = clean(b.message, 300);
@@ -30,9 +33,9 @@ module.exports = async (req, res) => {
   if (!isEmail(buyer.email)) return send(res, 400, { error: 'Vul een geldig e-mailadres in.' });
   if (!isPhone(buyer.phone)) return send(res, 400, { error: 'Vul een geldig telefoonnummer in.' });
 
-  const { price } = priceOf(cfg, variant);
+  const { price, minutes } = priceOf(cfg, people);
   const code = newVoucherCode();
-  const voucher = { code, variant, price, buyer, recipient, message, status: 'pending', created: Date.now() };
+  const voucher = { code, people, minutes, price, buyer, recipient, message, status: 'pending', created: Date.now() };
   await saveVoucher(voucher);
 
   try {
@@ -40,12 +43,12 @@ module.exports = async (req, res) => {
       req,
       email: buyer.email,
       lines: [{
-        name: `Cadeaubon Eliandi Experience ${VARIANTS[variant].label}`,
-        description: `${VARIANTS[variant].minutes} minuten privé met Angelo, inclusief ${variant === 'duo' ? 'twee keer ' : ''}50 ml extrait de parfum op maat. Volledig betaald.`,
+        name: `Cadeaubon The Eliandi Experience · ${label(people)}`,
+        description: `${minutes} minuten privé met Angelo voor ${label(people).toLowerCase()}, inclusief 50 ml extrait de parfum op maat per persoon. Volledig betaald.`,
         cents: price,
         qty: 1,
       }],
-      metadata: { type: 'voucher', code, variant, koper: buyer.name, telefoon: buyer.phone, voor: recipient },
+      metadata: { type: 'voucher', code, personen: people, koper: buyer.name, telefoon: buyer.phone, voor: recipient },
       successPath: `/bedankt?type=voucher&code=${code}`,
       cancelPath: '/experience?geannuleerd=1#cadeau',
     });

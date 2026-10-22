@@ -4,7 +4,7 @@
    (Authorization: Bearer ...) dat 'login' teruggeeft.
    ═══════════════════════════════════════════════════════════════ */
 const { send, readJson, clean, store, newId, makeToken, isAdmin, checkPassword, sanitizeHtml } = require('./_lib');
-const { DEFAULTS, VARIANTS, getSettings, priceOf, slotsFor, slotStoreKey } = require('./_slots');
+const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
 const { analyze, getCustom, getOverrides, BASE_PRICES } = require('./_catalog');
 
@@ -90,17 +90,17 @@ const actions = {
   /* handmatig inplannen (telefoon, winkel); zonder betaling */
   async bookingAdd(req, b) {
     const cfg = await getSettings();
-    const variant = VARIANTS[b.variant] ? b.variant : 'solo';
+    const people = peopleFrom(cfg, b.people !== undefined ? b.people : b.variant);
     const slot = clean(b.slot, 16);
-    const keys = slotsFor({ ...cfg, leadMinutes: 0 }, slot, variant); // handmatig mag ook op korte termijn
-    if (!keys) return [400, { error: 'Dit moment valt buiten de agenda.' }];
+    const keys = slotsFor({ ...cfg, leadMinutes: 0 }, slot, people); // handmatig mag ook op korte termijn
+    if (!keys) return [400, { error: `Dit moment past niet voor ${people} ${people === 1 ? 'persoon' : 'personen'}: het valt buiten de agenda of er zijn te weinig halfuren achter elkaar.` }];
     const name = clean(b.name, 80);
     if (!name) return [400, { error: 'Vul een naam in.' }];
     const id = newId(6);
     if (!(await holdSlots(keys, id, 0))) return [409, { error: 'Dit moment is al bezet.' }];
-    const { price } = priceOf(cfg, variant);
+    const { price, minutes } = priceOf(cfg, people);
     await saveBooking({
-      id, variant, slot, slots: keys, name, email: clean(b.email, 120), phone: clean(b.phone, 30),
+      id, people, minutes, slot, slots: keys, name, email: clean(b.email, 120), phone: clean(b.phone, 30),
       note: clean(b.note, 600), profile: '', top5: '', price, deposit: 0, paid: 0,
       status: 'geboekt', source: 'handmatig', voucher: '', created: Date.now(),
     });
@@ -129,15 +129,22 @@ const actions = {
 
   /* ── instellingen Experience ── */
   async settingsGet() {
-    return [200, { settings: await getSettings(), defaults: DEFAULTS }];
+    const settings = await getSettings();
+    return [200, { settings, defaults: DEFAULTS, table: priceTable(settings) }];
   },
   async settingsSave(req, b) {
     const s = b.settings || {};
     const euro = v => { const n = Math.round(parseFloat(String(v).replace(',', '.')) * 100); return n >= 0 ? n : null; };
     const out = {};
-    const solo = euro(s.priceSolo), duo = euro(s.priceDuo);
-    if (solo === null || duo === null) return [400, { error: 'Vul geldige prijzen in.' }];
-    out.priceSolo = solo; out.priceDuo = duo;
+    /* prijstabel: één bedrag per gezelschapsgrootte, daarboven een vast bedrag per extra persoon */
+    const prices = (Array.isArray(s.prices) ? s.prices : []).map(euro);
+    if (!prices.length || prices.some(p => p === null)) return [400, { error: 'Vul voor elke gezelschapsgrootte een geldige prijs in.' }];
+    out.prices = prices;
+    const extra = euro(s.extraPerPerson);
+    if (extra === null) return [400, { error: 'Vul een geldig bedrag in voor elke extra persoon.' }];
+    out.extraPerPerson = extra;
+    out.maxPeople = Math.max(prices.length, Math.min(12, parseInt(s.maxPeople, 10) || prices.length));
+    out.minutesPerPerson = Math.max(10, Math.min(120, parseInt(s.minutesPerPerson, 10) || 30));
     out.depositPct = Math.max(0, Math.min(100, parseInt(s.depositPct, 10) || 0));
     out.schedule = {};
     for (const [day, times] of Object.entries(s.schedule || {})) {
