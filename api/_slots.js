@@ -89,4 +89,10 @@ function slotsFor(cfg, start, variant, now) {
 
 const slotStoreKey = key => 'exp:' + key;
 
-module.exports = { DEFAULTS, VARIANTS, HOLD_SECONDS, getSettings, priceOf, allSlots, slotsFor, slotStoreKey };
+/* Een slot duurt een half uur; dit is het einde ervan. */
+const slotEnd = key => `${key.slice(0, 10)}T${plus30(key.slice(11))}`;
+
+module.exports = {
+  DEFAULTS, VARIANTS, HOLD_SECONDS, TZ, getSettings, priceOf,
+  allSlots, slotsFor, slotStoreKey, amsKey, slotEnd,
+};

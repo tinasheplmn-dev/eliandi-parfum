@@ -27,7 +27,20 @@
 
   /* Wat Angelo in het dashboard aanpast: eigen parfums, prijzen, verborgen. */
   fetch('/api/products', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).then(d => {
-    if (!d || typeof ELIANDI_CATALOG === 'undefined') return;
+    if (!d) return;
+
+    /* De Geurreis alleen tonen als er ook echt periodiek afgeschreven
+       kan worden; anders blijft alleen de eenmalige set staan. */
+    if (d.abonnement === false) {
+      state.plan = 'once';
+      const sub = $('planSub');
+      if (sub) { sub.hidden = true; sub.setAttribute('aria-hidden', 'true'); }
+      const plans = document.querySelector('.qd-plans');
+      if (plans) plans.classList.add('qd-plans-solo');
+      if (state.results) renderOffer();
+    }
+
+    if (typeof ELIANDI_CATALOG === 'undefined') return;
     const ov = d.overrides || {};
     for (let i = ELIANDI_CATALOG.length - 1; i >= 0; i--) {
       const p = ELIANDI_CATALOG[i], o = ov[p.n];
@@ -757,6 +770,9 @@
       ? `Bestel jouw Discovery Set · €${DISCOVERY_PRICE}`
       : `Start De Geurreis · €${SUBSCRIPTION_PRICE} p/kwartaal`;
 
+    /* wisselt hij van formule, dan klopt het totaal onder het adres weer */
+    if (!$('qdAdres').hidden) toonAdres();
+
     /* De Geurreis is een abonnement en kan dus niet in de winkelmand */
     const toCart = $('btnSetToCart');
     if (toCart) {
@@ -787,11 +803,44 @@
   $('planOnce').addEventListener('click', () => { state.plan = 'once'; renderOffer(); });
   $('planSub').addEventListener('click', () => { state.plan = 'sub'; renderOffer(); });
 
-  /* ─────────────────── Afrekenen ─────────────────── */
+  /* ─────────────────── Afrekenen ───────────────────
+     Eerst het bezorgadres, want de doos moet ergens heen. Pas als dat
+     er staat, gaan we naar de betaalpagina. */
+  const VERZENDING = 4.95;
+
+  function toonAdres() {
+    const vak = $('qdAdres');
+    vak.hidden = false;
+    const prijs = Number((state.plan === 'once' ? DISCOVERY_PRICE : SUBSCRIPTION_PRICE).replace(',', '.'));
+    const verzend = state.plan === 'once' ? VERZENDING : 0;
+    $('adrTotaal').innerHTML = verzend
+      ? `Verzending €${VERZENDING.toFixed(2).replace('.', ',')}. Samen <b>€${(prijs + verzend).toFixed(2).replace('.', ',')}</b>.`
+      : 'Verzending is bij de prijs inbegrepen.';
+    $('btnOrderSet').textContent = 'Naar de betaling';
+    $('adrStraat').focus();
+  }
+
+  function leesAdres() {
+    const a = {
+      street: $('adrStraat').value.trim(),
+      postcode: $('adrPostcode').value.trim(),
+      city: $('adrPlaats').value.trim(),
+      country: $('adrLand').value,
+    };
+    if (!a.street || !a.postcode || !a.city) return { fout: 'Vul je volledige bezorgadres in.' };
+    if (a.country === 'NL' && !/^\d{4}\s?[A-Za-z]{2}$/.test(a.postcode)) return { fout: 'Die postcode klopt nog niet.' };
+    return { adres: a };
+  }
+
   async function startCheckout() {
     const btn = $('btnOrderSet');
     const err = $('qdError');
     if (!state.results) return;
+
+    if ($('qdAdres').hidden) { err.textContent = ''; return toonAdres(); }
+    const { fout, adres } = leesAdres();
+    if (fout) { err.textContent = fout; return; }
+    state.adres = adres;
     btn.disabled = true;
     btn.textContent = 'Een moment…';
     err.textContent = '';
@@ -803,6 +852,7 @@
           plan: state.plan,
           perfumes: state.results.top.map(r => r.p.n),
           profile: state.profileChips,
+          address: state.adres,
           name: $('leadName') ? $('leadName').value.trim() : '',
           email: $('leadEmail') ? $('leadEmail').value.trim() : '',
           phone: $('leadPhone') ? $('leadPhone').value.trim() : '',

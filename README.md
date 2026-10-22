@@ -93,6 +93,21 @@ ornament-fallback). De volledige promptset voor het genereren staat in
 - Sfeerbeelden bij de quizvragen (bijv. via Higgsfield) kunnen later
   worden ingeschoven; de vraagkaarten zijn nu typografisch.
 
+## Waar de site draait
+
+- **Live:** https://eliandi-parfum.vercel.app (Vercel-project `eliandi-parfum`)
+- **Beheer:** /beheer, wachtwoord staat in `ADMIN_PASSWORD` in Vercel
+- **Opslag:** Upstash for Redis, gekoppeld via de Vercel Marketplace. De
+  variabelen `KV_REST_API_URL` en `KV_REST_API_TOKEN` zet Vercel zelf.
+- **Betalen:** Mollie, op dit moment met de **testsleutel**. Live zetten
+  is `MOLLIE_API_KEY` in Vercel vervangen door de live-sleutel.
+- **Agenda:** de Google-agenda van Angelo, via een serviceaccount in het
+  Google Cloud-project `eliandi-2`.
+
+Uitrollen vanaf deze map: `npx vercel deploy --prod`. De Git-koppeling
+staat nog niet aan; zodra die er is, gaat elke commit op `main` vanzelf
+live.
+
 ## Bestellen, boeken en betalen
 
 Alles draait op Vercel-functies in `api/` (lokaal voert `server.js` precies
@@ -105,7 +120,7 @@ de flow werkt volledig, er wordt niets afgeschreven.
 | Losse parfums (30/50/100 ml) | winkelmand -> `afrekenen.html` | `api/order.js` |
 | De Eliandi Experience, Solo of Duo (aanbetaling) | `experience.html` | `api/slots.js`, `api/book.js` |
 | Cadeaubon Experience (volledig betaald) | `experience.html#cadeau` -> `cadeaubon.html` | `api/voucher.js` |
-| Bevestigen na betaling | `bedankt.html` | `api/confirm.js`, `api/stripe-webhook.js` |
+| Bevestigen na betaling | `bedankt.html` | `api/confirm.js`, `api/mollie-webhook.js`, `api/stripe-webhook.js` |
 | Beheer (Angelo) | `beheer.html` (/beheer) | `api/admin.js`, `api/content.js`, `api/products.js`, `api/media.js` |
 
 Prijzen van losse parfums komen uit `api/_prices.json`, gegenereerd met
@@ -113,8 +128,65 @@ Prijzen van losse parfums komen uit `api/_prices.json`, gegenereerd met
 aanpast of toevoegt (`api/_catalog.js`); de browser kan prijzen niet
 beïnvloeden. De standaard Experience-agenda staat in `api/_slots.js`
 (Solo €75 / 30 min, Duo €140 / 60 min, 50% aanbetaling, di 10-13 en do
-18-20); alles daarvan is in het dashboard aan te passen. Betaalprovider
-wisselen = alleen `createPayment()` in `api/_lib.js` aanpassen.
+18-20); alles daarvan is in het dashboard aan te passen.
+
+### Betalen via Mollie
+
+`MOLLIE_API_KEY` aanzetten is genoeg: `createPayment()` in `api/_lib.js`
+kiest dan Mollie, anders Stripe, anders testmodus. Wat er gebeurt:
+
+- Mollie zet geen kenmerk in de terugkeerlink, dus maken we er zelf een
+  (`pay:<kenmerk>` in de opslag). Daarmee bevestigt `/api/confirm` de
+  betaling ook als de webhook nog onderweg is.
+- `api/mollie-webhook.js` krijgt alleen een kenmerk binnen en haalt de
+  betaling zelf op; dat is meteen de controle dat het bericht echt van
+  Mollie komt. Het antwoord is altijd 200, anders blijft Mollie het
+  opnieuw proberen.
+- Lokaal sturen we geen webhook mee: Mollie weigert localhost. De
+  bedankpagina bevestigt dan zelf.
+- **De Geurreis** is een echt kwartaalabonnement: klant aanmaken, eerste
+  betaling met `sequenceType: first`, en zodra die binnen is start het
+  abonnement dat over drie maanden begint. Dat gebeurt één keer; webhook
+  en terugkeer samen maken geen dubbel abonnement.
+
+### Bevestigingsmails
+
+Via Resend (`api/_mail.js`), zodra `RESEND_API_KEY` bestaat. Zonder die
+sleutel wordt er niets verstuurd, logt de server een regel en loopt de
+rest gewoon door. Wat er uitgaat:
+
+| Wanneer | Naar wie | Inhoud |
+|---|---|---|
+| Boeking staat vast (betaald, cadeaubon of handmatig ingepland) | klant | datum, tijd, adres, wat betaald is en wat openstaat, plus een .ics voor de eigen agenda |
+| Boeking geannuleerd in het dashboard | klant | welke afspraak vervalt en dat de aanbetaling wordt teruggestort |
+| Bestelling betaald | klant | de regels met bedragen, en of hij verzonden of opgehaald wordt |
+| Cadeaubon betaald | koper | de code en de link naar de printbare bon |
+| Elk van bovenstaande | Angelo (`MAIL_OWNER`) | korte melding met contactgegevens |
+
+Verstuurd vanuit `setBookingStatus` en `onPaid` in `api/_records.js`,
+met dezelfde `eenmalig()`-sleutel als de agenda: webhook en terugkeer
+samen leveren dus nooit twee mails op.
+
+### Agenda van Angelo (Google)
+
+Met `GOOGLE_CALENDAR_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON` loopt zijn eigen
+agenda mee (`api/_agenda.js`):
+
+- Staat er al iets in zijn agenda, dan verdwijnt dat tijdstip van de
+  site. `api/slots.js` verbergt het, `api/book.js` controleert het nog
+  eens op het moment van boeken.
+- Elke boeking komt in zijn agenda met naam, telefoon, wat er betaald is
+  en de opmerking van de klant. Annuleert hij in het dashboard, dan
+  verdwijnt de afspraak ook daar (`setBookingStatus` in `api/_records.js`).
+- Instellen: Google Cloud Console > nieuw project > Google Calendar API
+  aanzetten > serviceaccount maken > JSON-sleutel downloaden. Daarna
+  deelt Angelo zijn agenda met het `client_email` uit die JSON, met
+  recht om afspraken te wijzigen.
+- Zonder die twee variabelen doet alles hier niets en werkt de site
+  precies zoals hiervoor.
+
+Sleutels lokaal: `cp env.voorbeeld .env.local` en invullen. `.env.local`
+staat in `.gitignore`.
 
 ### Beheer voor Angelo (/beheer)
 
@@ -136,7 +208,11 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 
 ### Omgevingsvariabelen (Vercel > Settings > Environment Variables)
 
-- `STRIPE_SECRET_KEY` — zet de echte betalingen aan
+- `MOLLIE_API_KEY` — zet de echte betalingen aan (test_... of live_...)
+- `STRIPE_SECRET_KEY` — alleen als je Stripe wilt in plaats van Mollie
+- `GOOGLE_CALENDAR_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON` — de agenda van
+  Angelo: bezette tijden gaan dicht, boekingen komen in zijn agenda
+- `RESEND_API_KEY` + `MAIL_FROM` + `MAIL_OWNER` — de bevestigingsmails
 - `STRIPE_WEBHOOK_SECRET` — voor `api/stripe-webhook` (events
   `checkout.session.completed` en `checkout.session.expired`)
 - `ADMIN_PASSWORD` — wachtwoord voor /beheer (verplicht; zonder deze

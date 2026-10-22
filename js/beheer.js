@@ -66,8 +66,22 @@
     const d = await api({ action: 'overview' });
     Object.assign(state, d);
     $('warnStore').hidden = d.persistent;
+    toonKoppelingen(d.koppelingen);
     renderBookings();
     renderOrders();
+  }
+
+  /* agenda en betalingen: alleen melden wat nog niet aanstaat */
+  function toonKoppelingen(k) {
+    const box = $('warnKoppeling');
+    if (!k) { box.hidden = true; return; }
+    const open = [];
+    if (!k.agenda) open.push('De agenda van Angelo is nog niet gekoppeld, dus eigen afspraken sluiten nog geen tijden af.');
+    if (k.betalen === 'test') open.push('Betalingen staan in testmodus: er wordt niets afgeschreven.');
+    box.innerHTML = open.length
+      ? '<b>Nog te doen:</b> ' + open.join(' ')
+      : '<b>Gekoppeld:</b> de agenda van Angelo loopt mee en betalingen gaan via ' + (k.betalen === 'mollie' ? 'Mollie' : 'Stripe') + '.';
+    box.hidden = false;
   }
 
   function renderBookings() {
@@ -94,9 +108,11 @@
           <span class="bh-status bh-s-${b.status.replace(/\s/g, '-')}">${b.done ? 'afgerond' : b.status}</span>
           <p class="bh-money">${b.voucher ? 'Cadeaubon ' + esc(b.voucher) : `${euro(b.paid)} betaald<br>${euro(b.price - b.paid)} in de winkel`}</p>
           <p class="bh-src">${b.source === 'handmatig' ? 'Zelf ingepland' : 'Via de website'}${b.mock ? ' · test' : ''}</p>
-          ${b.status === 'geboekt' ? `<div class="bh-card-actions">
-            <button class="bh-btn bh-sm" data-done="${b.id}">${b.done ? 'Heropenen' : 'Afgerond'}</button>
-            <button class="bh-btn bh-sm bh-danger" data-cancel="${b.id}">Annuleren</button></div>` : ''}
+          <div class="bh-card-actions">
+            ${b.status === 'geboekt' ? `<button class="bh-btn bh-sm" data-done="${b.id}">${b.done ? 'Heropenen' : 'Afgerond'}</button>
+            <button class="bh-btn bh-sm bh-danger" data-cancel="${b.id}">Annuleren</button>` : ''}
+            <button class="bh-btn bh-sm bh-weg" data-del="${b.id}" title="Definitief uit het overzicht halen">Verwijderen</button>
+          </div>
         </div>
       </article>`).join('') : '<p class="bh-empty">Nog geen boekingen.</p>';
   }
@@ -112,13 +128,19 @@
   $('bkList').addEventListener('click', async e => {
     const c = e.target.closest('[data-cancel]'), d = e.target.closest('[data-done]');
     try {
+      const w = e.target.closest('[data-del]');
       if (c) {
-        if (!confirm('Deze boeking annuleren? Het moment komt weer vrij. Een eventuele aanbetaling terugstorten doe je in Stripe.')) return;
+        if (!confirm('Deze boeking annuleren? Het moment komt weer vrij, de afspraak verdwijnt uit je agenda en de klant krijgt bericht. Een aanbetaling stort je zelf terug in Mollie.')) return;
         await api({ action: 'bookingCancel', id: c.dataset.cancel });
         toast('Boeking geannuleerd');
       }
       if (d) await api({ action: 'bookingDone', id: d.dataset.done });
-      if (c || d) { await loadOverview(); await loadAgenda(); }
+      if (w) {
+        if (!confirm('Deze boeking definitief uit het overzicht halen? Dit kun je niet terugdraaien.')) return;
+        await api({ action: 'recordDelete', soort: 'booking', id: w.dataset.del });
+        toast('Verwijderd');
+      }
+      if (c || d || w) { await loadOverview(); await loadAgenda(); }
     } catch (x) { toast(x.message, true); }
   });
 
@@ -172,6 +194,7 @@
         <div class="bh-card-side">
           <span class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${o.status}</span>
           <p class="bh-money">${euro(o.total)}</p>${o.mock ? '<p class="bh-src">test</p>' : ''}
+          <div class="bh-card-actions"><button class="bh-btn bh-sm bh-weg" data-delorder="${o.id}" title="Definitief uit het overzicht halen">Verwijderen</button></div>
         </div>
       </article>`).join('') : '<p class="bh-empty">Nog geen bestellingen.</p>';
     $('vcList').innerHTML = state.vouchers.length ? state.vouchers.map(v => `
@@ -189,6 +212,17 @@
         </div>
       </article>`).join('') : '<p class="bh-empty">Nog geen cadeaubonnen.</p>';
   }
+
+  $('orList').addEventListener('click', async e => {
+    const w = e.target.closest('[data-delorder]');
+    if (!w) return;
+    if (!confirm('Deze bestelling definitief uit het overzicht halen? Dit kun je niet terugdraaien.')) return;
+    try {
+      await api({ action: 'recordDelete', soort: 'order', id: w.dataset.delorder });
+      toast('Verwijderd');
+      await loadOverview();
+    } catch (x) { toast(x.message, true); }
+  });
 
   /* ── producten ── */
   async function loadProducts() {

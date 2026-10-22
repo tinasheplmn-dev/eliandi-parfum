@@ -96,9 +96,13 @@ const store = {
     memory.set(key, { value, expires: ttlSeconds ? Date.now() + ttlSeconds * 1000 : 0 });
     return true;
   },
-  async set(key, value) {
-    if (this.persistent) return redis(['SET', key, value]);
-    memory.set(key, { value, expires: 0 });
+  async set(key, value, ttlSeconds) {
+    if (this.persistent) {
+      const cmd = ['SET', key, value];
+      if (ttlSeconds) cmd.push('EX', String(ttlSeconds));
+      return redis(cmd);
+    }
+    memory.set(key, { value, expires: ttlSeconds ? Date.now() + ttlSeconds * 1000 : 0 });
   },
   async del(key) {
     if (this.persistent) return redis(['DEL', key]);
@@ -110,6 +114,11 @@ const store = {
     const s = memGet(key) || new Set();
     s.add(member);
     memory.set(key, { value: s, expires: 0 });
+  },
+  async srem(key, member) {
+    if (this.persistent) return redis(['SREM', key, member]);
+    const s = memGet(key);
+    if (s) { s.delete(member); memory.set(key, { value: s, expires: 0 }); }
   },
   async smembers(key) {
     if (this.persistent) return (await redis(['SMEMBERS', key])) || [];
@@ -178,6 +187,12 @@ async function createPayment({ req, lines, shippingCents = 0, shippingLabel = ''
   const base = siteUrl(req);
   const key = process.env.STRIPE_SECRET_KEY;
 
+  /* Mollie gaat voor, dat is de provider van Eliandi zelf */
+  const mollie = require('./_mollie');
+  if (mollie.enabled()) {
+    return mollie.createPayment({ base, lines, shippingCents, shippingLabel, metadata, successPath, cancelPath });
+  }
+
   if (!key) {
     const id = 'mock_' + crypto.randomBytes(6).toString('hex');
     const sep = successPath.includes('?') ? '&' : '?';
@@ -222,10 +237,13 @@ async function createPayment({ req, lines, shippingCents = 0, shippingLabel = ''
   return { url: data.url, id: data.id, mock: false };
 }
 
-/* Haalt een Stripe-sessie op (voor bevestigen na terugkeer). */
+/* Haalt de betaling op (voor bevestigen na terugkeer). */
 async function getPayment(id) {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || !id || id.startsWith('mock_')) return null;
+  if (!id || id.startsWith('mock_')) return null;
+  const mollie = require('./_mollie');
+  if (mollie.enabled()) return mollie.getPayment(id);
+  if (!key) return null;
   const r = await fetch('https://api.stripe.com/v1/checkout/sessions/' + encodeURIComponent(id), {
     headers: { Authorization: `Bearer ${key}` },
   });

@@ -474,7 +474,10 @@ a { color: inherit; }
   color: var(--ivoor);
   letter-spacing: .005em;
 }
-.hero-title .line { display: block; overflow: hidden; }
+/* overflow verbergt de regel tot hij opkomt; de italieke J haalt links
+   uit, dus we geven het vak daar ruimte en halen die er met een even
+   grote negatieve marge weer af. De tekst blijft dus op zijn plek. */
+.hero-title .line { display: block; overflow: hidden; padding-left: .18em; margin-left: -.18em; }
 .hero-title .line > span {
   display: block;
   transform: translateY(115%);

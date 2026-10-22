@@ -4,8 +4,9 @@
    boeking staat direct vast. Anders wordt het moment vastgehouden en
    start de aanbetaling; webhook of terugkeer zet hem op 'geboekt'. */
 const { send, readJson, clean, isEmail, isPhone, createPayment, newId } = require('./_lib');
-const { VARIANTS, HOLD_SECONDS, getSettings, priceOf, slotsFor } = require('./_slots');
+const { VARIANTS, HOLD_SECONDS, getSettings, priceOf, slotsFor, amsKey, slotEnd } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getVoucher, saveVoucher } = require('./_records');
+const agenda = require('./_agenda');
 
 const dayLabel = slot => new Date(slot.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('nl-NL', {
   weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
@@ -38,6 +39,16 @@ module.exports = async (req, res) => {
     if (!voucher || voucher.status === 'pending') return send(res, 400, { error: 'Deze cadeaubon is onbekend of nog niet betaald.' });
     if (voucher.status === 'used') return send(res, 400, { error: 'Deze cadeaubon is al gebruikt.' });
     if (voucher.variant !== variant) return send(res, 400, { error: `Deze cadeaubon is voor de ${VARIANTS[voucher.variant].label}-formule.` });
+  }
+
+  /* staat er in de agenda van Angelo al iets op dit moment, dan kan
+     het niet. De site verbergt die tijden al, maar dit is de controle
+     die telt op het moment van boeken. */
+  if (agenda.enabled()) {
+    const nu = new Date();
+    const perioden = await agenda.bezet(nu, new Date(nu.getTime() + (cfg.horizonDays + 2) * 86400000), amsKey);
+    const botst = perioden.some(p => keys.some(k => k < p.tot && slotEnd(k) > p.van));
+    if (botst) return send(res, 409, { error: 'Dit moment is net vervallen. Kies een ander moment.' });
   }
 
   const { price, deposit } = priceOf(cfg, variant);

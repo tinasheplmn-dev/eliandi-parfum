@@ -157,6 +157,20 @@
               <span><b>Signatuur-Garantie:</b> past hij niet, dan bouwt Angelo hem kosteloos opnieuw met je.</span>
             </p>
 
+            <div class="qd-adres" id="qdAdres" hidden>
+              <p class="qd-adres-kop">Waar mag hij heen?</p>
+              <label class="ql-field"><span>Straat en huisnummer</span>
+                <input type="text" id="adrStraat" autocomplete="street-address" placeholder="Vughterstraat 70"></label>
+              <div class="qd-adres-rij">
+                <label class="ql-field"><span>Postcode</span>
+                  <input type="text" id="adrPostcode" autocomplete="postal-code" placeholder="5211 GK"></label>
+                <label class="ql-field"><span>Plaats</span>
+                  <input type="text" id="adrPlaats" autocomplete="address-level2" placeholder="'s-Hertogenbosch"></label>
+              </div>
+              <label class="ql-field"><span>Land</span>
+                <select id="adrLand"><option value="NL">Nederland</option><option value="BE">België</option></select></label>
+              <p class="qd-adres-totaal" id="adrTotaal"></p>
+            </div>
             <button class="btn btn-gold qd-order" id="btnOrderSet" type="button">Bestel jouw Discovery Set</button>
             <button class="btn btn-ghost qd-tocart" id="btnSetToCart" type="button">Zet in de winkelmand</button>
             <p class="qd-urgency" id="qdUrgency"></p>

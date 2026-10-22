@@ -720,6 +720,9 @@
   gap: 12px;
   margin: 4px 0 20px;
 }
+/* zonder De Geurreis staat de eenmalige set alleen */
+.qd-plans-solo { grid-template-columns: 1fr; }
+.qd-plans-solo .qd-plan[hidden] { display: none; }
 .qd-plan {
   position: relative;
   text-align: left;
@@ -843,6 +846,16 @@
 }
 .qd-urgency::before { content: '✦ '; color: var(--goud-glans); }
 .qd-urgency[hidden] { display: none; }
+/* adres, verschijnt pas als je wilt bestellen */
+.qd-adres { margin: 4px 0 18px; padding: 16px 16px 6px; border: 1px solid rgba(212,167,60,.28); background: rgba(212,167,60,.04); }
+.qd-adres[hidden] { display: none; }
+.qd-adres-kop { margin: 0 0 12px; font: 500 .85rem/1.4 Montserrat, sans-serif; color: var(--ivoor); }
+.qd-adres .ql-field { margin-bottom: 12px; }
+.qd-adres-rij { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+.qd-adres-totaal { margin: 2px 0 10px; font-size: .8rem; color: var(--tekst-dim); }
+.qd-adres-totaal b { color: var(--goud-glans); font-weight: 500; }
+@media (max-width: 560px) { .qd-adres-rij { grid-template-columns: 1fr; } }
+
 .qd-order { font-size: 13px; }
 .qd-order[disabled] { opacity: .6; cursor: wait; }
 .qd-tocart { font-size: 12px; margin-left: 10px; }

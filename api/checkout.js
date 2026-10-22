@@ -52,10 +52,30 @@ module.exports = async (req, res) => {
   const siteUrl = require('./_lib').siteUrl(req);
   const key = process.env.STRIPE_SECRET_KEY;
 
+  /* Bezorgadres: de doos moet ergens heen. Zonder adres geen bestelling. */
+  const { clean } = require('./_lib');
+  const a = body.address || {};
+  const straat = clean(a.street, 120), postcode = clean(a.postcode, 12), plaats = clean(a.city, 60);
+  const land = a.country === 'BE' ? 'BE' : 'NL';
+  if (!straat || !postcode || !plaats) {
+    res.statusCode = 400;
+    res.end(JSON.stringify({ error: 'Vul je volledige bezorgadres in.' }));
+    return;
+  }
+  if (land === 'NL' && !/^\d{4}\s?[A-Za-z]{2}$/.test(postcode)) {
+    res.statusCode = 400;
+    res.end(JSON.stringify({ error: 'Die postcode klopt nog niet.' }));
+    return;
+  }
+  const adres = `${straat}, ${postcode} ${plaats}, ${land}`;
+
   const isSub = body.plan === 'sub';
   const cents = isSub
     ? (parseInt(process.env.SUBSCRIPTION_PRICE_CENTS, 10) || SUB_PRICE_FALLBACK_CENTS)
     : (parseInt(process.env.DISCOVERY_PRICE_CENTS, 10) || PRICE_FALLBACK_CENTS);
+  /* bij De Geurreis zit de verzending in de prijs, bij de losse set niet */
+  const verzendCents = isSub ? 0
+    : (process.env.SHIPPING_PRICE_CENTS !== undefined ? (parseInt(process.env.SHIPPING_PRICE_CENTS, 10) || 0) : 495);
 
   /* registratie voor het dashboard */
   const { newId } = require('./_lib');
@@ -63,10 +83,44 @@ module.exports = async (req, res) => {
   const order = {
     id: newId(6),
     items: [{ name: isSub ? 'De Geurreis (abonnement, per kwartaal)' : 'Discovery Set 5 x 10 ml', qty: 1, cents }],
-    perfumes, total: cents, shipping: 0, delivery: 'verzenden', address: '',
+    perfumes, total: cents + verzendCents, shipping: verzendCents, delivery: 'verzenden', address: adres,
     name, email, phone, status: 'wacht op betaling', created: Date.now(),
   };
   await saveOrder(order);
+
+  /* ── Mollie: de provider van Eliandi zelf ── */
+  const mollie = require('./_mollie');
+  if (mollie.enabled()) {
+    if (isSub && !(await mollie.abonnementMogelijk())) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: 'De Geurreis kun je nu nog niet online afsluiten. Bestel de set eenmalig, of bel Angelo op 06 87 08 02 56.' }));
+      return;
+    }
+    const omschrijving = isSub
+      ? 'Eliandi De Geurreis · elk kwartaal 5 × 10 ml uit jouw geurprofiel'
+      : 'Eliandi Discovery Set · 5 × 10 ml extrait de parfum';
+    const metadata = { type: 'order', orderId: order.id, naam: name, telefoon: phone,
+      formule: isSub ? 'geurreis-kwartaal' : 'eenmalig', adres: adres };
+    try {
+      const pay = isSub
+        ? await mollie.createSubscription({
+          base: siteUrl, cents, description: omschrijving, email, name, metadata,
+          successPath: '/bedankt?type=order', cancelPath: '/quiz?canceled=1',
+        })
+        : await require('./_lib').createPayment({
+          req, email, lines: [{ name: omschrijving, cents, qty: 1 }], metadata,
+          shippingCents: verzendCents, shippingLabel: 'Verzending (PostNL)',
+          successPath: '/bedankt?type=order', cancelPath: '/quiz?canceled=1',
+        });
+      res.statusCode = 200;
+      res.end(JSON.stringify({ url: pay.url }));
+    } catch (e) {
+      console.error('mollie checkout', e.message);
+      res.statusCode = 502;
+      res.end(JSON.stringify({ error: 'Betaling kon niet worden gestart. Probeer het opnieuw.' }));
+    }
+    return;
+  }
 
   /* ── Mockmodus: geen sleutel, wel een testbare flow ── */
   if (!key) {

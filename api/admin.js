@@ -18,6 +18,15 @@ async function list(idx, prefix) {
   return items.filter(Boolean);
 }
 
+/* wat staat er aan: agenda en betaalprovider */
+function koppelingen() {
+  return {
+    agenda: require('./_agenda').enabled(),
+    betalen: require('./_mollie').enabled() ? 'mollie'
+      : (process.env.STRIPE_SECRET_KEY ? 'stripe' : 'test'),
+  };
+}
+
 const actions = {
   /* ── inloggen ── */
   async login(req, b) {
@@ -38,12 +47,36 @@ const actions = {
     bookings.sort((a, b) => a.slot.localeCompare(b.slot));
     orders.sort((a, b) => b.created - a.created);
     vouchers.sort((a, b) => b.created - a.created);
-    return [200, { bookings, orders, vouchers, persistent: store.persistent }];
+    return [200, { bookings, orders, vouchers, persistent: store.persistent, koppelingen: koppelingen() }];
   },
 
   async bookingCancel(req, b) {
     const bk = await setBookingStatus(clean(b.id, 20), 'geannuleerd');
     return bk ? [200, { ok: true }] : [404, { error: 'Boeking niet gevonden.' }];
+  },
+
+  /* definitief weghalen uit het overzicht. Een boeking die nog staat
+     wordt eerst geannuleerd, zodat het tijdstip vrijkomt en de
+     afspraak uit de agenda van Angelo verdwijnt. */
+  async recordDelete(req, b) {
+    const soort = b.soort === 'order' ? 'order' : b.soort === 'voucher' ? 'voucher' : 'booking';
+    const id = clean(b.id, 30);
+    if (!id) return [400, { error: 'Welke wil je weghalen?' }];
+    if (soort === 'booking') {
+      const bk = await getBooking(id);
+      if (!bk) return [404, { error: 'Niet gevonden.' }];
+      if (bk.status === 'geboekt') await setBookingStatus(id, 'geannuleerd');
+      await store.del('booking:' + id);
+      await store.srem('idx:bookings', id);
+    } else if (soort === 'order') {
+      await store.del('order:' + id);
+      await store.srem('idx:orders', id);
+    } else {
+      const code = id.toUpperCase();
+      await store.del('voucher:' + code);
+      await store.srem('idx:vouchers', code);
+    }
+    return [200, { ok: true }];
   },
 
   async bookingDone(req, b) {

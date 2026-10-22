@@ -7,6 +7,23 @@ const path = require('path');
 const ROOT = __dirname;
 const PORT = process.env.PORT || 8048;
 
+/* Sleutels voor lokaal testen uit .env.local (staat in .gitignore,
+   gaat dus nooit mee naar GitHub). Eén regel per sleutel:
+     MOLLIE_API_KEY=test_...
+   Regels met een # ervoor worden overgeslagen. Op Vercel komen de
+   sleutels uit de omgevingsvariabelen en wordt dit bestand genegeerd. */
+try {
+  const env = fs.readFileSync(path.join(ROOT, '.env.local'), 'utf8');
+  env.split(/\r?\n/).forEach(regel => {
+    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(regel);
+    if (!m || regel.trim().startsWith('#')) return;
+    if (process.env[m[1]] === undefined) {
+      process.env[m[1]] = m[2].trim().replace(/^(['"])([\s\S]*)\1$/, '$2');
+    }
+  });
+  console.log('Sleutels uit .env.local geladen.');
+} catch (e) { /* geen .env.local, prima */ }
+
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',

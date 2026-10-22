@@ -1,6 +1,7 @@
 /* GET /api/slots — beschikbare Experience-tijden en actuele prijzen. */
 const { send, store } = require('./_lib');
-const { VARIANTS, getSettings, priceOf, allSlots, slotsFor, slotStoreKey } = require('./_slots');
+const { VARIANTS, getSettings, priceOf, allSlots, slotsFor, slotStoreKey, amsKey, slotEnd } = require('./_slots');
+const agenda = require('./_agenda');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') return send(res, 405, { error: 'Method not allowed' });
@@ -9,6 +10,18 @@ module.exports = async (req, res) => {
     const slots = allSlots(cfg);
     const taken = await store.mget(slots.map(slotStoreKey));
     const free = new Set(slots.filter((_, i) => !taken[i]));
+
+    /* staat er al iets anders in de agenda van Angelo, dan gaat dat
+       tijdstip ook dicht */
+    if (agenda.enabled() && slots.length) {
+      const nu = new Date();
+      const perioden = await agenda.bezet(nu, new Date(nu.getTime() + (cfg.horizonDays + 2) * 86400000), amsKey);
+      perioden.forEach(p => {
+        slots.forEach(key => {
+          if (key < p.tot && slotEnd(key) > p.van) free.delete(key);
+        });
+      });
+    }
     const days = [];
     slots.forEach(key => {
       const date = key.slice(0, 10);
