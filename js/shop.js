@@ -13,6 +13,7 @@
   const euro = n => '€' + Number(n).toFixed(2).replace('.', ',');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const strip = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const slugify = s => strip(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
   /* kleur van het flesje: de sterkste geurfamilie bepaalt de tint */
   const TINT = {
@@ -41,7 +42,7 @@
 
   const state = {
     all: [], q: '', sort: 'aanbevolen', shown: PER_PAGE,
-    f: { g: new Set(), k: new Set(), f: new Set(), p: new Set() },
+    f: { g: new Set(), n: new Set(), k: new Set(), f: new Set(), p: new Set() },
   };
 
   /* ── catalogus klaarzetten ── */
@@ -71,6 +72,7 @@
   function matches(p) {
     const f = state.f;
     if (f.g.size && !f.g.has(p.g)) return false;
+    if (f.n.size && !p._nieuw) return false;
     if (f.k.size) for (const k of f.k) if (!p._k.has(k)) return false;
     if (f.f.size) for (const k of f.f) if (!p._fam.has(k)) return false;
     if (f.p.size) { const max = Math.min(...[...f.p].map(Number)); if (!p.p || p.p > max) return false; }
@@ -110,13 +112,13 @@
     const sel = v[1] ? 1 : v.findIndex(Boolean);
     const noten = [['Top', p.t], ['Hart', p.h], ['Basis', p.b]].filter(([, l]) => l && l.length);
     return `<article class="sh-card" data-n="${esc(p.n)}">
-      <div class="sh-card-visual" style="--tint:${p._tint}">
+      <a class="sh-card-visual" href="/geur/${slugify(p.n)}" style="--tint:${p._tint}" aria-label="Bekijk ${esc(p.n)}">
         <span class="sh-card-tag">${esc(p.g)}</span>
         ${p._nieuw ? '<span class="sh-card-tag sh-card-new">Nieuw</span>' : ''}
         ${bottle(p._tint)}
-      </div>
+      </a>
       <div class="sh-card-body">
-        <h3>${esc(p.n)}</h3>
+        <h3><a href="/geur/${slugify(p.n)}">${esc(p.n)}</a></h3>
         ${p._top.length ? `<div class="sh-fams">${p._top.map(k => `<span>${esc(k)}</span>`).join('')}</div>` : ''}
         ${p.i ? `<p class="sh-intro">${esc(p.i)}</p>` : ''}
         ${noten.length ? `<button type="button" class="sh-notes-toggle" aria-expanded="false">Noten</button>
@@ -148,7 +150,7 @@
     const box = $('shActive');
     const items = [];
     const LABEL = {
-      g: { dames: 'Dames', heren: 'Heren', unisex: 'Unisex' },
+      g: { dames: 'Dames', heren: 'Heren', unisex: 'Unisex' }, n: { nieuw: 'Nieuw binnen' },
       k: { warm: 'Warm', fris: 'Fris', zoet: 'Zoet', intens: 'Intens', zacht: 'Zacht', avond: 'Voor de avond', dag: 'Voor overdag' },
       f: FAMILIE_NAAM, p: { 20: 'tot €20', 25: 'tot €25', 35: 'tot €35' },
     };
@@ -254,9 +256,26 @@
     setTimeout(() => { add.textContent = 'In winkelmand'; add.classList.remove('is-done'); }, 1800);
   });
 
+  /* categorie-tegels bovenaan: één klik zet het filter en scrolt naar de lijst */
+  document.querySelectorAll('.sh-cat[data-cat]').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault();
+    const [grp, v] = a.dataset.cat.includes(':') ? a.dataset.cat.split(':') : ['n', a.dataset.cat];
+    Object.values(state.f).forEach(s => s.clear());
+    state.f[grp].add(v);
+    syncChips(); render(true); remember();
+    document.getElementById('resultaten').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  function tellingen() {
+    const tel = f => state.all.filter(f).length;
+    const zet = (k, n) => document.querySelectorAll(`[data-count="${k}"]`).forEach(el => { el.textContent = `${n} geuren`; });
+    zet('dames', tel(p => p.g === 'dames')); zet('heren', tel(p => p.g === 'heren')); zet('unisex', tel(p => p.g === 'unisex'));
+    zet('nieuw', tel(p => p._nieuw));
+  }
+
   /* ── start: catalogus plus aanpassingen van Angelo ── */
   function start(list) {
     state.all = prepare(list);
+    tellingen();
     restore();
     render(true);
   }

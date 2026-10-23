@@ -94,14 +94,10 @@
       <span class="nav-wordmark">Eliandi<br><em>Parfum</em></span>
     </a>
     <nav class="nav-links" aria-label="Hoofdnavigatie">
-      <a href="#verhaal">Verhaal</a>
-      <a href="#belofte">Belofte</a>
-      <a href="#ritueel">Het ritueel</a>
-      <a href="#angelo">Angelo</a>
-      <a href="experience.html">Experience</a>
       <a href="shop.html">Shop</a>
-      <a href="#reviews">Reviews</a>
-      <a href="#bezoek">Bezoek ons</a>
+      <a href="experience.html">Experience</a>
+      <a href="#angelo">Angelo</a>
+      <a href="#bezoek">Winkel</a>
     </nav>
     <a class="btn btn-outline nav-cta" href="quiz.html" data-magnetic>Vind jouw geur</a>
     <button class="nav-burger" id="burger" aria-label="Menu openen" aria-expanded="false">
@@ -112,17 +108,15 @@
   <!-- Mobiel menu -->
   <div class="mobmenu" id="mobmenu" aria-hidden="true">
     <nav aria-label="Mobiele navigatie">
-      <a href="#verhaal" style="--i:0">Verhaal</a>
-      <a href="#belofte" style="--i:1">Belofte</a>
-      <a href="#ritueel" style="--i:2">Het ritueel</a>
-      <a href="quiz.html" style="--i:3" class="is-gold">Vind jouw geur</a>
+      <a href="shop.html" style="--i:0">Shop</a>
+      <a href="quiz.html" style="--i:1" class="is-gold">Vind jouw geur</a>
+      <a href="experience.html" style="--i:2" class="is-gold">The Experience</a>
+      <a href="#verhaal" style="--i:3">Ons verhaal</a>
       <a href="#angelo" style="--i:4">Angelo</a>
-      <a href="experience.html" style="--i:5" class="is-gold">The Experience</a>
-      <a href="shop.html" style="--i:6">Shop</a>
-      <a href="#reviews" style="--i:7">Reviews</a>
-      <a href="#bezoek" style="--i:8">Bezoek ons</a>
+      <a href="#reviews" style="--i:5">Reviews</a>
+      <a href="#bezoek" style="--i:6">Winkel &amp; contact</a>
     </nav>
-    <div class="mobmenu-foot" style="--i:9">
+    <div class="mobmenu-foot" style="--i:7">
       <a href="tel:+31687080256">06 870 802 56</a>
       <a href="https://www.instagram.com/eliandi_parfum/" target="_blank" rel="noopener">@eliandi_parfum</a>
     </div>
@@ -287,7 +281,7 @@
           <div class="finder-copy">
             <p class="kicker" data-reveal>De Eliandi geurwijzer</p>
             <h2 class="h2 finder-h2" data-reveal style="--d:.08s"><span>Honderden geuren.</span><em>Vijf die bij jou horen.</em></h2>
-            <p data-reveal style="--d:.14s">Online kun je niet ruiken. Daarom draaien we het om: vertel in tien korte vragen wie jij bent, en de geurwijzer legt jouw antwoorden naast honderden noten en geurfamilies. Je krijgt vijf parfums terug, met per geur de reden waarom.</p>
+            <p data-reveal style="--d:.14s">Online kun je niet ruiken. Daarom draaien we het om: vertel in tien korte vragen wie jij bent, en je krijgt vijf parfums terug die bij je passen, met per geur de reden waarom.</p>
             <ol class="finder-rail" aria-label="Zo werkt de geurwijzer" data-reveal style="--d:.18s">
               <li><b>01</b><span>Tien vragen over jouw smaak en momenten</span></li>
               <li><b>02</b><span>Elke geur wordt gewogen tegen jouw antwoorden</span></li>
@@ -299,35 +293,20 @@
             </div>
           </div>
           <div class="finder-visual" data-reveal style="--d:.12s">
-            <svg class="kompas" id="kompas" viewBox="-46 0 612 520" aria-hidden="true">
-              <defs>
-                <radialGradient id="kp-glow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0" stop-color="#E9C767" stop-opacity=".35"/><stop offset=".55" stop-color="#B8860B" stop-opacity=".08"/><stop offset="1" stop-color="#B8860B" stop-opacity="0"/>
-                </radialGradient>
-                <linearGradient id="kp-line" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E9C767"/><stop offset="1" stop-color="#B8860B"/></linearGradient>
-              </defs>
-              <circle cx="260" cy="260" r="250" fill="url(#kp-glow)"/>
-              <g class="kp-rings">
-                <circle cx="260" cy="260" r="232" fill="none" stroke="#B8860B" stroke-opacity=".22" stroke-width="1"/>
-                <circle cx="260" cy="260" r="196" fill="none" stroke="#D4A73C" stroke-opacity=".3" stroke-width="1" stroke-dasharray="2 9"/>
-                <circle cx="260" cy="260" r="118" fill="none" stroke="#B8860B" stroke-opacity=".22" stroke-width="1"/>
-                <circle cx="260" cy="260" r="60" fill="none" stroke="#D4A73C" stroke-opacity=".35" stroke-width="1"/>
-              </g>
-              <g class="kp-naald">
-                <line x1="260" y1="260" x2="260" y2="76" stroke="url(#kp-line)" stroke-width="1.2" stroke-opacity=".9"/>
-                <path d="M260 66 l5 10 -5 10 -5 -10z" fill="#E9C767"/>
-                <line x1="260" y1="260" x2="260" y2="444" stroke="#B8860B" stroke-width="1" stroke-opacity=".35"/>
-              </g>
-              <polyline class="kp-sterren" id="kpLijn" points="" fill="none" stroke="#E9C767" stroke-opacity=".55" stroke-width="1"/>
-              <g class="kp-node" data-i="0" transform="translate(260.0 64.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="1" transform="translate(358.0 90.3)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="2" transform="translate(429.7 162.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="3" transform="translate(456.0 260.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="4" transform="translate(429.7 358.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="5" transform="translate(358.0 429.7)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="6" transform="translate(260.0 456.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="7" transform="translate(162.0 429.7)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="8" transform="translate(90.3 358.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="9" transform="translate(64.0 260.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="10" transform="translate(90.3 162.0)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g><g class="kp-node" data-i="11" transform="translate(162.0 90.3)"><circle class="kp-halo" r="14"/><circle class="kp-dot" r="4"/></g>
-              <text class="kp-label" x="260.0" y="28.0" text-anchor="middle">Oud</text><text class="kp-label" x="378.0" y="59.6" text-anchor="start">Hout</text><text class="kp-label" x="464.4" y="146.0" text-anchor="start">Amber</text><text class="kp-label" x="496.0" y="264.0" text-anchor="start">Vanille</text><text class="kp-label" x="464.4" y="382.0" text-anchor="start">Gourmand</text><text class="kp-label" x="378.0" y="468.4" text-anchor="start">Bloemig</text><text class="kp-label" x="260.0" y="500.0" text-anchor="middle">Citrus</text><text class="kp-label" x="142.0" y="468.4" text-anchor="end">Kruidig</text><text class="kp-label" x="55.6" y="382.0" text-anchor="end">Fruitig</text><text class="kp-label" x="24.0" y="264.0" text-anchor="end">Musk</text><text class="kp-label" x="55.6" y="146.0" text-anchor="end">Poederig</text><text class="kp-label" x="142.0" y="59.6" text-anchor="end">Leer</text>
-              <g class="kp-hart">
-                <circle cx="260" cy="260" r="46" fill="#141414" stroke="#D4A73C" stroke-opacity=".6"/>
-                <text x="260" y="256" text-anchor="middle" class="kp-vijf">5</text>
-                <text x="260" y="278" text-anchor="middle" class="kp-vijf-sub">voor jou</text>
-              </g>
-            </svg>
-            <p class="finder-visual-note">Twaalf geurfamilies, honderden noten. Vijf lichten op voor jou.</p>
+            <figure class="finder-photo frame">
+              <img src="assets/parfumeur-ruikt-geurstrip-2.jpg" alt="Angelo ruikt aan een geurstrip voor de flessenwand" loading="lazy">
+            </figure>
+            <div class="finder-card" aria-label="Voorbeeld van een uitslag">
+              <p class="finder-card-kicker">Jouw vijf</p>
+              <ol>
+                <li><b>01</b><span>Satin smell</span><small>Bloemig &middot; vanille</small></li>
+                <li><b>02</b><span>Luxueux Soir</span><small>Amber &middot; vanille</small></li>
+                <li><b>03</b><span>Artwork by Eliandi</span><small>Gourmand &middot; kruidig</small></li>
+                <li><b>04</b><span>Crystal Saffraan</span><small>Kruidig &middot; amber</small></li>
+                <li><b>05</b><span>Seventh Heaven</span><small>Hout &middot; gourmand</small></li>
+              </ol>
+              <p class="finder-card-foot">Een voorbeeld. Jouw lijst ziet er anders uit.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -471,12 +450,12 @@
         <p class="footer-tag">Enchantment of Your Senses<br>Jouw geur. Jouw verhaal.</p>
       </div>
       <nav class="footer-nav" aria-label="Voettekstnavigatie">
-        <a href="#verhaal">Verhaal</a>
-        <a href="#belofte">Belofte</a>
-        <a href="#ritueel">Het ritueel</a>
+        <a href="shop.html">Shop</a>
         <a href="quiz.html">Vind jouw geur</a>
+        <a href="experience.html">The Experience</a>
+        <a href="#verhaal">Ons verhaal</a>
         <a href="#reviews">Reviews</a>
-        <a href="#bezoek">Bezoek ons</a>
+        <a href="#bezoek">Winkel &amp; contact</a>
       </nav>
       <div class="footer-contact">
         <p>Vughterstraat 70, 5211 GK ’s-Hertogenbosch</p>

@@ -106,6 +106,42 @@ def parse_gender(desc):
         return "heren"
     return "unisex"
 
+STOPLINE = re.compile(r"^(geurprofiel|topnoten|hartnoten|basisnoten|geurfamilie|voor\s*:)", re.I)
+
+def parse_story(name, desc):
+    """De lopende alinea's van de omschrijving, zonder titel en zonder de
+    notenlijst. De alinea's na 'Voor:' (het slot) komen er ook bij."""
+    paras, cur, after = [], [], False
+    for raw in desc.split("\n"):
+        l = raw.strip()
+        if not l:
+            if cur:
+                paras.append(" ".join(cur)); cur = []
+            continue
+        if STOPLINE.match(l):
+            if cur:
+                paras.append(" ".join(cur)); cur = []
+            after = l.lower().startswith("voor")
+            continue
+        if after is False and paras == [] and not cur and l.lower() == name.lower():
+            continue
+        if not after and any(paras) and STOPLINE.match(l):
+            continue
+        cur.append(re.sub(r"[*#_`]+", "", l))
+    if cur:
+        paras.append(" ".join(cur))
+    out = []
+    for q in paras:
+        q = re.sub(r"\s+", " ", q).strip()
+        if len(q) < 40 or q.lower() == name.lower():
+            continue
+        # de regel met geurfamilies ("Amber • Gourmand • Kruidig") is geen verhaal
+        if "•" in q or re.fullmatch(r"(?:[A-ZÀ-Ü][\w-]*\s*[,·]?\s*){1,6}", q):
+            continue
+        if q not in out:
+            out.append(q)
+    return out[:6]
+
 def parse_intro(name, desc):
     """Eerste echte lopende zin(nen), zonder titelherhaling, max ~190 tekens."""
     for l in desc.split("\n"):
@@ -155,6 +191,7 @@ def count_hits(text, patterns):
     return sum(len(re.findall(p, text)) for p in patterns)
 
 products = []
+stories = {}
 seen = set()
 rood = []
 blok = None
@@ -189,6 +226,7 @@ for cells in ws.iter_rows(min_row=2):
     if blok_gender in ("heren", "dames"):
         gender = blok_gender
     intro = parse_intro(name, desc)
+    story = parse_story(name, desc)
 
     searchable = (low + " " + " ".join(fams).lower() + " " +
                   " ".join(notes["top"] + notes["heart"] + notes["base"]).lower())
@@ -215,6 +253,7 @@ for cells in ws.iter_rows(min_row=2):
     prices = [p for p in (p100, p50, p30) if p and p > 0]
     def money(v):
         return round(float(v), 2) if v and v > 0 else None
+    stories[name] = story
     products.append({
         "n": name,
         "g": gender,                       # dames | heren | unisex
@@ -260,6 +299,12 @@ with open(PRICES_OUT, "w") as f:
     json.dump({p["n"]: p["v"] for p in products if any(p["v"])}, f,
               ensure_ascii=False, separators=(",", ":"))
 print("prijslijst:", PRICES_OUT)
+
+# Verhaaltekst per parfum, alleen voor de productpagina (api/geur.js).
+TEXT_OUT = OUT.replace("js/catalog.js", "api/_teksten.json")
+with open(TEXT_OUT, "w") as f:
+    json.dump(stories, f, ensure_ascii=False, separators=(",", ":"))
+print("teksten:", TEXT_OUT, "| met verhaal:", sum(1 for v in stories.values() if v))
 
 # steekproef
 for p in products[:3] + products[200:202]:

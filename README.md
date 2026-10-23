@@ -84,7 +84,9 @@ ornament-fallback). De volledige promptset voor het genereren staat in
 
 ## Nog open
 
-- Shop staat op `shop.html`: zoeken, filteren op doelgroep, karakter, geurfamilie en prijs, bestellen via de winkelmand.
+- Shop staat op `shop.html`: categorie-overzicht bovenaan, zoeken, filteren op doelgroep, karakter, geurfamilie en prijs, bestellen via de winkelmand.
+- Elke geur heeft een eigen pagina op `/geur/<slug>` (`api/geur.js`, op de server opgebouwd uit `js/catalog.js`, `api/_teksten.json` en de dashboard-aanpassingen): maat kiezen, karakter (intensiteit, houdbaarheid, zoetheid, warmte), seizoen en moment, geurpiramide, garantie, verwante geuren.
+- Productfoto's: zet ze in `assets/producten/` en koppel ze in `api/_fotos.json`, bijvoorbeeld `{"dames":{"30":"assets/producten/dames-30.jpg","50":"...","100":"..."}}`. Zolang er geen foto is, tekent de pagina een flacon in de kleur van de sterkste geurfamilie.
 - Discovery Set-prijs (€49,95) is een aanname; door eigenaar te bevestigen.
 - Reviews zijn echte Google-reviews, aangeleverd door de eigenaar.
 - Foto's Discovery Set zijn telefoonfoto's; nette productfoto op zwart maakt
@@ -121,7 +123,7 @@ de flow werkt volledig, er wordt niets afgeschreven.
 | The Eliandi Experience, 1 tot 6 personen (aanbetaling) | `experience.html` | `api/slots.js`, `api/book.js` |
 | Shop: alle geuren, zoeken, filteren | `shop.html` -> winkelmand -> `afrekenen.html` | `api/products.js`, `api/order.js` |
 | Cadeaubon Experience (volledig betaald) | `experience.html#cadeau` -> `cadeaubon.html` | `api/voucher.js` |
-| Bevestigen na betaling | `bedankt.html` | `api/confirm.js`, `api/mollie-webhook.js`, `api/stripe-webhook.js` |
+| Bevestigen na betaling | `bedankt.html` | `api/confirm.js`, `api/mollie-webhook.js` |
 | Beheer (Angelo) | `beheer.html` (/beheer) | `api/admin.js`, `api/content.js`, `api/products.js`, `api/media.js` |
 
 Prijzen van losse parfums komen uit `api/_prices.json`, gegenereerd met
@@ -216,7 +218,7 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 ### Omgevingsvariabelen (Vercel > Settings > Environment Variables)
 
 - `MOLLIE_API_KEY` — zet de echte betalingen aan (test_... of live_...)
-- `STRIPE_SECRET_KEY` — alleen als je Stripe wilt in plaats van Mollie
+- `STRIPE_SECRET_KEY` — alleen als je Stripe wilt in plaats van Mollie (de Stripe-webhook is verwijderd: Vercel staat op het gratis plan maximaal 12 functies toe)
 - `GOOGLE_CALENDAR_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON` — de agenda van
   Angelo: bezette tijden gaan dicht, boekingen komen in zijn agenda
 - `RESEND_API_KEY` + `MAIL_FROM` + `MAIL_OWNER` — de bevestigingsmails

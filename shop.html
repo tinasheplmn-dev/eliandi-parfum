@@ -48,6 +48,38 @@
       </div>
     </section>
 
+    <!-- ══════════ CATEGORIEËN ══════════ -->
+    <section class="sh-cats" aria-label="Kies een categorie">
+      <div class="wrap">
+        <div class="sh-cat-grid" id="shCats">
+          <a class="sh-cat sh-cat-dames" href="#resultaten" data-cat="g:dames" style="--tint:#9b4a6a">
+            <span class="sh-cat-art" aria-hidden="true"></span>
+            <span class="sh-cat-body"><b>Dames</b><small data-count="dames"></small></span>
+          </a>
+          <a class="sh-cat sh-cat-heren sh-cat-foto" href="#resultaten" data-cat="g:heren" style="--foto:url(/assets/shop/heren.jpg)">
+            <span class="sh-cat-art" aria-hidden="true"></span>
+            <span class="sh-cat-body"><b>Heren</b><small data-count="heren"></small></span>
+          </a>
+          <a class="sh-cat sh-cat-unisex" href="#resultaten" data-cat="g:unisex" style="--tint:#b8740f">
+            <span class="sh-cat-art" aria-hidden="true"></span>
+            <span class="sh-cat-body"><b>Unisex</b><small data-count="unisex"></small></span>
+          </a>
+          <a class="sh-cat sh-cat-foto" href="quiz.html" style="--foto:url(/assets/discovery-front.jpg)">
+            <span class="sh-cat-art" aria-hidden="true"></span>
+            <span class="sh-cat-body"><b>Discovery Set</b><small>Vijf samples van 10 ml, gekozen op jouw geurprofiel</small></span>
+          </a>
+          <a class="sh-cat sh-cat-nieuw" href="#resultaten" data-cat="nieuw" style="--tint:#c9a24f">
+            <span class="sh-cat-art" aria-hidden="true"></span>
+            <span class="sh-cat-body"><b>Nieuw binnen</b><small data-count="nieuw"></small></span>
+          </a>
+          <a class="sh-cat sh-cat-foto" href="experience.html#cadeau" style="--foto:url(/assets/angelo-werkt.jpg)">
+            <span class="sh-cat-art" aria-hidden="true"></span>
+            <span class="sh-cat-body"><b>Cadeau</b><small>Een privé-Experience met Angelo, als bon</small></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- ══════════ ZOEKBALK ══════════ -->
     <div class="sh-toolbar" id="shToolbar">
       <div class="wrap sh-toolbar-inner">
@@ -73,7 +105,7 @@
     </div>
 
     <!-- ══════════ FILTERS + GRID ══════════ -->
-    <div class="wrap sh-layout">
+    <div class="wrap sh-layout" id="resultaten">
       <aside class="sh-filters" id="shFilters" aria-label="Filters">
         <div class="sh-filters-head">
           <p class="sh-filters-title">Verfijnen</p>
@@ -86,6 +118,12 @@
             <button type="button" data-v="dames">Dames</button>
             <button type="button" data-v="heren">Heren</button>
             <button type="button" data-v="unisex">Unisex</button>
+          </div>
+        </fieldset>
+        <fieldset class="sh-group">
+          <legend>Collectie</legend>
+          <div class="sh-chips" data-filter="n">
+            <button type="button" data-v="nieuw">Nieuw binnen</button>
           </div>
         </fieldset>
 

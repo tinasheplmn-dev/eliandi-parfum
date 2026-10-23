@@ -1,0 +1,314 @@
+/* GET /geur/<slug> -> deze functie (rewrite in vercel.json en server.js).
+
+   Eén productpagina per parfum, op de server opgebouwd uit de
+   catalogus (js/catalog.js), de verhaaltekst (api/_teksten.json) en
+   wat Angelo in het dashboard aanpast. Zoekmachines zien daardoor
+   gewoon een volledige pagina.
+
+   Foto's: api/_fotos.json koppelt doelgroep en maat aan een bestand,
+   bijvoorbeeld { "dames": { "30": "assets/producten/dames-30.jpg" } }.
+   Staat er niets, dan tekent de pagina een flacon in de kleur van de
+   sterkste geurfamilie. */
+const fs = require('fs');
+const path = require('path');
+const { getCustom, getOverrides } = require('./_catalog');
+
+const TEKSTEN = require('./_teksten.json');
+const FOTOS = require('./_fotos.json');
+const ML = [30, 50, 100];
+
+/* de catalogus is een browserbestand; we lezen de JSON eruit */
+let CATALOG = null;
+function catalog() {
+  if (CATALOG) return CATALOG;
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'catalog.js'), 'utf8');
+  CATALOG = JSON.parse(src.slice(src.indexOf('['), src.lastIndexOf(']') + 1));
+  return CATALOG;
+}
+
+const slug = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const euro = n => '€' + Number(n).toFixed(2).replace('.', ',');
+
+const TINT = {
+  oud: '#5a2d14', hout: '#6b4a24', amber: '#b8740f', vanille: '#c9a24f', gourmand: '#8a4b1f',
+  bloemig: '#9b4a6a', fris: '#2f6f6a', kruidig: '#a0471f', musk: '#8c8273', fruitig: '#a4303f',
+  poederig: '#a58aa4', leer: '#3d2a22',
+};
+const FAM_MAP = [
+  [/oud|agar/i, 'oud'], [/hout/i, 'hout'], [/amber|ori[eë]ntaal|oosters|balsem/i, 'amber'],
+  [/bloem|floral/i, 'bloemig'], [/vanille/i, 'vanille'], [/gourmand|zoet|romig|karamel|chocola|koffie/i, 'gourmand'],
+  [/citrus|fris|aquat|groen|aromat|marine|ozon/i, 'fris'], [/kruid|specerij/i, 'kruidig'], [/fruit/i, 'fruitig'],
+  [/musk/i, 'musk'], [/poeder/i, 'poederig'], [/leer|leder|roker|rook|tabak/i, 'leer'],
+];
+const FAM_NAAM = {
+  oud: 'Oud', hout: 'Hout', amber: 'Amber', vanille: 'Vanille', gourmand: 'Gourmand', bloemig: 'Bloemig',
+  fris: 'Citrus & fris', kruidig: 'Kruidig', musk: 'Musk', fruitig: 'Fruitig', poederig: 'Poederig', leer: 'Leer & rook',
+};
+
+/* ── afgeleide eigenschappen: karakter, seizoen, moment ── */
+function karakter(p) {
+  const d = p.d || {};
+  const zwaar = ['oud', 'amber', 'leer', 'musk'].some(k => (d[k] || 0) >= 2) || (p.x || 0) >= 2;
+  const licht = (p.w || 0) <= -2 && (p.x || 0) <= -1;
+  const clamp = n => Math.max(1, Math.min(5, Math.round(n)));
+  return {
+    intensiteit: clamp(3 + (p.x || 0) * 0.6),
+    houdbaarheid: zwaar ? 5 : licht ? 3 : 4,
+    zoetheid: clamp(1 + (p.s || 0)),
+    warmte: clamp(1 + ((p.w || 0) + 3) * (4 / 6)),
+  };
+}
+const seizoen = p => (p.w || 0) >= 2 ? 'Herfst en winter' : (p.w || 0) <= -2 ? 'Lente en zomer' : 'Het hele jaar';
+const moment = p => (p.o || 0) >= 1 ? 'Avond en uitgaan' : (p.o || 0) <= -1 ? 'Overdag' : 'Dag en avond';
+const doelgroep = p => ({ dames: 'Dames', heren: 'Heren' }[p.g] || 'Unisex');
+
+function families(p) {
+  const uit = [];
+  (p.f || []).forEach(n => FAM_MAP.forEach(([re, k]) => { if (re.test(n) && !uit.includes(k)) uit.push(k); }));
+  if (uit.length) return uit;
+  return Object.entries(p.d || {}).sort((a, b) => b[1] - a[1]).map(([k]) => k).slice(0, 3);
+}
+
+function bottle(tint, cls = '') {
+  return `<svg class="pd-bottle ${cls}" viewBox="0 0 78 150" aria-hidden="true">
+    <defs><linearGradient id="g${cls || 'x'}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#fff" stop-opacity=".04"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient></defs>
+    <rect x="29" y="4" width="20" height="16" rx="2" fill="#D4A73C"/>
+    <rect x="27" y="19" width="24" height="7" rx="1" fill="#2a2a2a"/>
+    <path d="M22 30 h34 l8 12 v98 a8 8 0 0 1 -8 8 h-34 a8 8 0 0 1 -8 -8 v-98 z" fill="${tint}"/>
+    <path d="M22 30 h34 l8 12 v98 a8 8 0 0 1 -8 8 h-34 a8 8 0 0 1 -8 -8 v-98 z" fill="url(#g${cls || 'x'})"/>
+    <rect x="20" y="66" width="38" height="46" fill="rgba(20,20,20,.55)" stroke="rgba(233,199,103,.55)" stroke-width=".8"/>
+    <text x="39" y="86" text-anchor="middle" font-family="Playfair Display, serif" font-size="9" letter-spacing="2" fill="#E9C767">ELIANDI</text>
+    <text x="39" y="98" text-anchor="middle" font-family="Montserrat, sans-serif" font-size="5" letter-spacing="2" fill="#CFC9BC">PARFUM</text>
+    <rect x="18" y="36" width="5" height="100" rx="2" fill="#fff" opacity=".12"/>
+  </svg>`;
+}
+
+const dots = n => Array.from({ length: 5 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+
+/* vier geuren die het dichtst in de buurt komen, als suggestie */
+function verwant(p, alle) {
+  const score = q => {
+    if (q.n === p.n) return -1;
+    let s = 0;
+    Object.keys(p.d || {}).forEach(k => { if (q.d && q.d[k]) s += Math.min(p.d[k], q.d[k]); });
+    if (q.g === p.g) s += 2;
+    s -= Math.abs((q.w || 0) - (p.w || 0)) * .5 + Math.abs((q.s || 0) - (p.s || 0)) * .5;
+    return s;
+  };
+  return alle.map(q => [score(q), q]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]).slice(0, 4).map(([, q]) => q);
+}
+
+async function lijst() {
+  const [custom, overrides] = await Promise.all([getCustom(), getOverrides()]);
+  const uit = catalog().filter(p => !(overrides[p.n] && overrides[p.n].hidden)).map(p => {
+    const o = overrides[p.n];
+    if (!o || !o.v) return p;
+    const ps = o.v.filter(Boolean);
+    return { ...p, v: o.v, p: ps.length ? Math.min(...ps) : p.p };
+  });
+  const namen = new Set(uit.map(p => p.n));
+  (custom || []).forEach(p => { if (!namen.has(p.n)) uit.push({ ...p, custom: true }); });
+  return uit;
+}
+
+function pagina(p, alle, site) {
+  const fams = families(p);
+  const tint = TINT[fams[0]] || '#8a6a2a';
+  const k = karakter(p);
+  const v = p.v || [];
+  const beschikbaar = ML.map((ml, i) => ({ ml, i, prijs: v[i] })).filter(x => x.prijs);
+  const gekozen = v[1] ? 1 : (beschikbaar[0] ? beschikbaar[0].i : -1);
+  const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
+  const story = (TEKSTEN[p.n] || []).filter(t => t !== p.i);
+  const noten = [['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
+  const url = `${site}/geur/${slug(p.n)}`;
+  const titel = `${p.n} | Extrait de parfum | Eliandi Parfum`;
+  const omschrijving = (p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi in 's-Hertogenbosch.`).slice(0, 155);
+  const verwanten = verwant(p, alle);
+
+  const ld = {
+    '@context': 'https://schema.org', '@type': 'Product', name: p.n,
+    description: omschrijving, brand: { '@type': 'Brand', name: 'Eliandi Parfum' }, url,
+    ...(p.p ? { offers: { '@type': 'AggregateOffer', priceCurrency: 'EUR', lowPrice: Math.min(...beschikbaar.map(x => x.prijs)), highPrice: Math.max(...beschikbaar.map(x => x.prijs)), offerCount: beschikbaar.length, availability: 'https://schema.org/InStock' } } : {}),
+  };
+
+  return `<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(titel)}</title>
+  <meta name="description" content="${esc(omschrijving)}">
+  <meta property="og:title" content="${esc(p.n)} | Eliandi Parfum">
+  <meta property="og:description" content="${esc(omschrijving)}">
+  <meta property="og:type" content="product">
+  <meta property="og:url" content="${esc(url)}">
+  <meta property="og:image" content="${site}/assets/parfumeur-mengt-geur-pipet.jpg">
+  <meta name="theme-color" content="#141414">
+  <link rel="canonical" href="${esc(url)}">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/cart.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <link rel="stylesheet" href="/css/product.css">
+  <script type="application/ld+json">${JSON.stringify(ld)}</script>
+</head>
+<body class="shoppage productpage" data-page="geur">
+  <header class="qnav sh-nav">
+    <a class="qnav-brand" href="/"><img class="qnav-mark" src="/assets/logo-eliandi.png" alt="Eliandi Parfum logo"><span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span></a>
+    <nav class="sh-nav-links" aria-label="Shop"><a href="/shop">Shop</a><a href="/quiz">Geurwijzer</a><a href="/experience">Experience</a></nav>
+    <a class="qnav-exit" href="/shop">Terug naar de shop</a>
+  </header>
+
+  <main class="pd-main" id="top">
+    <nav class="wrap pd-crumbs" aria-label="Je bent hier">
+      <a href="/shop">Shop</a><span>/</span><a href="/shop?f=g%3A${p.g}">${esc(doelgroep(p))}</a><span>/</span><b>${esc(p.n)}</b>
+    </nav>
+
+    <section class="wrap pd-top">
+      <div class="pd-gallery" style="--tint:${tint}">
+        <div class="pd-stage" id="pdStage">
+          ${foto(ML[gekozen]) ? `<img src="/${esc(foto(ML[gekozen]))}" alt="${esc(p.n)}, flacon van ${ML[gekozen]} ml">` : bottle(tint, 'groot')}
+          <span class="pd-stage-ml" id="pdStageMl">${gekozen >= 0 ? ML[gekozen] + ' ml' : ''}</span>
+        </div>
+        <div class="pd-thumbs" role="list">
+          ${ML.map((ml, i) => `<button type="button" class="pd-thumb${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="listitem" aria-label="${ml} ml">
+            ${foto(ml) ? `<img src="/${esc(foto(ml))}" alt="">` : bottle(tint, 'klein' + i)}<span>${ml} ml</span></button>`).join('')}
+        </div>
+        <p class="pd-gallery-note">Foto's volgen. Elke flacon wordt in de winkel gevuld en met de hand afgewerkt.</p>
+      </div>
+
+      <div class="pd-info">
+        <p class="kicker">${esc(doelgroep(p))} &middot; Extrait de parfum</p>
+        <h1 class="pd-h1">${esc(p.n)}</h1>
+        ${fams.length ? `<div class="pd-fams">${fams.slice(0, 4).map(f => `<a href="/shop?f=f%3A${f}">${FAM_NAAM[f]}</a>`).join('')}</div>` : ''}
+        ${p.i ? `<p class="pd-lead">${esc(p.i)}</p>` : ''}
+
+        ${beschikbaar.length ? `<div class="pd-buy" id="pdBuy" data-n="${esc(p.n)}">
+          <p class="pd-label">Kies je maat</p>
+          <div class="pd-sizes" role="radiogroup" aria-label="Maat">
+            ${ML.map((ml, i) => `<button type="button" class="pd-size${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="radio" aria-checked="${i === gekozen}"><b>${ml} ml</b><span>${v[i] ? euro(v[i]) : 'niet leverbaar'}</span></button>`).join('')}
+          </div>
+          <div class="pd-price-row">
+            <p class="pd-price" id="pdPrice">${gekozen >= 0 ? euro(v[gekozen]) : ''}</p>
+            <button type="button" class="btn btn-gold pd-add" id="pdAdd">In winkelmand</button>
+          </div>
+          <ul class="pd-trust">
+            <li>Veilig betalen met iDEAL, kaart, Apple Pay of PayPal</li>
+            <li>Verzending in Nederland en België, of ophalen in de winkel</li>
+            <li>Met de hand gevuld in 's-Hertogenbosch</li>
+          </ul>
+        </div>` : `<div class="pd-buy pd-ask"><p class="pd-label">Prijs op aanvraag</p><p>Deze geur bestel je via de winkel. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wat kost ' + p.n + '?')}" target="_blank" rel="noopener">App Angelo</a> of kom langs aan de Vughterstraat 70.</p></div>`}
+
+        <div class="pd-garantie">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5.5 V11 c0 5.2 -3.4 9.3 -8 11 c-4.6 -1.7 -8 -5.8 -8 -11 V5.5 Z"/><path d="M8.2 12 l2.6 2.6 5 -5.2"/></svg>
+          <div><b>100% tevredenheidsgarantie</b><p>Past de geur toch niet bij je? Kom langs in de winkel. Angelo neemt de tijd en zoekt of maakt samen met jou de geur die wél klopt.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap pd-body">
+      <div class="pd-story">
+        <p class="kicker">Het verhaal van deze geur</p>
+        ${story.length ? story.map(t => `<p>${esc(t)}</p>`).join('') : `<p>${esc(p.n)} is een extrait de parfum van Eliandi: hoog geconcentreerd, met de hand samengesteld in de winkel aan de Vughterstraat en gemaakt om de hele dag bij je te blijven.</p>`}
+      </div>
+
+      <aside class="pd-facts">
+        <div class="pd-meters">
+          <p class="kicker">Karakter</p>
+          ${[['Intensiteit', k.intensiteit], ['Houdbaarheid', k.houdbaarheid], ['Zoetheid', k.zoetheid], ['Warmte', k.warmte]].map(([n, w]) => `<div class="pd-meter"><span>${n}</span><em class="pd-dots" aria-label="${w} van 5">${dots(w)}</em></div>`).join('')}
+        </div>
+        <dl class="pd-kern">
+          <div><dt>Seizoen</dt><dd>${seizoen(p)}</dd></div>
+          <div><dt>Moment</dt><dd>${moment(p)}</dd></div>
+          <div><dt>Voor</dt><dd>${esc(doelgroep(p))}</dd></div>
+          <div><dt>Concentratie</dt><dd>Extrait de parfum</dd></div>
+          ${p.f && p.f.length ? `<div><dt>Geurfamilie</dt><dd>${esc(p.f.slice(0, 4).join(', '))}</dd></div>` : ''}
+        </dl>
+      </aside>
+    </section>
+
+    ${noten.length ? `<section class="wrap pd-piramide">
+      <p class="kicker center">Geurpiramide</p>
+      <h2 class="pd-h2 center">Zo ontvouwt ${esc(p.n)} zich.</h2>
+      <div class="pd-pyr">
+        ${noten.map(([kop, sub, l], i) => `<div class="pd-pyr-laag pd-pyr-${i}"><div class="pd-pyr-kop"><b>${kop}</b><span>${sub}</span></div><p>${esc(l.join(' · '))}</p></div>`).join('')}
+      </div>
+    </section>` : ''}
+
+    ${verwanten.length ? `<section class="wrap pd-verwant">
+      <p class="kicker">In dezelfde sfeer</p>
+      <h2 class="pd-h2">Geuren die hierbij passen.</h2>
+      <div class="pd-verwant-grid">
+        ${verwanten.map(q => {
+          const qf = families(q); const qt = TINT[qf[0]] || '#8a6a2a';
+          return `<a class="pd-vcard" href="/geur/${slug(q.n)}" style="--tint:${qt}">${bottle(qt, 'v' + slug(q.n).slice(0, 6))}<span><b>${esc(q.n)}</b><small>${qf.slice(0, 2).map(f => FAM_NAAM[f]).join(' · ')}${q.p ? ' · vanaf ' + euro(q.p) : ''}</small></span></a>`;
+        }).join('')}
+      </div>
+    </section>` : ''}
+
+    <section class="sh-foot">
+      <div class="wrap sh-foot-grid">
+        <div>
+          <p class="kicker">Liever eerst ruiken?</p>
+          <h2 class="sh-h2">Kom langs aan de Vughterstraat.</h2>
+          <p>Angelo zet ${esc(p.n)} graag voor je klaar, naast een paar geuren die erbij passen. Vughterstraat 70, 's-Hertogenbosch.</p>
+          <a class="btn btn-gold" href="/#bezoek">Kom langs in de winkel</a>
+        </div>
+        <div>
+          <p class="kicker">Of iets dat nog niet bestaat</p>
+          <h2 class="sh-h2">Jouw eigen extrait, met Angelo.</h2>
+          <p>Privé aan de geurtafel, alleen of met je gezelschap. Je loopt naar buiten met 50 ml die er voor niemand anders is.</p>
+          <a class="btn btn-ghost" href="/experience">Ontdek The Eliandi Experience</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="sh-footer">
+    <p>Eliandi Parfum &middot; Vughterstraat 70, 5211 GK 's-Hertogenbosch &middot; <a href="tel:+31687080256">06 870 802 56</a> &middot; <a href="mailto:info@eliandiparfum.com">info@eliandiparfum.com</a></p>
+  </footer>
+
+  <a class="wa-widget" href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, ik heb een vraag over ' + p.n)}" target="_blank" rel="noopener" aria-label="Stuur Angelo een WhatsApp-bericht">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9 3 3.3 8.6 3.3 15.5c0 2.4.7 4.7 2 6.7L3.5 29l7-1.8a12.9 12.9 0 0 0 5.5 1.2c7 0 12.7-5.6 12.7-12.5S23 3 16 3zm0 22.8c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-4.2 1.1 1.1-4-.2-.4a10.1 10.1 0 0 1-1.6-5.4C5.6 9.9 10.3 5.3 16 5.3s10.4 4.6 10.4 10.2S21.7 25.8 16 25.8zm5.7-7.6c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-.9-2.3c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1-1.1 2.5s1.1 2.9 1.3 3.1c.2.2 2.2 3.4 5.4 4.7 2 .9 2.8 1 3.8.8.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>
+  </a>
+
+  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, v: v, fotos: ML.map(ml => foto(ml)) }).replace(/</g, '\\u003c')};</script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/product.js"></script>
+  <script src="/js/zonder-server.js" defer></script>
+</body>
+</html>`;
+}
+
+module.exports = async (req, res) => {
+  const u = new URL(req.url, 'http://x');
+  const wanted = (u.searchParams.get('slug') || '').toLowerCase();
+  const site = (process.env.SITE_URL || `https://${req.headers['x-forwarded-host'] || req.headers.host || 'eliandi-parfum.vercel.app'}`).replace(/\/$/, '')
+    .replace(/^https:\/\/(localhost|127\.0\.0\.1)/, 'http://$1');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  try {
+    const alle = await lijst();
+    const p = alle.find(q => slug(q.n) === wanted);
+    if (!p) {
+      res.statusCode = 404;
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(`<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Geur niet gevonden | Eliandi Parfum</title><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/shop.css"><link rel="stylesheet" href="/css/product.css"></head><body class="shoppage"><main class="pd-404"><p class="kicker">Niet gevonden</p><h1 class="pd-h1">Deze geur kennen we niet.</h1><p>Misschien is hij van naam veranderd, of staat hij niet meer in de collectie.</p><a class="btn btn-gold" href="/shop">Naar alle geuren</a></main></body></html>`);
+      return;
+    }
+    res.statusCode = 200;
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
+    res.end(pagina(p, alle, site));
+  } catch (e) {
+    console.error('geur', e.message);
+    res.statusCode = 500;
+    res.end('Serverfout');
+  }
+};
+
+module.exports.slug = slug;

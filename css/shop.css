@@ -43,6 +43,37 @@
 .sh-lead { max-width: 56ch; color: var(--tekst); line-height: 1.8; }
 .sh-count { margin-top: 18px; font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: var(--tekst-dim); min-height: 1em; }
 
+/* ─── Categorieën bovenaan ─── */
+.sh-cats { padding: 0 0 clamp(26px, 4vw, 44px); }
+.sh-cat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.sh-cat {
+  position: relative; display: grid; grid-template-rows: 1fr auto; aspect-ratio: 4 / 5; overflow: hidden; text-decoration: none;
+  border: 1px solid rgba(184,134,11,.24); background: #121108;
+  transition: border-color .4s, transform .5s var(--ease-lux), box-shadow .5s;
+}
+.sh-cat:hover { border-color: rgba(233,199,103,.65); transform: translateY(-4px); box-shadow: 0 24px 50px -30px rgba(0,0,0,.9); }
+.sh-cat-art {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 100%, var(--tint, rgba(184,134,11,.4)), transparent 65%),
+    radial-gradient(circle at 50% 50%, rgba(233,199,103,.08) 0, transparent 1.2px) 0 0 / 22px 22px,
+    #121108;
+}
+.sh-cat-art::after {
+  content: ''; position: absolute; left: 50%; bottom: 34%; width: 30%; aspect-ratio: 78 / 150; transform: translateX(-50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 78 150'%3E%3Crect x='29' y='4' width='20' height='16' rx='2' fill='%23D4A73C'/%3E%3Crect x='27' y='19' width='24' height='7' rx='1' fill='%232a2a2a'/%3E%3Cpath d='M22 30h34l8 12v98a8 8 0 0 1-8 8H22a8 8 0 0 1-8-8V42z' fill='rgba(233,199,103,.22)' stroke='rgba(233,199,103,.85)' stroke-width='1.2'/%3E%3Crect x='20' y='66' width='38' height='46' fill='rgba(20,20,20,.5)' stroke='rgba(233,199,103,.55)' stroke-width='.8'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 18px 22px rgba(0,0,0,.6)); transition: transform .6s var(--ease-lux);
+}
+.sh-cat:hover .sh-cat-art::after { transform: translateX(-50%) translateY(-6px); }
+.sh-cat-foto .sh-cat-art { background: var(--foto) center / cover no-repeat; filter: saturate(.9); transition: transform 1.2s var(--ease-lux); }
+.sh-cat-foto .sh-cat-art::after { display: none; }
+.sh-cat-foto:hover .sh-cat-art { transform: scale(1.05); }
+.sh-cat-foto::before { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(10,9,7,.95) 0%, rgba(10,9,7,.25) 55%, transparent 100%); z-index: 1; }
+.sh-cat-body { position: relative; z-index: 2; grid-row: 2; padding: 14px 14px 16px; display: grid; gap: 3px; background: linear-gradient(0deg, rgba(10,9,7,.96), rgba(10,9,7,.6) 80%, transparent); }
+.sh-cat-body b { font: 500 1.1rem var(--serif); color: var(--ivoor); }
+.sh-cat-body small { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--tekst-dim); line-height: 1.5; }
+.sh-cat-foto .sh-cat-body small { text-transform: none; letter-spacing: 0; font-size: .74rem; }
+
 /* ─── Werkbalk ─── */
 .sh-toolbar {
   position: sticky; top: 66px; z-index: 30;
@@ -199,7 +230,13 @@
   .sh-sort span { display: none; }
 }
 @media (min-width: 961px) { .sh-filters-done { display: none; } }
+@media (max-width: 960px) {
+  .sh-cat-grid { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 600px) {
+  .sh-cat-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 0 0 8px; margin: 0 -20px; padding-left: 20px; padding-right: 20px; scrollbar-width: none; }
+  .sh-cat-grid::-webkit-scrollbar { display: none; }
+  .sh-cat { flex: 0 0 46%; scroll-snap-align: start; }
   .sh-toolbar-inner { flex-wrap: wrap; }
   .sh-search { flex-basis: 100%; }
   .sh-sort { flex: 1; } .sh-sort select { width: 100%; }
@@ -208,7 +245,8 @@
   .sh-card-body { padding: 14px; }
   .sh-card h3 { font-size: 1.05rem; }
   .sh-intro { -webkit-line-clamp: 2; }
-  .sh-sizes { grid-template-columns: 1fr; }
+  .sh-size { padding: 7px 2px; font-size: 11px; }
+  .sh-size small { font-size: 10px; }
   .sh-foot-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 400px) { .sh-grid { grid-template-columns: 1fr; } }
