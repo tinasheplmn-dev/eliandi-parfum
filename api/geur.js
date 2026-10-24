@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getCustom, getOverrides } = require('./_catalog');
+const { store } = require('./_lib');
 
 const TEKSTEN = require('./_teksten.json');
 const FOTOS = require('./_fotos.json');
@@ -104,22 +105,30 @@ async function lijst() {
   const [custom, overrides] = await Promise.all([getCustom(), getOverrides()]);
   const uit = catalog().filter(p => !(overrides[p.n] && overrides[p.n].hidden)).map(p => {
     const o = overrides[p.n];
-    if (!o || !o.v) return p;
-    const ps = o.v.filter(Boolean);
-    return { ...p, v: o.v, p: ps.length ? Math.min(...ps) : p.p };
+    if (!o) return p;
+    const v = o.v || p.v || [];
+    const ps = v.filter(Boolean);
+    return { ...p, v, stock: o.stock || null, p: ps.length ? Math.min(...ps) : p.p };
   });
   const namen = new Set(uit.map(p => p.n));
   (custom || []).forEach(p => { if (!namen.has(p.n)) uit.push({ ...p, custom: true }); });
   return uit;
 }
 
-function pagina(p, alle, site) {
+function pagina(p, alle, site, reviews) {
   const fams = families(p);
   const tint = TINT[fams[0]] || '#8a6a2a';
   const k = karakter(p);
-  const v = p.v || [];
+  const prijzen = p.v || [];
+  const op = i => Boolean(p.stock && p.stock[i] === 0);
+  /* een uitverkochte maat telt als niet leverbaar */
+  const v = prijzen.map((x, i) => (op(i) ? 0 : x));
   const beschikbaar = ML.map((ml, i) => ({ ml, i, prijs: v[i] })).filter(x => x.prijs);
   const gekozen = v[1] ? 1 : (beschikbaar[0] ? beschikbaar[0].i : -1);
+  const alleOp = prijzen.some(Boolean) && !beschikbaar.length;
+  const rv = reviews || [];
+  const gem = rv.length ? rv.reduce((a, r) => a + Number(r.sterren || 5), 0) / rv.length : 0;
+  const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
   const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
   const story = (TEKSTEN[p.n] || []).filter(t => t !== p.i);
   const noten = [['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
@@ -132,6 +141,7 @@ function pagina(p, alle, site) {
     '@context': 'https://schema.org', '@type': 'Product', name: p.n,
     description: omschrijving, brand: { '@type': 'Brand', name: 'Eliandi Parfum' }, url,
     ...(p.p ? { offers: { '@type': 'AggregateOffer', priceCurrency: 'EUR', lowPrice: Math.min(...beschikbaar.map(x => x.prijs)), highPrice: Math.max(...beschikbaar.map(x => x.prijs)), offerCount: beschikbaar.length, availability: 'https://schema.org/InStock' } } : {}),
+    ...(rv.length ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: gem.toFixed(1), reviewCount: rv.length, bestRating: 5 } } : {}),
   };
 
   return `<!DOCTYPE html>
@@ -157,6 +167,7 @@ function pagina(p, alle, site) {
   <link rel="stylesheet" href="/css/shop.css">
   <link rel="stylesheet" href="/css/product.css">
   <script type="application/ld+json">${JSON.stringify(ld)}</script>
+  <script src="/js/taal.js"></script>
 </head>
 <body class="shoppage productpage" data-page="geur">
   <header class="qnav sh-nav">
@@ -187,12 +198,13 @@ function pagina(p, alle, site) {
         <p class="kicker">${esc(doelgroep(p))} &middot; Extrait de parfum</p>
         <h1 class="pd-h1">${esc(p.n)}</h1>
         ${fams.length ? `<div class="pd-fams">${fams.slice(0, 4).map(f => `<a href="/shop?f=f%3A${f}">${FAM_NAAM[f]}</a>`).join('')}</div>` : ''}
+        ${rv.length ? `<a class="pd-stars-link" href="#reviews"><span class="pd-stars">${sterren(gem)}</span> ${rv.length} ${rv.length === 1 ? 'review' : 'reviews'}</a>` : ''}
         ${p.i ? `<p class="pd-lead">${esc(p.i)}</p>` : ''}
 
         ${beschikbaar.length ? `<div class="pd-buy" id="pdBuy" data-n="${esc(p.n)}">
           <p class="pd-label">Kies je maat</p>
           <div class="pd-sizes" role="radiogroup" aria-label="Maat">
-            ${ML.map((ml, i) => `<button type="button" class="pd-size${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="radio" aria-checked="${i === gekozen}"><b>${ml} ml</b><span>${v[i] ? euro(v[i]) : 'niet leverbaar'}</span></button>`).join('')}
+            ${ML.map((ml, i) => `<button type="button" class="pd-size${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="radio" aria-checked="${i === gekozen}"><b>${ml} ml</b><span>${v[i] ? euro(v[i]) : op(i) ? 'uitverkocht' : 'niet leverbaar'}</span></button>`).join('')}
           </div>
           <div class="pd-price-row">
             <p class="pd-price" id="pdPrice">${gekozen >= 0 ? euro(v[gekozen]) : ''}</p>
@@ -203,7 +215,7 @@ function pagina(p, alle, site) {
             <li>Verzending in Nederland en België, of ophalen in de winkel</li>
             <li>Met de hand gevuld in 's-Hertogenbosch</li>
           </ul>
-        </div>` : `<div class="pd-buy pd-ask"><p class="pd-label">Prijs op aanvraag</p><p>Deze geur bestel je via de winkel. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wat kost ' + p.n + '?')}" target="_blank" rel="noopener">App Angelo</a> of kom langs aan de Vughterstraat 70.</p></div>`}
+        </div>` : alleOp ? `<div class="pd-buy pd-ask"><p class="pd-label">Tijdelijk uitverkocht</p><p>Angelo maakt nieuwe flacons. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wanneer is ' + p.n + ' er weer?')}" target="_blank" rel="noopener">App hem</a> en je hoort het als eerste.</p></div>` : `<div class="pd-buy pd-ask"><p class="pd-label">Prijs op aanvraag</p><p>Deze geur bestel je via de winkel. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wat kost ' + p.n + '?')}" target="_blank" rel="noopener">App Angelo</a> of kom langs aan de Vughterstraat 70.</p></div>`}
 
         <div class="pd-garantie">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5.5 V11 c0 5.2 -3.4 9.3 -8 11 c-4.6 -1.7 -8 -5.8 -8 -11 V5.5 Z"/><path d="M8.2 12 l2.6 2.6 5 -5.2"/></svg>
@@ -215,6 +227,7 @@ function pagina(p, alle, site) {
     <section class="wrap pd-body">
       <div class="pd-story">
         <p class="kicker">Het verhaal van deze geur</p>
+        <p class="pd-nl-hint" lang="en">Angelo wrote this description in Dutch.</p>
         ${story.length ? story.map(t => `<p>${esc(t)}</p>`).join('') : `<p>${esc(p.n)} is een extrait de parfum van Eliandi: hoog geconcentreerd, met de hand samengesteld in de winkel aan de Vughterstraat en gemaakt om de hele dag bij je te blijven.</p>`}
       </div>
 
@@ -241,6 +254,15 @@ function pagina(p, alle, site) {
       </div>
     </section>` : ''}
 
+    <section class="wrap pd-reviews" id="reviews">
+      <div class="pd-reviews-kop">
+        <h2 class="pd-h2">Wat klanten zeggen.</h2>
+        ${rv.length ? `<span class="pd-stars">${sterren(gem)}</span><small>${gem.toFixed(1).replace('.', ',')} van 5 &middot; ${rv.length} ${rv.length === 1 ? 'review' : 'reviews'}</small>` : ''}
+      </div>
+      ${rv.length ? `<div class="pd-review-grid">${rv.slice(0, 6).map(r => `<figure class="pd-review"><span class="pd-stars">${sterren(r.sterren || 5)}</span><p>“${esc(r.tekst)}”</p><b>${esc(r.naam)}</b></figure>`).join('')}</div>`
+        : `<p class="pd-review-none">Nog geen reviews voor ${esc(p.n)}. Draag je hem al? <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, mijn ervaring met ' + p.n + ': ')}" target="_blank" rel="noopener">Laat Angelo weten wat je ervan vindt.</a></p>`}
+    </section>
+
     ${verwanten.length ? `<section class="wrap pd-verwant">
       <p class="kicker">In dezelfde sfeer</p>
       <h2 class="pd-h2">Geuren die hierbij passen.</h2>
@@ -251,6 +273,8 @@ function pagina(p, alle, site) {
         }).join('')}
       </div>
     </section>` : ''}
+
+    <section class="wrap pd-recent" id="pdRecent" hidden></section>
 
     <section class="sh-foot">
       <div class="wrap sh-foot-grid">
@@ -278,7 +302,7 @@ function pagina(p, alle, site) {
     <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9 3 3.3 8.6 3.3 15.5c0 2.4.7 4.7 2 6.7L3.5 29l7-1.8a12.9 12.9 0 0 0 5.5 1.2c7 0 12.7-5.6 12.7-12.5S23 3 16 3zm0 22.8c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-4.2 1.1 1.1-4-.2-.4a10.1 10.1 0 0 1-1.6-5.4C5.6 9.9 10.3 5.3 16 5.3s10.4 4.6 10.4 10.2S21.7 25.8 16 25.8zm5.7-7.6c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-.9-2.3c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1-1.1 2.5s1.1 2.9 1.3 3.1c.2.2 2.2 3.4 5.4 4.7 2 .9 2.8 1 3.8.8.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>
   </a>
 
-  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, v: v, fotos: ML.map(ml => foto(ml)) }).replace(/</g, '\\u003c')};</script>
+  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, v: v, slug: slug(p.n), fotos: ML.map(ml => foto(ml)) }).replace(/</g, '\\u003c')};</script>
   <script src="/js/cart.js"></script>
   <script src="/js/product.js"></script>
   <script src="/js/zonder-server.js" defer></script>
@@ -293,7 +317,7 @@ module.exports = async (req, res) => {
     .replace(/^https:\/\/(localhost|127\.0\.0\.1)/, 'http://$1');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   try {
-    const alle = await lijst();
+    const [alle, reviews] = await Promise.all([lijst(), store.getJson('cms:reviews', {}).catch(() => ({}))]);
     const p = alle.find(q => slug(q.n) === wanted);
     if (!p) {
       res.statusCode = 404;
@@ -303,7 +327,7 @@ module.exports = async (req, res) => {
     }
     res.statusCode = 200;
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
-    res.end(pagina(p, alle, site));
+    res.end(pagina(p, alle, site, (reviews || {})[p.n]));
   } catch (e) {
     console.error('geur', e.message);
     res.statusCode = 500;

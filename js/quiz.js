@@ -243,7 +243,7 @@
         b.innerHTML = `
           <span class="qopt-media">
             <span class="qopt-fallback" aria-hidden="true">${opt.t.charAt(0)}</span>
-            <img src="assets/quiz/${opt.img}.jpg" alt="" decoding="async"
+            <img src="assets/quiz/${opt.img}.webp" alt="" decoding="async"
                  onerror="this.remove()">
             <span class="qopt-check" aria-hidden="true">&#10003;</span>
           </span>
@@ -266,7 +266,7 @@
         a.innerHTML = `
           <span class="qopt-media">
             <span class="qopt-fallback" aria-hidden="true">E</span>
-            <img src="assets/parfumeur-lachend-geurwaaier.jpg" alt="" decoding="async"
+            <img src="assets/parfumeur-lachend-geurwaaier.webp" alt="" decoding="async"
                  onerror="this.remove()">
           </span>
           <span class="qopt-body"><strong>Liever een andere geur?</strong><small>Maak een afspraak in de winkel</small></span>`;
@@ -524,7 +524,7 @@
     const dims = Object.entries(p.d || {}).sort((a, b) => b[1] - a[1]);
     const grp = (dims[0] && MOCK_GROUP[dims[0][0]]) || 'amber';
     return `
-      <img class="qr-mock" src="assets/quiz/mockup-fles-${grp}.jpg" alt=""
+      <img class="qr-mock" src="assets/quiz/mockup-fles-${grp}.webp" alt=""
            decoding="async"
            onerror="this.parentElement.classList.add('no-mock');this.remove()">
       ${bottleSVG(p)}`;
@@ -760,7 +760,7 @@
     if (OFFER_DEADLINE) {
       const end = new Date(OFFER_DEADLINE + 'T23:59:59');
       if (end >= new Date()) {
-        const dat = end.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+        const dat = end.toLocaleDateString(window.ELIANDI_LOCALE || 'nl-NL', { day: 'numeric', month: 'long' });
         urg.textContent = `Lanceringsactie, loopt t/m ${dat}.`;
         urg.hidden = false;
       } else { urg.hidden = true; }

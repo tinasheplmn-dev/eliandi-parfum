@@ -351,3 +351,12 @@
   .xp-in { animation: none; opacity: 1; transform: none; }
   .xp-hero-media img, .xp-scroll span, .xp-giftcard::after { animation: none; }
 }
+
+/* ── wachtlijst als er geen plek is ── */
+.xp-wait { margin-top: 16px; border: 1px solid rgba(233,199,103,.3); background: rgba(212,167,60,.05); padding: 18px 20px 20px; display: grid; gap: 12px; }
+.xp-wait h3 { font: 500 1.2rem var(--serif); color: var(--ivoor); }
+.xp-wait p { color: var(--tekst); font-size: 14px; }
+.xp-wait .xp-fields { margin: 0; }
+.xp-wait .btn { justify-self: start; }
+.xp-wait-done { color: var(--goud-glans); }
+.xp-wait[hidden] { display: none !important; }

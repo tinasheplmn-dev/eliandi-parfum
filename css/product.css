@@ -122,3 +122,24 @@
   .pd-vcard { flex-basis: 74%; }
 }
 @media (prefers-reduced-motion: reduce) { .pd-stage .pd-bottle { animation: none; } }
+
+/* ── reviews en recent bekeken ── */
+.pd-reviews { padding-top: 10px; padding-bottom: 30px; }
+.pd-reviews-kop { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.pd-stars { color: var(--goud-glans); letter-spacing: .1em; font-size: 15px; }
+.pd-reviews-kop small { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--tekst-dim); }
+.pd-review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.pd-review { border: 1px solid rgba(233,199,103,.18); background: rgba(255,255,255,.02); padding: 18px 20px; display: grid; gap: 8px; }
+.pd-review p { color: var(--tekst); font-style: italic; line-height: 1.6; }
+.pd-review b { font: 400 10.5px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--tekst-dim); }
+.pd-review-none { color: var(--tekst-dim); }
+.pd-review-none a { color: var(--goud-glans); }
+.pd-recent { padding-bottom: 40px; }
+.pd-recent-row { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; }
+.pd-recent-row::-webkit-scrollbar { display: none; }
+.pd-recent-row a { flex: 0 0 auto; padding: 9px 16px; border: 1px solid rgba(233,199,103,.2); color: var(--ivoor); text-decoration: none; font: 500 .95rem var(--serif); white-space: nowrap; transition: .2s; }
+.pd-recent-row a:hover { border-color: var(--goud-glans); }
+.pd-size[disabled] small { color: var(--tekst-dim); }
+.pd-stars-link { display: inline-flex; gap: 8px; align-items: center; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--tekst-dim); text-decoration: none; margin: -4px 0 10px; }
+.pd-stars-link:hover { color: var(--goud-glans); }
+.pd-recent[hidden] { display: none !important; }

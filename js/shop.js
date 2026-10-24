@@ -41,9 +41,25 @@
   };
 
   const state = {
-    all: [], q: '', sort: 'aanbevolen', shown: PER_PAGE,
+    all: [], q: '', sort: 'aanbevolen', shown: PER_PAGE, view: 'grid', reviews: {},
+    cmp: [], set: [],
     f: { g: new Set(), n: new Set(), k: new Set(), f: new Set(), p: new Set() },
   };
+  const DISCOVERY_PRICE = 49.95; // weergave; de server rekent met DISCOVERY_PRICE_CENTS
+  const lees = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  const bewaar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* privémodus */ } };
+  const uitverkocht = (p, k) => Boolean(p.stock && p.stock[k] === 0);
+  const leverbaar = (p, k) => Boolean((p.v || [])[k]) && !uitverkocht(p, k);
+  const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
+  const review = p => { const r = state.reviews[p.n] || []; return r.length ? { n: r.length, avg: r.reduce((a, x) => a + Number(x.sterren || 5), 0) / r.length } : null; };
+  /* zelfde afleiding als op de productpagina (api/geur.js) */
+  const karakter = p => {
+    const d = p.d || {}; const zwaar = ['oud', 'amber', 'leer', 'musk'].some(k => (d[k] || 0) >= 2) || (p.x || 0) >= 2;
+    const licht = (p.w || 0) <= -2 && (p.x || 0) <= -1; const c = n => Math.max(1, Math.min(5, Math.round(n)));
+    return { Intensiteit: c(3 + (p.x || 0) * .6), Houdbaarheid: zwaar ? 5 : licht ? 3 : 4, Zoetheid: c(1 + (p.s || 0)), Warmte: c(1 + ((p.w || 0) + 3) * (4 / 6)) };
+  };
+  const seizoen = p => (p.w || 0) >= 2 ? 'Herfst en winter' : (p.w || 0) <= -2 ? 'Lente en zomer' : 'Het hele jaar';
+  const moment = p => (p.o || 0) >= 1 ? 'Avond en uitgaan' : (p.o || 0) <= -1 ? 'Overdag' : 'Dag en avond';
 
   /* ── catalogus klaarzetten ── */
   function prepare(list) {
@@ -109,26 +125,36 @@
   function card(p) {
     const v = p.v || [];
     const heeftPrijs = v.some(Boolean);
-    const sel = v[1] ? 1 : v.findIndex(Boolean);
+    const sel = leverbaar(p, 1) ? 1 : ML.findIndex((_, k) => leverbaar(p, k));
+    const alleOp = heeftPrijs && sel < 0;
     const noten = [['Top', p.t], ['Hart', p.h], ['Basis', p.b]].filter(([, l]) => l && l.length);
-    return `<article class="sh-card" data-n="${esc(p.n)}">
+    const rv = review(p);
+    const inCmp = state.cmp.includes(p.n), inSet = state.set.includes(p.n);
+    return `<article class="sh-card${alleOp ? ' is-soldout' : ''}" data-n="${esc(p.n)}">
       <a class="sh-card-visual" href="/geur/${slugify(p.n)}" style="--tint:${p._tint}" aria-label="Bekijk ${esc(p.n)}">
         <span class="sh-card-tag">${esc(p.g)}</span>
         ${p._nieuw ? '<span class="sh-card-tag sh-card-new">Nieuw</span>' : ''}
+        ${alleOp ? '<span class="sh-card-tag sh-card-out">Uitverkocht</span>' : ''}
         ${bottle(p._tint)}
       </a>
       <div class="sh-card-body">
         <h3><a href="/geur/${slugify(p.n)}">${esc(p.n)}</a></h3>
+        ${rv ? `<p class="sh-stars" title="${rv.avg.toFixed(1)} van 5"><span>${sterren(rv.avg)}</span><small>${rv.n} ${rv.n === 1 ? 'review' : 'reviews'}</small></p>` : ''}
         ${p._top.length ? `<div class="sh-fams">${p._top.map(k => `<span>${esc(k)}</span>`).join('')}</div>` : ''}
         ${p.i ? `<p class="sh-intro">${esc(p.i)}</p>` : ''}
         ${noten.length ? `<button type="button" class="sh-notes-toggle" aria-expanded="false">Noten</button>
           <div class="sh-notes" hidden>${noten.map(([k, l]) => `<p><b>${k}</b>${esc(l.join(', '))}</p>`).join('')}</div>` : ''}
-        ${heeftPrijs ? `<div class="sh-buy">
+        ${heeftPrijs && !alleOp ? `<div class="sh-buy">
           <div class="sh-sizes" role="radiogroup" aria-label="Kies een maat">
-            ${ML.map((ml, k) => `<button type="button" class="sh-size${k === sel ? ' is-on' : ''}" data-k="${k}" ${v[k] ? '' : 'disabled'} role="radio" aria-checked="${k === sel}">${ml} ml<small>${v[k] ? euro(v[k]) : 'n.v.t.'}</small></button>`).join('')}
+            ${ML.map((ml, k) => `<button type="button" class="sh-size${k === sel ? ' is-on' : ''}" data-k="${k}" ${leverbaar(p, k) ? '' : 'disabled'} role="radio" aria-checked="${k === sel}">${ml} ml<small>${leverbaar(p, k) ? euro(v[k]) : uitverkocht(p, k) ? 'uitverkocht' : 'n.v.t.'}</small></button>`).join('')}
           </div>
           <button type="button" class="btn btn-gold sh-add">In winkelmand</button>
-        </div>` : `<p class="sh-ask">Prijs op aanvraag. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wat kost ' + p.n + '?')}" target="_blank" rel="noopener">App Angelo</a> of kom langs in de winkel.</p>`}
+        </div>` : alleOp ? `<p class="sh-ask">Tijdelijk uitverkocht. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wanneer is ' + p.n + ' er weer?')}" target="_blank" rel="noopener">App Angelo</a> voor wanneer hij er weer is.</p>`
+          : `<p class="sh-ask">Prijs op aanvraag. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wat kost ' + p.n + '?')}" target="_blank" rel="noopener">App Angelo</a> of kom langs in de winkel.</p>`}
+        <div class="sh-card-tools">
+          <label class="sh-cmp${inCmp ? ' is-on' : ''}"><input type="checkbox" data-cmp="${esc(p.n)}" ${inCmp ? 'checked' : ''}> Vergelijk</label>
+          <button type="button" class="sh-toset${inSet ? ' is-on' : ''}" data-set="${esc(p.n)}">${inSet ? '✓ In je set' : '+ Discovery Set'}</button>
+        </div>
       </div>
     </article>`;
   }
@@ -137,6 +163,7 @@
     if (reset) state.shown = PER_PAGE;
     const list = sorted(state.all.filter(matches));
     const grid = $('shGrid');
+    grid.classList.toggle('is-list', state.view === 'list');
     grid.innerHTML = list.slice(0, state.shown).map(card).join('');
     $('shEmpty').hidden = list.length > 0;
     $('shMore').hidden = list.length <= state.shown;
@@ -237,7 +264,13 @@
   done.addEventListener('click', () => openFilters(false));
 
   /* noten open/dicht, maat kiezen, in de winkelmand */
+  $('shGrid').addEventListener('change', e => {
+    const c = e.target.closest('[data-cmp]'); if (!c) return;
+    toggleCmp(c.dataset.cmp, c.checked);
+  });
   $('shGrid').addEventListener('click', e => {
+    const ts = e.target.closest('[data-set]');
+    if (ts) { toggleSet(ts.dataset.set); return; }
     const t = e.target.closest('.sh-notes-toggle');
     if (t) { const n = t.nextElementSibling; n.hidden = !n.hidden; t.setAttribute('aria-expanded', !n.hidden); t.textContent = n.hidden ? 'Noten' : 'Verberg noten'; return; }
     const size = e.target.closest('.sh-size');
@@ -250,7 +283,7 @@
     const cardEl = add.closest('.sh-card');
     const p = state.all.find(x => x.n === cardEl.dataset.n);
     const k = Number((cardEl.querySelector('.sh-size.is-on') || {}).dataset?.k ?? -1);
-    if (!p || k < 0 || !p.v[k]) return;
+    if (!p || k < 0 || !leverbaar(p, k)) return;
     window.EliandiCart.add(p.n, ML[k], p.v[k]);
     add.textContent = 'Toegevoegd ✓'; add.classList.add('is-done');
     setTimeout(() => { add.textContent = 'In winkelmand'; add.classList.remove('is-done'); }, 1800);
@@ -265,6 +298,158 @@
     syncChips(); render(true); remember();
     document.getElementById('resultaten').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
+  /* ── zoeksuggesties terwijl je typt ── */
+  const sug = document.createElement('ul');
+  sug.className = 'sh-suggest'; sug.id = 'shSuggest'; sug.hidden = true;
+  $('shQuery').closest('.sh-search').append(sug);
+  function suggest() {
+    const q = strip(state.q);
+    if (q.length < 2) { sug.hidden = true; return; }
+    const namen = state.all.filter(p => strip(p.n).includes(q)).sort((a, b) => strip(a.n).startsWith(q) === strip(b.n).startsWith(q) ? 0 : strip(a.n).startsWith(q) ? -1 : 1).slice(0, 5);
+    const woorden = new Map();
+    state.all.forEach(p => [...(p.t || []), ...(p.h || []), ...(p.b || []), ...(p.f || [])].forEach(w => { if (strip(w).includes(q)) woorden.set(strip(w), w); }));
+    const termen = [...woorden.values()].slice(0, 4);
+    if (!namen.length && !termen.length) { sug.hidden = true; return; }
+    sug.innerHTML = namen.map(p => `<li><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}"><i></i><b>${esc(p.n)}</b><small>${esc(p._top.slice(0, 2).join(' · '))}${p.p ? ' · vanaf ' + euro(p.p) : ''}</small></a></li>`).join('')
+      + termen.map(w => `<li><button type="button" data-term="${esc(w)}"><i class="is-term"></i><b>${esc(w)}</b><small>alle geuren met deze noot</small></button></li>`).join('');
+    sug.hidden = false;
+  }
+  sug.addEventListener('mousedown', e => e.preventDefault());
+  sug.addEventListener('click', e => {
+    const b = e.target.closest('[data-term]'); if (!b) return;
+    state.q = b.dataset.term; $('shQuery').value = state.q; sug.hidden = true; render(true); remember();
+  });
+  $('shQuery').addEventListener('blur', () => { sug.hidden = true; });
+  $('shQuery').addEventListener('focus', suggest);
+  $('shQuery').addEventListener('input', suggest);
+  $('shQuery').addEventListener('keydown', e => { if (e.key === 'Escape' || e.key === 'Enter') sug.hidden = true; });
+
+  /* ── raster of lijst ── */
+  state.view = lees('eliandi_shop_view', 'grid');
+  const viewBox = $('shView');
+  if (viewBox) {
+    viewBox.querySelectorAll('button').forEach(b => b.classList.toggle('is-on', b.dataset.view === state.view));
+    viewBox.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      state.view = b.dataset.view; bewaar('eliandi_shop_view', state.view);
+      viewBox.querySelectorAll('button').forEach(x => x.classList.toggle('is-on', x === b));
+      render(false);
+    });
+  }
+
+  /* ── recent bekeken (bijgehouden door de productpagina) ── */
+  function renderRecent() {
+    const box = $('shRecent'); if (!box) return;
+    const namen = lees('eliandi_recent', []).map(r => r.n);
+    const items = namen.map(n => state.all.find(p => p.n === n)).filter(Boolean).slice(0, 8);
+    box.hidden = !items.length;
+    if (!items.length) return;
+    box.innerHTML = `<p class="kicker">Recent bekeken</p><div class="sh-recent-row">${items.map(p => `<a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}">${bottle(p._tint)}<b>${esc(p.n)}</b>${p.p ? `<small>vanaf ${euro(p.p)}</small>` : ''}</a>`).join('')}</div>`;
+  }
+
+  /* ── vergelijken: tot drie geuren naast elkaar ── */
+  const cmpBar = $('shCmpBar'), cmpOverlay = $('shCmpOverlay');
+  function toggleCmp(n, on) {
+    if (on && !state.cmp.includes(n)) { if (state.cmp.length >= 3) { on = false; } else state.cmp.push(n); }
+    if (!on) state.cmp = state.cmp.filter(x => x !== n);
+    document.querySelectorAll('[data-cmp]').forEach(c => { c.checked = state.cmp.includes(c.dataset.cmp); c.closest('.sh-cmp').classList.toggle('is-on', c.checked); });
+    paintCmpBar();
+  }
+  function paintCmpBar() {
+    if (!cmpBar) return;
+    cmpBar.hidden = !state.cmp.length;
+    cmpBar.querySelector('.sh-cmpbar-text').innerHTML = state.cmp.length < 2
+      ? `<b>${esc(state.cmp[0] || '')}</b> gekozen. Vink nog een geur aan om te vergelijken.`
+      : `<b>${state.cmp.length}</b> geuren gekozen${state.cmp.length === 3 ? ' (maximum)' : ''}.`;
+    cmpBar.querySelector('[data-cmp-open]').disabled = state.cmp.length < 2;
+  }
+  function openCmp() {
+    const ps = state.cmp.map(n => state.all.find(p => p.n === n)).filter(Boolean);
+    if (ps.length < 2) return;
+    const dots = w => `<em class="sh-dots" aria-label="${w} van 5">${Array.from({ length: 5 }, (_, i) => `<i class="${i < w ? 'on' : ''}"></i>`).join('')}</em>`;
+    const rij = (kop, f) => `<tr><th>${kop}</th>${ps.map(p => `<td>${f(p)}</td>`).join('')}</tr>`;
+    const ks = ps.map(karakter);
+    cmpOverlay.querySelector('.sh-cmp-table').innerHTML = `<table>
+      <thead><tr><th></th>${ps.map(p => `<th><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}">${bottle(p._tint)}<b>${esc(p.n)}</b></a></th>`).join('')}</tr></thead>
+      <tbody>
+        ${rij('Voor wie', p => esc(p.g))}
+        ${rij('Geurfamilie', p => esc(p._top.join(', ')) || '–')}
+        ${['Intensiteit', 'Houdbaarheid', 'Zoetheid', 'Warmte'].map((k, i) => `<tr><th>${k}</th>${ks.map(x => `<td>${dots(x[k])}</td>`).join('')}</tr>`).join('')}
+        ${rij('Topnoten', p => esc((p.t || []).join(', ')) || '–')}
+        ${rij('Hartnoten', p => esc((p.h || []).join(', ')) || '–')}
+        ${rij('Basisnoten', p => esc((p.b || []).join(', ')) || '–')}
+        ${rij('Seizoen', seizoen)}
+        ${rij('Moment', moment)}
+        ${rij('Reviews', p => { const r = review(p); return r ? `<span class="sh-stars"><span>${sterren(r.avg)}</span><small>${r.n}</small></span>` : '–'; })}
+        ${rij('Vanaf', p => p.p ? euro(p.p) : 'op aanvraag')}
+        ${rij('', p => `<a class="btn btn-ghost sh-cmp-go" href="/geur/${slugify(p.n)}">Bekijk</a>`)}
+      </tbody></table>`;
+    cmpOverlay.hidden = false; document.body.style.overflow = 'hidden';
+  }
+  function closeCmp() { cmpOverlay.hidden = true; document.body.style.overflow = ''; }
+  if (cmpBar) {
+    cmpBar.querySelector('[data-cmp-open]').addEventListener('click', openCmp);
+    cmpBar.querySelector('[data-cmp-clear]').addEventListener('click', () => { state.cmp = []; toggleCmp('', false); });
+    cmpOverlay.addEventListener('click', e => { if (e.target.closest('[data-cmp-close]') || e.target === cmpOverlay) closeCmp(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cmpOverlay.hidden) closeCmp(); });
+  }
+
+  /* ── Discovery Set zelf samenstellen: vijf geuren, 10 ml elk ── */
+  const setBox = $('shSet');
+  state.set = lees('eliandi_set_draft', []).slice(0, 5);
+  function toggleSet(n) {
+    if (state.set.includes(n)) state.set = state.set.filter(x => x !== n);
+    else if (state.set.length >= 5) { flash('Je set is vol: vijf geuren. Haal er eerst een uit.'); return; }
+    else state.set.push(n);
+    bewaar('eliandi_set_draft', state.set);
+    openSet(true);
+    paintSet();
+  }
+  function paintSet() {
+    if (!setBox) return;
+    const slots = setBox.querySelector('.sh-set-slots');
+    slots.innerHTML = Array.from({ length: 5 }, (_, i) => {
+      const n = state.set[i]; const p = n && state.all.find(x => x.n === n);
+      return p ? `<div class="sh-set-slot is-full" style="--tint:${p._tint}">${bottle(p._tint)}<b>${esc(p.n)}</b><button type="button" data-set="${esc(p.n)}" aria-label="${esc(p.n)} uit je set halen">&times;</button></div>`
+        : `<div class="sh-set-slot"><span>${i + 1}</span><small>kies een geur</small></div>`;
+    }).join('');
+    setBox.querySelector('.sh-set-count').textContent = `${state.set.length} van 5 gekozen`;
+    const btn = setBox.querySelector('.sh-set-add');
+    btn.disabled = state.set.length !== 5;
+    btn.textContent = state.set.length === 5 ? `In winkelmand · ${euro(DISCOVERY_PRICE)}` : `Kies nog ${5 - state.set.length} ${5 - state.set.length === 1 ? 'geur' : 'geuren'}`;
+    document.querySelectorAll('[data-set]').forEach(b => { if (b.classList.contains('sh-toset')) { const on = state.set.includes(b.dataset.set); b.classList.toggle('is-on', on); b.textContent = on ? '✓ In je set' : '+ Discovery Set'; } });
+  }
+  function openSet(open) {
+    if (!setBox) return;
+    setBox.hidden = !open; document.body.classList.toggle('is-building', open);
+    if (open) paintSet();
+  }
+  function flash(t) {
+    const el = document.createElement('p'); el.className = 'sh-flash'; el.textContent = t;
+    document.body.append(el); setTimeout(() => el.classList.add('is-on'), 10); setTimeout(() => el.remove(), 2800);
+  }
+  if (setBox) {
+    const q = setBox.querySelector('.sh-set-query'), res = setBox.querySelector('.sh-set-results');
+    q.addEventListener('input', () => {
+      const t = strip(q.value.trim());
+      if (t.length < 2) { res.innerHTML = ''; return; }
+      res.innerHTML = state.all.filter(p => p._tekst.includes(t)).slice(0, 8).map(p => `<button type="button" data-set="${esc(p.n)}" style="--tint:${p._tint}" ${state.set.includes(p.n) ? 'class="is-on"' : ''}><i></i><b>${esc(p.n)}</b><small>${esc(p._top.slice(0, 2).join(' · '))}</small></button>`).join('') || '<p class="sh-set-none">Geen geur met dat woord.</p>';
+    });
+    setBox.addEventListener('click', e => {
+      const b = e.target.closest('[data-set]'); if (b) { toggleSet(b.dataset.set); q.dispatchEvent(new Event('input')); return; }
+      if (e.target.closest('[data-set-close]')) openSet(false);
+      if (e.target.closest('.sh-set-add') && state.set.length === 5 && window.EliandiCart) {
+        window.EliandiCart.add('Discovery Set', 10, DISCOVERY_PRICE, { kind: 'discovery', perfumes: state.set.slice() });
+        state.set = []; bewaar('eliandi_set_draft', []); paintSet(); openSet(false);
+      }
+    });
+    document.querySelectorAll('[data-set-open]').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault(); openSet(true);
+      setBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+    if (location.hash === '#discovery') openSet(true);
+  }
+
   function tellingen() {
     const tel = f => state.all.filter(f).length;
     const zet = (k, n) => document.querySelectorAll(`[data-count="${k}"]`).forEach(el => { el.textContent = `${n} geuren`; });
@@ -273,24 +458,43 @@
   }
 
   /* ── start: catalogus plus aanpassingen van Angelo ── */
+  let gestart = false;
   function start(list) {
     state.all = prepare(list);
     tellingen();
-    restore();
+    if (!gestart) { restore(); gestart = true; }
     render(true);
+    renderRecent(); paintSet(); paintCmpBar();
   }
-  const basis = typeof ELIANDI_CATALOG !== 'undefined' ? ELIANDI_CATALOG.slice() : [];
-  fetch('/api/products', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).then(d => {
-    if (!d) return start(basis);
+  function samenvoegen(basis, d) {
+    if (!d) return basis;
     const ov = d.overrides || {};
+    state.reviews = d.reviews || {};
     const lijst = basis.filter(p => !(ov[p.n] && ov[p.n].hidden)).map(p => {
       const o = ov[p.n];
-      if (!o || !o.v) return p;
-      const ps = o.v.filter(Boolean);
-      return { ...p, v: o.v, p: ps.length ? Math.min(...ps) : p.p };
+      if (!o) return p;
+      const v = o.v || p.v || [];
+      const ps = v.filter(Boolean);
+      return { ...p, v, stock: o.stock || null, p: ps.length ? Math.min(...ps) : p.p };
     });
     const namen = new Set(lijst.map(p => p.n));
     (d.custom || []).forEach(p => { if (!namen.has(p.n)) lijst.push({ ...p, custom: true }); });
-    start(lijst);
-  }).catch(() => start(basis));
+    return lijst;
+  }
+  /* eerst de lichte catalogus (snel op het scherm), daarna de volledige
+     met noten en verhalen voor zoeken, vergelijken en de kaarten */
+  let dashboard = null;
+  const heeftVol = () => typeof ELIANDI_CATALOG !== 'undefined';
+  const lite = typeof ELIANDI_CATALOG_LITE !== 'undefined' ? ELIANDI_CATALOG_LITE.slice() : (heeftVol() ? ELIANDI_CATALOG.slice() : []);
+  const haalVol = () => new Promise(resolve => {
+    if (heeftVol()) return resolve(ELIANDI_CATALOG);
+    const sc = document.createElement('script'); sc.src = 'js/catalog.js';
+    sc.onload = () => resolve(heeftVol() ? ELIANDI_CATALOG : lite); sc.onerror = () => resolve(lite);
+    document.head.append(sc);
+  });
+  fetch('/api/products', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null).then(d => {
+    dashboard = d;
+    start(samenvoegen(lite, d));
+    return haalVol();
+  }).then(vol => { if (vol && vol !== lite) start(samenvoegen(vol.slice(), dashboard)); });
 })();

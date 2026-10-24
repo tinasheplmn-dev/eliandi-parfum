@@ -170,7 +170,7 @@ async function boekingGeannuleerd(b) {
   });
 }
 
-async function bestellingBetaald(o) {
+async function bestellingBetaald(o, bijlage) {
   const regels = [
     'Angelo heeft je bestelling binnen en pakt hem met zorg in.',
     '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid #2e2920">'
@@ -182,12 +182,14 @@ async function bestellingBetaald(o) {
     o.delivery === 'ophalen'
       ? `Je haalt hem op in de winkel, ${esc(WINKEL)}. Angelo laat weten wanneer hij klaarstaat.`
       : `Hij gaat naar ${esc(o.address || 'het adres dat je hebt opgegeven')}. Je hoort het zodra hij onderweg is.`,
+    o.factuur ? `Je factuur (${esc(o.factuur.nummer)}) zit als bijlage bij deze mail.` : '',
   ].filter(Boolean);
 
   return verstuur({
     to: o.email,
     subject: 'Je bestelling bij Eliandi is betaald',
     html: omslag({ kicker: 'Bestelling ontvangen', kop: 'Dank je wel.', regels }),
+    ...(bijlage ? { attachments: [bijlage] } : {}),
     text: `Je bestelling bij Eliandi is betaald. Totaal ${euro(o.total)}.\n`
       + (o.items || []).map(i => `${i.qty}x ${i.name}`).join('\n') + `\nVragen? Bel ${TEL}.`,
   });
@@ -213,10 +215,69 @@ async function bonBetaald(v, site) {
   });
 }
 
+/* Bericht aan de klant als Angelo de status verandert. */
+async function bestellingStatus(o, status) {
+  const T = {
+    verzonden: {
+      subject: 'Je bestelling bij Eliandi is onderweg',
+      kicker: 'Onderweg', kop: 'Hij komt eraan.',
+      regels: [
+        `Angelo heeft je bestelling ingepakt en meegegeven aan de bezorger. Hij gaat naar ${esc(o.address || 'je adres')}.`,
+        o.trackTrace ? `Volg je pakket met dit nummer: <strong style="color:#f4efe4">${esc(o.trackTrace)}</strong>` : 'Meestal is hij binnen een of twee werkdagen bij je.',
+      ],
+    },
+    'klaar om op te halen': {
+      subject: 'Je bestelling ligt klaar in de winkel',
+      kicker: 'Klaar om op te halen', kop: 'Hij ligt voor je klaar.',
+      regels: [
+        `Je bestelling staat klaar in de winkel aan de ${esc(WINKEL)}. Kom langs wanneer het jou uitkomt tijdens de openingstijden.`,
+        'Neem deze mail mee, of noem je naam aan de balie.',
+      ],
+    },
+    geannuleerd: {
+      subject: 'Je bestelling bij Eliandi is geannuleerd',
+      kicker: 'Geannuleerd', kop: 'Deze bestelling gaat niet door.',
+      regels: [
+        'Angelo heeft je bestelling geannuleerd. Heb je al betaald, dan stort hij het bedrag terug; dat kan een paar werkdagen duren.',
+        'Was dit niet de bedoeling? Bel of app Angelo, dan lost hij het met je op.',
+      ],
+    },
+  }[status];
+  if (!T) return false;
+  return verstuur({
+    to: o.email, subject: T.subject,
+    html: omslag({ kicker: T.kicker, kop: T.kop, regels: T.regels }),
+    text: T.regels.join('\n').replace(/<[^>]+>/g, '') + `\nVragen? Bel ${TEL}.`,
+  });
+}
+
+/* Een dag na een niet-afgemaakte bestelling: één vriendelijke herinnering. */
+async function winkelmandHerinnering(o) {
+  return verstuur({
+    to: o.email,
+    subject: 'Je geuren staan nog klaar bij Eliandi',
+    html: omslag({
+      kicker: 'Nog niet afgerond', kop: 'Je was er bijna.',
+      regels: [
+        `Gisteren koos je ${(o.items || []).map(i => `${i.qty}× ${esc(i.name)}`).join(', ')}, maar de betaling is niet afgemaakt. Dat kan gebeuren.`,
+        'Wil je ze alsnog? Ze staan nog in de shop. Twijfel je nog, kom dan gerust eerst ruiken in de winkel.',
+      ],
+      knop: { href: SITE() + '/shop', tekst: 'Naar de shop' },
+      naschrift: 'Dit is de enige herinnering die we sturen. Geen interesse meer? Dan hoef je niets te doen.',
+    }),
+    text: `Je bestelling bij Eliandi is nog niet afgerond. Kijk op ${SITE()}/shop. Vragen? Bel ${TEL}.`,
+  });
+}
+
 /* Korte melding aan Angelo zelf, zodat hij het ook ziet zonder dashboard. */
 async function melding(onderwerp, regels) {
   const naar = process.env.MAIL_OWNER || BCC();
   if (!naar) return false;
+  /* klantinvoer (naam, opmerking) mag nooit als HTML in de mail belanden;
+     alleen de regelafbreking die we zelf meegeven blijft staan */
+  const veilig = r => String(r).replace(/<br>/g, '\u0001').replace(/[<>"]/g, c => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/\u0001/g, '<br>');
+  onderwerp = String(onderwerp).replace(/[\r\n]+/g, ' ');
+  regels = regels.map(veilig);
   return verstuur({
     to: naar,
     subject: onderwerp,
@@ -227,5 +288,5 @@ async function melding(onderwerp, regels) {
 
 module.exports = {
   enabled, verstuur, boekingBevestigd, boekingGeannuleerd,
-  bestellingBetaald, bonBetaald, melding, datum, euro, gezelschap, personen,
+  bestellingBetaald, bestellingStatus, bonBetaald, winkelmandHerinnering, melding, datum, euro, gezelschap, personen,
 };

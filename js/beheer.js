@@ -59,6 +59,9 @@
     document.querySelectorAll('.bh-tab').forEach(t => { t.hidden = t.dataset.tab !== b.dataset.tab; });
     if (b.dataset.tab === 'producten' && !state.products) loadProducts();
     if (b.dataset.tab === 'instellingen') loadSettings();
+    if (b.dataset.tab === 'klanten') renderKlanten();
+    if (b.dataset.tab === 'kortingen') loadKortingen().catch(x => toast(x.message, true));
+    if (b.dataset.tab === 'bedrijf') loadBedrijf().catch(x => toast(x.message, true));
   });
 
   /* nieuwe records hebben 'people', oude 'variant' */
@@ -72,6 +75,7 @@
     toonKoppelingen(d.koppelingen);
     renderBookings();
     renderOrders();
+    if (!$('klList').closest('.bh-tab').hidden) renderKlanten();
   }
 
   /* agenda en betalingen: alleen melden wat nog niet aanstaat */
@@ -181,25 +185,38 @@
   });
 
   /* ── bestellingen en bonnen ── */
+  const OPEN = ['betaald', 'wordt voorbereid'];
+  let orFilter = 'open';
   function renderOrders() {
-    const paid = state.orders.filter(o => o.status === 'betaald');
-    $('orStats').innerHTML = `<span><b>${paid.length}</b> betaald</span><span><b>${euro(paid.reduce((s, o) => s + o.total, 0))}</b> omzet</span>`;
-    $('orList').innerHTML = state.orders.length ? state.orders.map(o => `
-      <article class="bh-card">
-        <div class="bh-card-when"><b>${date(o.created)}</b><span class="bh-pill">${o.delivery === 'ophalen' ? 'Ophalen' : 'Verzenden'}</span></div>
+    const echt = state.orders.filter(o => o.status !== 'wacht op betaling' && o.status !== 'geannuleerd');
+    const maand = Date.now() - 30 * 86400000;
+    $('orStats').innerHTML = `<span><b>${state.orders.filter(o => OPEN.includes(o.status)).length}</b> te doen</span><span><b>${euro(echt.filter(o => o.created > maand).reduce((s, o) => s + o.total, 0))}</b> omzet 30 dagen</span>`;
+    const lijst = orFilter === 'open' ? state.orders.filter(o => OPEN.includes(o.status) || o.status === 'wacht op betaling') : state.orders;
+    const statussen = (state.statussen || []).filter(x => x !== 'betaald');
+    $('orList').innerHTML = lijst.length ? lijst.map(o => `
+      <article class="bh-card" data-order="${o.id}">
+        <div class="bh-card-when"><b>${date(o.created)}</b><span class="bh-pill">${o.delivery === 'ophalen' ? 'Ophalen' : 'Verzenden'}</span>${o.factuur ? `<a class="bh-link" href="/api/admin?factuur=${o.id}&token=${encodeURIComponent(localStorage.getItem(TOKEN) || '')}" target="_blank" rel="noopener">Factuur ${esc(o.factuur.nummer)}</a>` : ''}</div>
         <div class="bh-card-main">
-          <p class="bh-name">${esc(o.name)}</p>
+          <p class="bh-name">${esc(o.name)} <small class="bh-ref">#${esc(o.id.toUpperCase())}</small></p>
           <p class="bh-contact">${o.phone ? `<a href="tel:${esc(o.phone)}">${esc(o.phone)}</a> · ` : ''}<a href="mailto:${esc(o.email)}">${esc(o.email)}</a></p>
           <ul class="bh-items">${o.items.map(i => `<li>${i.qty}× ${esc(i.name)}</li>`).join('')}</ul>
           ${o.perfumes && o.perfumes.length ? `<p class="bh-meta"><b>Samples:</b> ${o.perfumes.map(esc).join(' · ')}</p>` : ''}
           ${o.address ? `<p class="bh-meta"><b>Adres:</b> ${esc(o.address)}</p>` : ''}
+          ${o.korting ? `<p class="bh-meta"><b>Korting:</b> ${esc(o.korting.code)} (-${euro(o.korting.cents)})</p>` : ''}
+          ${o.trackTrace ? `<p class="bh-meta"><b>Track &amp; trace:</b> ${esc(o.trackTrace)}</p>` : ''}
+          <p class="bh-meta bh-notitie"><b>Notitie:</b> <span data-note="${o.id}" contenteditable="true" spellcheck="false">${esc(o.note || '')}</span></p>
         </div>
         <div class="bh-card-side">
           <span class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${o.status}</span>
           <p class="bh-money">${euro(o.total)}</p>${o.mock ? '<p class="bh-src">test</p>' : ''}
+          ${o.status !== 'wacht op betaling' ? `<div class="bh-card-actions bh-statusrow">
+            <select class="bh-select" data-status="${o.id}">${statussen.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select>
+            ${o.delivery === 'verzenden' ? `<input class="bh-tt" data-tt="${o.id}" placeholder="track & trace (optioneel)" value="${esc(o.trackTrace || '')}">` : ''}
+            <button class="bh-btn bh-sm bh-gold" data-setstatus="${o.id}">Status opslaan</button>
+          </div>` : ''}
           <div class="bh-card-actions"><button class="bh-btn bh-sm bh-weg" data-delorder="${o.id}" title="Definitief uit het overzicht halen">Verwijderen</button></div>
         </div>
-      </article>`).join('') : '<p class="bh-empty">Nog geen bestellingen.</p>';
+      </article>`).join('') : `<p class="bh-empty">${orFilter === 'open' ? 'Niets te doen. Alles is afgehandeld.' : 'Nog geen bestellingen.'}</p>`;
     $('vcList').innerHTML = state.vouchers.length ? state.vouchers.map(v => `
       <article class="bh-card">
         <div class="bh-card-when"><b>${esc(v.code)}</b><span class="bh-pill">${gezelschap(v)}</span></div>
@@ -216,7 +233,30 @@
       </article>`).join('') : '<p class="bh-empty">Nog geen cadeaubonnen.</p>';
   }
 
+  $('orFilter').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    orFilter = b.dataset.f;
+    $('orFilter').querySelectorAll('button').forEach(x => x.classList.toggle('is-on', x === b));
+    renderOrders();
+  });
+  $('orList').addEventListener('focusout', async e => {
+    const n = e.target.closest('[data-note]'); if (!n) return;
+    try { await api({ action: 'orderNote', id: n.dataset.note, note: n.textContent.trim() }); toast('Notitie bewaard'); } catch (x) { toast(x.message, true); }
+  });
   $('orList').addEventListener('click', async e => {
+    const st = e.target.closest('[data-setstatus]');
+    if (st) {
+      const id = st.dataset.setstatus;
+      const card = st.closest('.bh-card');
+      const status = card.querySelector('[data-status]').value;
+      const tt = card.querySelector('[data-tt]');
+      try {
+        await api({ action: 'orderStatus', id, status, trackTrace: tt ? tt.value : undefined });
+        toast(['verzonden', 'klaar om op te halen', 'geannuleerd'].includes(status) ? 'Status opgeslagen, klant krijgt een mail' : 'Status opgeslagen');
+        await loadOverview();
+      } catch (x) { toast(x.message, true); }
+      return;
+    }
     const w = e.target.closest('[data-delorder]');
     if (!w) return;
     if (!confirm('Deze bestelling definitief uit het overzicht halen? Dit kun je niet terugdraaien.')) return;
@@ -227,9 +267,82 @@
     } catch (x) { toast(x.message, true); }
   });
 
+  /* ── klanten en wachtlijst ── */
+  function renderKlanten() {
+    const q = ($('klSearch').value || '').trim().toLowerCase();
+    const alle = state.klanten || [];
+    const rows = alle.filter(k => !q || k.naam.toLowerCase().includes(q) || k.email.includes(q));
+    $('klStats').innerHTML = `<span><b>${alle.length}</b> klanten</span><span><b>${euro(alle.reduce((s, k) => s + k.besteed, 0))}</b> besteed</span>`;
+    $('klList').innerHTML = rows.length ? rows.map(k => `
+      <article class="bh-card bh-klant">
+        <div class="bh-card-main">
+          <p class="bh-name">${esc(k.naam || k.email)}</p>
+          <p class="bh-contact">${k.tel ? `<a href="tel:${esc(k.tel)}">${esc(k.tel)}</a> · ` : ''}<a href="mailto:${esc(k.email)}">${esc(k.email)}</a></p>
+        </div>
+        <div class="bh-card-side">
+          <p class="bh-money">${euro(k.besteed)}</p>
+          <p class="bh-src">${k.bestellingen} ${k.bestellingen === 1 ? 'bestelling' : 'bestellingen'}${k.boekingen ? ` · ${k.boekingen} ${k.boekingen === 1 ? 'experience' : 'experiences'}` : ''}</p>
+          <p class="bh-src">laatst ${date(k.laatst)}</p>
+        </div>
+      </article>`).join('') : '<p class="bh-empty">Nog geen klanten.</p>';
+    const wl = state.wachtlijst || [];
+    $('wlList').innerHTML = wl.length ? wl.map(w => `
+      <article class="bh-card">
+        <div class="bh-card-when"><b>${date(w.created)}</b><span class="bh-pill">${w.people} ${w.people === 1 ? 'persoon' : 'personen'}</span></div>
+        <div class="bh-card-main">
+          <p class="bh-name">${esc(w.name)}</p>
+          <p class="bh-contact">${w.phone ? `<a href="tel:${esc(w.phone)}">${esc(w.phone)}</a> · ` : ''}<a href="mailto:${esc(w.email)}">${esc(w.email)}</a></p>
+          ${w.wens ? `<p class="bh-note">“${esc(w.wens)}”</p>` : ''}
+        </div>
+        <div class="bh-card-side"><div class="bh-card-actions"><button class="bh-btn bh-sm bh-weg" data-delwl="${w.id}">Afgehandeld</button></div></div>
+      </article>`).join('') : '<p class="bh-empty">Niemand op de wachtlijst.</p>';
+  }
+  $('klSearch').addEventListener('input', renderKlanten);
+  $('wlList').addEventListener('click', async e => {
+    const b = e.target.closest('[data-delwl]'); if (!b) return;
+    try { await api({ action: 'wachtlijstDelete', id: b.dataset.delwl }); await loadOverview(); } catch (x) { toast(x.message, true); }
+  });
+
+  /* ── kortingscodes ── */
+  async function loadKortingen() {
+    const { codes } = await api({ action: 'kortingList' });
+    $('kortList').innerHTML = codes.length ? codes.map(c => `
+      <article class="bh-card bh-prod">
+        <div class="bh-card-main">
+          <p class="bh-name">${esc(c.code)} <small class="bh-ref">${c.soort === 'pct' ? c.waarde + '%' : euro(c.waarde)} korting</small></p>
+          <p class="bh-meta">${c.min ? `vanaf ${euro(c.min)} · ` : ''}${c.tot ? `geldig tot ${c.tot} · ` : ''}${c.max ? `${c.gebruikt || 0} van ${c.max} gebruikt` : `${c.gebruikt || 0}× gebruikt`}</p>
+        </div>
+        <div class="bh-card-side"><div class="bh-card-actions"><button class="bh-btn bh-sm bh-weg" data-delkort="${esc(c.code)}">Verwijderen</button></div></div>
+      </article>`).join('') : '<p class="bh-empty">Nog geen kortingscodes.</p>';
+  }
+  $('kortForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    try { await api({ action: 'kortingSave', ...d }); toast('Code opgeslagen'); e.target.reset(); await loadKortingen(); } catch (x) { toast(x.message, true); }
+  });
+  $('kortList').addEventListener('click', async e => {
+    const b = e.target.closest('[data-delkort]'); if (!b) return;
+    if (!confirm(`Code ${b.dataset.delkort} verwijderen?`)) return;
+    try { await api({ action: 'kortingDelete', code: b.dataset.delkort }); await loadKortingen(); } catch (x) { toast(x.message, true); }
+  });
+
+  /* ── bedrijf & facturen ── */
+  async function loadBedrijf() {
+    const { bedrijf } = await api({ action: 'bedrijfGet' });
+    const f = $('bedrijfForm').elements;
+    ['naam', 'tel', 'straat', 'postcode', 'plaats', 'email', 'kvk', 'btwNummer', 'iban', 'btwPct', 'factuurPrefix', 'factuurStart'].forEach(k => { f[k].value = bedrijf[k] == null ? '' : bedrijf[k]; });
+    f.gratisVanaf.value = fmt((bedrijf.gratisVanaf || 0) / 100);
+  }
+  $('bedrijfForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    try { await api({ action: 'bedrijfSave', bedrijf: d }); toast('Opgeslagen'); } catch (x) { toast(x.message, true); }
+  });
+
   /* ── producten ── */
   async function loadProducts() {
     state.products = await api({ action: 'productsList' });
+    state.reviews = (await api({ action: 'reviewsList' })).reviews;
     renderCustom();
     renderBase();
   }
@@ -254,17 +367,39 @@
         <div class="bh-card-main"><p class="bh-name">${esc(p.n)}</p></div>
         <div class="bh-base-fields">
           ${['30', '50', '100'].map((ml, i) => `<label>${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
+          ${['30', '50', '100'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
           <label class="bh-check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> Verbergen</label>
           <button class="bh-btn bh-sm bh-gold" type="submit">Opslaan</button>
+        </div>
+        <div class="bh-reviews" data-product="${esc(p.n)}">
+          <p class="bh-meta"><b>Reviews:</b> ${(state.reviews && state.reviews[p.n] || []).map(r => `<span class="bh-review">${'★'.repeat(r.sterren)} ${esc(r.naam)}: “${esc(r.tekst.slice(0, 60))}${r.tekst.length > 60 ? '…' : ''}” <button type="button" class="bh-x" data-delreview="${r.id}" title="Verwijderen">×</button></span>`).join('') || 'nog geen'}</p>
+          <div class="bh-review-add"><input data-rv="naam" placeholder="Naam klant"><select data-rv="sterren"><option>5</option><option>4</option><option>3</option></select><input data-rv="tekst" placeholder="Wat zei de klant?"><button type="button" class="bh-btn bh-sm" data-addreview="${esc(p.n)}">Review toevoegen</button></div>
         </div>
       </form>`).join('') || (q.length >= 2 ? '<p class="bh-empty">Geen parfum gevonden.</p>' : '');
   }
   $('prodSearch').addEventListener('input', renderBase);
+  $('baseList').addEventListener('click', async e => {
+    const add = e.target.closest('[data-addreview]'), del = e.target.closest('[data-delreview]');
+    if (!add && !del) return;
+    e.preventDefault();
+    const box = e.target.closest('.bh-reviews');
+    try {
+      if (add) {
+        const g = k => box.querySelector(`[data-rv="${k}"]`).value;
+        await api({ action: 'reviewSave', product: box.dataset.product, naam: g('naam'), sterren: g('sterren'), tekst: g('tekst') });
+        toast('Review toegevoegd');
+      } else {
+        await api({ action: 'reviewDelete', product: box.dataset.product, id: del.dataset.delreview });
+      }
+      const { reviews } = await api({ action: 'reviewsList' });
+      state.reviews = reviews; renderBase();
+    } catch (x) { toast(x.message, true); }
+  });
   $('baseList').addEventListener('submit', async e => {
     e.preventDefault();
     const f = e.target, d = Object.fromEntries(new FormData(f));
     try {
-      await api({ action: 'productOverride', n: f.dataset.n, v: [d.v0, d.v1, d.v2], hidden: Boolean(d.hidden) });
+      await api({ action: 'productOverride', n: f.dataset.n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2], hidden: Boolean(d.hidden) });
       toast('Opgeslagen');
       state.products = await api({ action: 'productsList' });
     } catch (x) { toast(x.message, true); }

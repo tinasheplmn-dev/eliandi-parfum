@@ -143,3 +143,24 @@ input, select, textarea, button { font: inherit; }
   .bh-card-actions { justify-content: flex-start; }
   .bh-grid { grid-template-columns: 1fr; }
 }
+
+/* bestellingen: status, notitie, factuur */
+.bh-link { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--glans); text-decoration: none; border-bottom: 1px solid rgba(212,167,60,.4); margin-top: 6px; display: inline-block; }
+.bh-ref { font: 400 11px Montserrat, sans-serif; letter-spacing: .1em; color: var(--dim); margin-left: 6px; }
+.bh-notitie span { display: inline-block; min-width: 160px; padding: 2px 6px; border-bottom: 1px dashed rgba(212,167,60,.4); outline: none; }
+.bh-notitie span:focus { border-color: var(--glans); background: rgba(212,167,60,.06); }
+.bh-statusrow { display: grid; gap: 6px; }
+.bh-select, .bh-tt { background: rgba(255,255,255,.04); border: 1px solid rgba(212,167,60,.35); color: var(--ivoor); font: 400 12px Montserrat, sans-serif; padding: 7px 9px; }
+.bh-s-wordt-voorbereid { background: rgba(212,167,60,.14); color: var(--glans); }
+.bh-s-verzonden, .bh-s-klaar-om-op-te-halen { background: rgba(90,160,220,.16); color: #a9d0f2; }
+.bh-s-afgeleverd { background: rgba(79,195,138,.14); color: #8fe0b6; }
+.bh-klant { grid-template-columns: 1fr auto; }
+/* voorraad en reviews bij een product */
+.bh-base-fields label { min-width: 70px; }
+.bh-reviews { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid rgba(212,167,60,.12); }
+.bh-review { display: inline-block; margin: 2px 8px 2px 0; color: var(--tekst); }
+.bh-x { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 14px; }
+.bh-x:hover { color: #f0c3b6; }
+.bh-review-add { display: grid; grid-template-columns: 1fr 70px 2fr auto; gap: 6px; margin-top: 8px; }
+.bh-review-add input, .bh-review-add select { background: rgba(255,255,255,.04); border: 1px solid rgba(212,167,60,.3); color: var(--ivoor); font: 400 12px Montserrat, sans-serif; padding: 7px 9px; min-width: 0; }
+@media (max-width: 700px) { .bh-review-add { grid-template-columns: 1fr 1fr; } }

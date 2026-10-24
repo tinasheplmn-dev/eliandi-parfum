@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/quiz.css">
   <link rel="stylesheet" href="css/cart.css">
   <link rel="stylesheet" href="css/checkout.css">
+  <script src="js/taal.js"></script>
 </head>
 <body class="quizpage" data-nocartfab>
 
@@ -76,8 +77,15 @@
       <aside class="co-summary">
         <p class="co-sum-title">Jouw bestelling</p>
         <ul class="co-lines" id="coLines"></ul>
+        <div class="co-code">
+          <label class="ql-field"><span>Kortingscode <i>(optioneel)</i></span>
+            <div class="co-code-row"><input type="text" id="coCode" autocapitalize="characters" autocomplete="off" placeholder="CODE"><button type="button" class="btn btn-ghost" id="coCodeBtn">Toepassen</button></div></label>
+          <p class="co-code-msg" id="coCodeMsg"></p>
+        </div>
         <p class="co-row-sum"><span>Subtotaal</span><b id="coSub"></b></p>
+        <p class="co-row-sum" id="coDiscRow" hidden><span id="coDiscLabel">Korting</span><b id="coDisc"></b></p>
         <p class="co-row-sum"><span>Verzending</span><b id="coShip"></b></p>
+        <p class="co-free" id="coFree" hidden></p>
         <p class="co-row-sum co-total"><span>Totaal</span><b id="coTotal"></b></p>
         <button class="btn btn-gold co-pay" id="coPay" type="submit">Betalen</button>
         <p class="ql-error" id="coError" role="alert"></p>

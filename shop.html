@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/cart.css">
   <link rel="stylesheet" href="css/shop.css">
+  <script src="js/taal.js"></script>
 </head>
 <body class="shoppage" data-page="shop">
 
@@ -56,7 +57,7 @@
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Dames</b><small data-count="dames"></small></span>
           </a>
-          <a class="sh-cat sh-cat-heren sh-cat-foto" href="#resultaten" data-cat="g:heren" style="--foto:url(/assets/shop/heren.jpg)">
+          <a class="sh-cat sh-cat-heren sh-cat-foto" href="#resultaten" data-cat="g:heren" style="--foto:url(/assets/shop/heren.webp)">
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Heren</b><small data-count="heren"></small></span>
           </a>
@@ -64,19 +65,40 @@
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Unisex</b><small data-count="unisex"></small></span>
           </a>
-          <a class="sh-cat sh-cat-foto" href="quiz.html" style="--foto:url(/assets/discovery-front.jpg)">
+          <a class="sh-cat sh-cat-foto" href="#discovery" data-set-open style="--foto:url(/assets/discovery-front.webp)">
             <span class="sh-cat-art" aria-hidden="true"></span>
-            <span class="sh-cat-body"><b>Discovery Set</b><small>Vijf samples van 10 ml, gekozen op jouw geurprofiel</small></span>
+            <span class="sh-cat-body"><b>Discovery Set</b><small>Vijf samples van 10 ml. Kies ze zelf, of laat de geurwijzer kiezen</small></span>
           </a>
           <a class="sh-cat sh-cat-nieuw" href="#resultaten" data-cat="nieuw" style="--tint:#c9a24f">
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Nieuw binnen</b><small data-count="nieuw"></small></span>
           </a>
-          <a class="sh-cat sh-cat-foto" href="experience.html#cadeau" style="--foto:url(/assets/angelo-werkt.jpg)">
+          <a class="sh-cat sh-cat-foto" href="experience.html#cadeau" style="--foto:url(/assets/angelo-werkt.webp)">
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Cadeau</b><small>Een privé-Experience met Angelo, als bon</small></span>
           </a>
         </div>
+      </div>
+    </section>
+
+    <!-- ══════════ DISCOVERY SET SAMENSTELLEN ══════════ -->
+    <section class="sh-set" id="shSet" hidden aria-label="Stel je Discovery Set samen">
+      <div class="wrap sh-set-inner">
+        <div class="sh-set-head">
+          <div>
+            <p class="kicker">Discovery Set &middot; &euro;49,95</p>
+            <h2 class="sh-h2">Vijf geuren, 10 ml elk. <em>Jij kiest.</em></h2>
+            <p>Zoek hieronder, of klik bij een geur in de lijst op <b>+ Discovery Set</b>. Liever advies? <a href="quiz.html">De geurwijzer</a> kiest vijf geuren op jouw profiel.</p>
+          </div>
+          <button type="button" class="sh-set-close" data-set-close aria-label="Sluiten">&times;</button>
+        </div>
+        <div class="sh-set-slots" aria-live="polite"></div>
+        <div class="sh-set-row">
+          <label class="sh-search sh-set-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg><input type="search" class="sh-set-query" placeholder="Zoek een geur voor je set…" autocomplete="off" aria-label="Zoek een geur voor je set"></label>
+          <p class="sh-set-count">0 van 5 gekozen</p>
+          <button type="button" class="btn btn-gold sh-set-add" disabled>Kies nog 5 geuren</button>
+        </div>
+        <div class="sh-set-results"></div>
       </div>
     </section>
 
@@ -92,6 +114,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
           Filters <b id="shFilterCount" hidden></b>
         </button>
+        <div class="sh-view" id="shView" role="group" aria-label="Weergave">
+          <button type="button" data-view="grid" class="is-on" aria-label="Raster"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+          <button type="button" data-view="list" aria-label="Lijst"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        </div>
         <label class="sh-sort">
           <span>Sorteer</span>
           <select id="shSort" aria-label="Sorteren">
@@ -174,6 +200,7 @@
       </aside>
 
       <section class="sh-results" aria-live="polite">
+        <div class="sh-recent" id="shRecent" hidden></div>
         <div class="sh-active" id="shActive" hidden></div>
         <div class="sh-grid" id="shGrid"></div>
         <div class="sh-empty" id="shEmpty" hidden>
@@ -206,6 +233,18 @@
     </section>
   </main>
 
+  <div class="sh-cmpbar" id="shCmpBar" hidden>
+    <p class="sh-cmpbar-text"></p>
+    <button type="button" class="btn btn-gold" data-cmp-open disabled>Vergelijk</button>
+    <button type="button" class="sh-cmpbar-clear" data-cmp-clear>Wis</button>
+  </div>
+  <div class="sh-cmp-overlay" id="shCmpOverlay" hidden role="dialog" aria-label="Geuren vergelijken">
+    <div class="sh-cmp-panel">
+      <div class="sh-cmp-head"><p class="kicker">Naast elkaar</p><button type="button" class="sh-set-close" data-cmp-close aria-label="Sluiten">&times;</button></div>
+      <div class="sh-cmp-table"></div>
+    </div>
+  </div>
+
   <footer class="sh-footer">
     <p>Eliandi Parfum &middot; Vughterstraat 70, 5211 GK 's-Hertogenbosch &middot; <a href="tel:+31687080256">06 870 802 56</a> &middot; <a href="mailto:info@eliandiparfum.com">info@eliandiparfum.com</a></p>
     <p class="sh-footer-sub">Verzending binnen Nederland en België, of ophalen in de winkel. Betalen met iDEAL, kaart en meer.</p>
@@ -230,7 +269,7 @@
     </defs>
   </svg>
 
-  <script src="js/catalog.js"></script>
+  <script src="js/catalog-lite.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/shop.js"></script>
   <script src="js/zonder-server.js" defer></script>

@@ -233,3 +233,34 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
   op de Vercel Marketplace)
 - `SHIPPING_PRICE_CENTS` (standaard 495), `DISCOVERY_PRICE_CENTS`,
   `SUBSCRIPTION_PRICE_CENTS`, `SITE_URL`
+
+## Webshopbeheer, facturen en beveiliging (oktober 2026)
+
+**Dashboard voor Angelo** (`/beheer`), zo eenvoudig mogelijk gehouden:
+
+- **Bestellingen:** standaard alleen wat nog te doen is. Per bestelling een status (`wordt voorbereid`, `verzonden`, `klaar om op te halen`, `afgeleverd`, `geannuleerd`), een veld voor track & trace, een notitie en een knop **Factuur**. Bij verzonden, klaar om op te halen en geannuleerd krijgt de klant automatisch een mail.
+- **Facturen:** bij elke betaalde bestelling maakt `api/_factuur.js` een PDF-factuur (doorlopend nummer `IN001000`, `IN001001`, …) en stuurt hem als bijlage mee in de bevestigingsmail. Opmaak volgt de oude PrestaShop-factuur. Bedrijfsgegevens, btw-nummer, factuurreeks en de drempel voor gratis verzending staan onder **Bedrijf & facturen**.
+- **Klanten:** iedereen die bestelde of een Experience boekte, met totaal besteed. Daaronder de **wachtlijst** voor de Experience.
+- **Producten:** per geur prijzen, **voorraad per maat** (leeg = onbeperkt, 0 = uitverkocht; betaalde bestellingen boeken automatisch af) en **reviews** per geur.
+- **Kortingen:** kortingscodes in procenten of euro, met minimumbedrag, einddatum en maximaal aantal keer.
+
+**Shop:** zoeksuggesties tijdens het typen, raster- of lijstweergave, recent bekeken, tot drie geuren vergelijken, zelf een Discovery Set samenstellen (`/shop#discovery`), uitverkochte maten, sterren uit de reviews. De shop laadt eerst `js/catalog-lite.js` en daarna de volledige catalogus; beide schrijft `tools/parse_catalog.py`.
+
+**Afrekenen:** kortingscode, gratis verzending vanaf de drempel (standaard €75) met "nog €X tot gratis verzending" in de winkelmand.
+
+**Experience:** wachtlijst als er geen plek is, of als geen enkel moment past.
+
+**Talen:** Nederlands, Engels en Arabisch (van rechts naar links) via `js/taal.js` en `js/i18n-data.js`. De keuze staat rechtsboven en blijft bewaard; `?lang=en` of `?lang=ar` in een link zet hem. Geurnoten en geurfamilies worden woord voor woord vertaald. De productomschrijvingen uit de sheet zijn nog alleen Nederlands. Ontbrekende vertalingen vind je met `?i18n=debug` in de console.
+
+**Afbeeldingen:** alle foto's staan ook als WebP, met een kleinere variant van 800 px voor telefoons. Social media-previews (`og:image`) gebruiken nog de JPG.
+
+**Beveiliging:**
+
+- Beveiligingsheaders in `vercel.json` (onder meer Content-Security-Policy, HSTS, X-Frame-Options).
+- Inloggen in het dashboard blokkeert na tien foute pogingen per IP-adres een kwartier.
+- Limiet per IP-adres op bestellen, boeken, cadeaubonnen en het controleren van kortingscodes, tegen raden en spam.
+- Klantinvoer komt nooit als HTML in de meldingsmails aan Angelo.
+- Facturen zijn alleen te downloaden met een geldige dashboard-sessie (12 uur geldig).
+- De dagelijkse taak draait alleen met het juiste `CRON_SECRET`.
+
+**Vercel Hobby:** maximaal twaalf functies. Er zijn er nu precies twaalf, dus nieuwe functies gaan in een bestaand bestand (zoals de factuurdownload en de dagtaak in `api/admin.js`).

@@ -34,9 +34,12 @@
       <nav class="bh-nav" id="nav">
         <button data-tab="boekingen" class="is-on">Boekingen</button>
         <button data-tab="bestellingen">Bestellingen</button>
+        <button data-tab="klanten">Klanten</button>
         <button data-tab="producten">Producten</button>
+        <button data-tab="kortingen">Kortingen</button>
         <button data-tab="site">Site bewerken</button>
         <button data-tab="instellingen">Agenda &amp; prijzen</button>
+        <button data-tab="bedrijf">Bedrijf &amp; facturen</button>
       </nav>
       <button class="bh-logout" id="logout">Uitloggen</button>
     </aside>
@@ -80,9 +83,38 @@
       <!-- Bestellingen -->
       <section class="bh-tab" data-tab="bestellingen" hidden>
         <header class="bh-head"><h2>Bestellingen</h2><div class="bh-stats" id="orStats"></div></header>
+        <div class="bh-filter" id="orFilter"><button class="is-on" data-f="open">Te doen</button><button data-f="alle">Alles</button></div>
+        <p class="bh-hint">Zet de status om zodra je iets doet. Bij <b>verzonden</b>, <b>klaar om op te halen</b> en <b>geannuleerd</b> krijgt de klant automatisch een mail.</p>
         <div class="bh-list" id="orList"></div>
         <h3 class="bh-sub">Cadeaubonnen</h3>
         <div class="bh-list" id="vcList"></div>
+      </section>
+
+      <!-- Klanten -->
+      <section class="bh-tab" data-tab="klanten" hidden>
+        <header class="bh-head"><h2>Klanten</h2><div class="bh-stats" id="klStats"></div></header>
+        <p class="bh-hint">Iedereen die ooit betaald heeft of een Experience boekte, met wat ze samen besteed hebben. Geen aparte administratie: dit komt uit de bestellingen.</p>
+        <input class="bh-search" id="klSearch" placeholder="Zoek op naam of e-mail…">
+        <div class="bh-list" id="klList"></div>
+        <h3 class="bh-sub">Wachtlijst Experience</h3>
+        <p class="bh-hint">Mensen die geen plek vonden voor hun gezelschap en gebeld willen worden zodra er ruimte is.</p>
+        <div class="bh-list" id="wlList"></div>
+      </section>
+
+      <!-- Kortingen -->
+      <section class="bh-tab" data-tab="kortingen" hidden>
+        <header class="bh-head"><h2>Kortingscodes</h2></header>
+        <p class="bh-hint">Een code die klanten bij het afrekenen invullen. Bijvoorbeeld 10% voor winkelklanten die online bijbestellen, of €5 bij een actie.</p>
+        <form class="bh-form bh-grid" id="kortForm">
+          <label>Code<input name="code" placeholder="WELKOM10" autocapitalize="characters" required></label>
+          <label>Soort<select name="soort"><option value="pct">Percentage</option><option value="bedrag">Vast bedrag (€)</option></select></label>
+          <label>Korting<input name="waarde" inputmode="decimal" placeholder="10" required></label>
+          <label>Geldig vanaf bedrag (€, optioneel)<input name="min" inputmode="decimal" placeholder="50"></label>
+          <label>Geldig tot (optioneel)<input name="tot" type="date"></label>
+          <label>Maximaal aantal keer (optioneel)<input name="max" inputmode="numeric" placeholder="100"></label>
+          <div class="bh-wide bh-actions"><button class="bh-btn bh-gold" type="submit">Code opslaan</button></div>
+        </form>
+        <div class="bh-list" id="kortList"></div>
       </section>
 
       <!-- Producten -->
@@ -110,9 +142,31 @@
         <div class="bh-list" id="customList"></div>
 
         <h3 class="bh-sub">Bestaande collectie</h3>
-        <p class="bh-hint">Zoek een parfum om de prijzen aan te passen of het tijdelijk te verbergen.</p>
+        <p class="bh-hint">Zoek een parfum om de prijzen of de voorraad per maat aan te passen, het tijdelijk te verbergen, of een review toe te voegen. Voorraad leeg laten = onbeperkt; 0 = uitverkocht.</p>
         <input class="bh-search" id="prodSearch" placeholder="Zoek op naam…">
         <div class="bh-list" id="baseList"></div>
+      </section>
+
+      <!-- Bedrijf & facturen -->
+      <section class="bh-tab" data-tab="bedrijf" hidden>
+        <header class="bh-head"><h2>Bedrijf &amp; facturen</h2></header>
+        <p class="bh-hint">Deze gegevens komen onderaan elke factuur. De factuur gaat automatisch als PDF mee in de bevestigingsmail en is per bestelling te downloaden.</p>
+        <form class="bh-form bh-grid" id="bedrijfForm">
+          <label>Bedrijfsnaam<input name="naam"></label>
+          <label>Telefoon<input name="tel"></label>
+          <label>Straat en nummer<input name="straat"></label>
+          <label>Postcode<input name="postcode"></label>
+          <label>Plaats<input name="plaats"></label>
+          <label>E-mail<input name="email" type="email"></label>
+          <label>KvK-nummer<input name="kvk"></label>
+          <label>Btw-nummer<input name="btwNummer" placeholder="NL000000000B01"></label>
+          <label>IBAN (optioneel)<input name="iban"></label>
+          <label>Btw-percentage<input name="btwPct" inputmode="numeric"></label>
+          <label>Factuurreeks: voorvoegsel<input name="factuurPrefix" placeholder="IN"></label>
+          <label>Factuurreeks: eerste nummer<input name="factuurStart" inputmode="numeric"></label>
+          <label>Gratis verzending vanaf (€, 0 = nooit)<input name="gratisVanaf" inputmode="decimal"></label>
+          <div class="bh-wide bh-actions"><button class="bh-btn bh-gold" type="submit">Opslaan</button></div>
+        </form>
       </section>
 
       <!-- Site bewerken -->

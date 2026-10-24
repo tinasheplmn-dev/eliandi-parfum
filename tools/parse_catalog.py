@@ -292,6 +292,16 @@ with open(OUT, "w") as f:
     f.write(js)
 print("bytes:", len(js))
 
+# Lichte versie voor de eerste weergave van de shop: zonder noten en
+# verhaal. De shop laadt de volledige catalogus er direct achteraan.
+LITE_OUT = OUT.replace("catalog.js", "catalog-lite.js")
+LITE_KEYS = ("n", "g", "f", "p", "v", "d", "w", "s", "x", "o")
+lite = [{k: p[k] for k in LITE_KEYS if k in p} for p in products]
+with open(LITE_OUT, "w") as f:
+    f.write("/* Gegenereerd door tools/parse_catalog.py: lichte catalogus voor de shop. */\n"
+            "var ELIANDI_CATALOG_LITE = " + json.dumps(lite, ensure_ascii=False, separators=(",", ":")) + ";\n")
+print("lite bytes:", os.path.getsize(LITE_OUT))
+
 # Server-side prijslijst: de checkout rekent altijd met deze bedragen,
 # nooit met prijzen die de browser meestuurt.
 PRICES_OUT = OUT.replace("js/catalog.js", "api/_prices.json")

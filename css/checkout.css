@@ -67,3 +67,13 @@
   .co-summary { position: static; }
   .co-main { padding-top: 100px; }
 }
+
+/* kortingscode en gratis verzending */
+.co-code { margin: 6px 0 14px; }
+.co-code-row { display: flex; gap: 8px; }
+.co-code-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .12em; }
+.co-code-row .btn { padding: 12px 16px; font-size: 10.5px; white-space: nowrap; }
+.co-code-msg { margin: 8px 0 0; font-size: .8rem; color: var(--goud-glans); min-height: 1em; }
+.co-code-msg.is-bad { color: #e8a090; }
+.co-free { margin: -4px 0 10px; font-size: .8rem; color: var(--tekst-dim); }
+.co-free b { color: var(--goud-glans); font-weight: 500; }

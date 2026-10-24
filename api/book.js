@@ -3,7 +3,7 @@
    Met een betaalde cadeaubon-code is er niets meer te betalen: de
    boeking staat direct vast. Anders wordt het moment vastgehouden en
    start de aanbetaling; webhook of terugkeer zet hem op 'geboekt'. */
-const { send, readJson, clean, isEmail, isPhone, createPayment, newId } = require('./_lib');
+const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak } = require('./_lib');
 const { HOLD_SECONDS, getSettings, peopleFrom, priceOf, slotsFor, label, amsKey, slotEnd } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getVoucher, saveVoucher } = require('./_records');
 const agenda = require('./_agenda');
@@ -14,8 +14,26 @@ const dayLabel = slot => new Date(slot.slice(0, 10) + 'T12:00:00Z').toLocaleDate
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
+  if (await teVaak(req, 'book', 15, 600)) return send(res, 429, { error: 'Te veel pogingen achter elkaar. Probeer het over een paar minuten opnieuw.' });
   const b = await readJson(req);
   const cfg = await getSettings();
+
+  /* wachtlijst: geen plek voor dit gezelschap, maar wel interesse */
+  if (b.wachtlijst) {
+    const w = {
+      id: newId(5), people: peopleFrom(cfg, b.people), name: clean(b.name, 80), email: clean(b.email, 120), phone: clean(b.phone, 30),
+      wens: clean(b.wens, 300), created: Date.now(),
+    };
+    if (!w.name) return send(res, 400, { error: 'Vul je naam in.' });
+    if (!isEmail(w.email)) return send(res, 400, { error: 'Vul een geldig e-mailadres in.' });
+    const { store } = require('./_lib');
+    await store.setJson('wachtlijst:' + w.id, w);
+    await store.sadd('idx:wachtlijst', w.id);
+    await require('./_mail').melding(`Wachtlijst Experience: ${w.name} (${label(w.people).toLowerCase()})`, [
+      `${w.name} &middot; ${w.phone || '-'} &middot; ${w.email}`, w.wens ? `Wens: ${w.wens}` : '',
+    ].filter(Boolean));
+    return send(res, 200, { ok: true });
+  }
 
   const people = peopleFrom(cfg, b.people !== undefined ? b.people : b.variant);
   const slot = clean(b.slot, 16);

@@ -92,6 +92,40 @@ async function saveOrder(o) {
   await store.setJson('order:' + o.id, o);
   await store.sadd('idx:orders', o.id);
 }
+const getOrder = id => store.getJson('order:' + id);
+
+/* Voorraad per maat omlaag zodra er betaald is (alleen waar Angelo een voorraad heeft ingevuld). */
+async function voorraadAfboeken(o) {
+  const { getOverrides } = require('./_catalog');
+  const overrides = await getOverrides();
+  const SIZES = { 30: 0, 50: 1, 100: 2 };
+  let gewijzigd = false;
+  (o.items || []).forEach(i => {
+    if (!i.n || SIZES[i.ml] === undefined) return;
+    const ov = overrides[i.n];
+    if (!ov || !Array.isArray(ov.stock) || ov.stock[SIZES[i.ml]] == null) return;
+    ov.stock[SIZES[i.ml]] = Math.max(0, ov.stock[SIZES[i.ml]] - i.qty);
+    gewijzigd = true;
+  });
+  if (gewijzigd) await store.setJson('cms:product-overrides', overrides);
+}
+
+/* Statussen die Angelo in het dashboard zet. De klant krijgt bericht
+   bij de stappen die er voor hem toe doen. */
+const ORDER_STATUSSEN = ['betaald', 'wordt voorbereid', 'verzonden', 'klaar om op te halen', 'afgeleverd', 'geannuleerd'];
+async function setOrderStatus(id, status, extra = {}) {
+  if (!ORDER_STATUSSEN.includes(status)) return null;
+  const o = await getOrder(id);
+  if (!o) return null;
+  o.status = status;
+  if (extra.trackTrace !== undefined) o.trackTrace = String(extra.trackTrace).slice(0, 200);
+  o.log = [...(o.log || []), { status, ts: Date.now() }].slice(-20);
+  await saveOrder(o);
+  if (['verzonden', 'klaar om op te halen', 'geannuleerd'].includes(status) && await eenmalig(`mail-status:${id}:${status}:${o.log.length}`, 600)) {
+    await mail.bestellingStatus(o, status);
+  }
+  return o;
+}
 
 /* ── Cadeaubonnen ── */
 function newVoucherCode() {
@@ -116,8 +150,25 @@ async function onPaid(session) {
     const o = await store.getJson('order:' + m.orderId);
     if (o && o.status !== 'betaald') { o.status = 'betaald'; o.sid = session.id; await saveOrder(o); }
 
+    /* factuur, voorraad en kortingscode: één keer per bestelling */
+    if (o && await eenmalig('afhandeling:' + m.orderId)) {
+      try {
+        const { maakFactuur } = require('./_factuur');
+        const f = await maakFactuur(o);
+        o.factuur = f.factuur;
+        await saveOrder(o);
+      } catch (e) { console.error('factuur', e.message); }
+      try { await voorraadAfboeken(o); } catch (e) { console.error('voorraad', e.message); }
+      if (o.korting && o.korting.code) { try { await require('./_korting').gebruikt(o.korting.code); } catch (e) { /* niet erg */ } }
+    }
+
     if (o && await eenmalig('mail-bestelling:' + m.orderId)) {
-      await mail.bestellingBetaald(o);
+      let bijlage = null;
+      try {
+        const { factuurPdf, getBedrijf } = require('./_factuur');
+        if (o.factuur) bijlage = { filename: `factuur-${o.factuur.nummer}.pdf`, content: factuurPdf(o, await getBedrijf()).toString('base64') };
+      } catch (e) { console.error('factuurbijlage', e.message); }
+      await mail.bestellingBetaald(o, bijlage);
       await mail.melding(`Nieuwe bestelling van ${o.name} (${mail.euro(o.total)})`, [
         `${o.name} &middot; ${o.phone} &middot; ${o.email}`,
         (o.items || []).map(i => `${i.qty}x ${i.name}`).join('<br>'),
@@ -166,5 +217,5 @@ async function onExpired(session) {
 
 module.exports = {
   saveBooking, getBooking, setBookingStatus, holdSlots,
-  saveOrder, newVoucherCode, saveVoucher, getVoucher, onPaid, onExpired,
+  saveOrder, getOrder, setOrderStatus, ORDER_STATUSSEN, newVoucherCode, saveVoucher, getVoucher, onPaid, onExpired,
 };

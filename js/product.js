@@ -31,4 +31,16 @@
     add.textContent = 'Toegevoegd ✓'; add.classList.add('is-done');
     setTimeout(() => { add.textContent = 'In winkelmand'; add.classList.remove('is-done'); }, 1800);
   });
+
+  /* recent bekeken: deze geur vooraan, de vorige als rij onderaan */
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem('eliandi_recent') || '[]'); } catch (e) { /* privémodus */ }
+  const vorige = recent.filter(r => r.n !== P.n).slice(0, 8);
+  try { localStorage.setItem('eliandi_recent', JSON.stringify([{ n: P.n, s: P.slug }, ...vorige].slice(0, 12))); } catch (e) { /* privémodus */ }
+  const box = $('pdRecent');
+  if (box && vorige.length) {
+    const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    box.innerHTML = `<p class="kicker">Recent bekeken</p><div class="pd-recent-row">${vorige.filter(r => r.s).map(r => `<a href="/geur/${esc(r.s)}">${esc(r.n)}</a>`).join('')}</div>`;
+    box.hidden = false;
+  }
 })();

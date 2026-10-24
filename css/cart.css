@@ -118,3 +118,7 @@ body.cart-open .cart-drawer { transform: none; }
 .qr-size[disabled] { opacity: .35; cursor: not-allowed; }
 .qr-add { padding: 12px 20px; font-size: 10.5px; }
 .qr-add.is-added { pointer-events: none; }
+
+.cart-free { margin: 0 0 10px; font-size: .8rem; color: var(--tekst-dim); }
+.cart-free b { color: var(--goud-glans); font-weight: 500; }
+.cart-free[hidden] { display: none; }

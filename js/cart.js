@@ -46,7 +46,11 @@
     clear: () => write([]),
     euro,
   };
+  api.gratisVanaf = 0;
   window.EliandiCart = api;
+  fetch('/api/products', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(d => {
+    if (d && d.gratisVanaf) { api.gratisVanaf = d.gratisVanaf / 100; render(); }
+  }).catch(() => {});
 
   /* ── knop + lade, in huisstijl ── */
   const btn = document.createElement('button');
@@ -65,6 +69,7 @@
     </div>
     <ul class="cart-lines"></ul>
     <div class="cart-foot">
+      <p class="cart-free"></p>
       <p class="cart-sum"><span>Subtotaal</span><b class="cart-total"></b></p>
       <a class="btn btn-gold cart-go" href="afrekenen.html">Afrekenen</a>
     </div>`;
@@ -98,6 +103,12 @@
       </li>`).join('') : '<li class="cart-empty">Nog leeg. Kies een geur uit jouw selectie.</li>';
     drawer.querySelector('.cart-total').textContent = euro(api.total());
     drawer.querySelector('.cart-foot').hidden = !items.length;
+    const free = drawer.querySelector('.cart-free');
+    if (api.gratisVanaf && items.length) {
+      const rest = api.gratisVanaf - api.total();
+      free.innerHTML = rest > 0 ? `Nog <b>${euro(rest)}</b> tot gratis verzending` : '✦ Gratis verzending';
+      free.hidden = false;
+    } else free.hidden = true;
   }
   drawer.addEventListener('click', e => {
     const b = e.target.closest('[data-q]');

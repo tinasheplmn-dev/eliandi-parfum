@@ -4,11 +4,12 @@
          prijs) en start de betaling. De code wordt actief zodra er
          betaald is.
    GET ?code=: openbare gegevens voor de printbare bon en het boeken. */
-const { send, readJson, clean, isEmail, isPhone, createPayment } = require('./_lib');
+const { send, readJson, clean, isEmail, isPhone, createPayment, teVaak } = require('./_lib');
 const { getSettings, peopleFrom, priceOf, label } = require('./_slots');
 const { newVoucherCode, saveVoucher, getVoucher } = require('./_records');
 
 module.exports = async (req, res) => {
+  if (await teVaak(req, 'voucher', 30, 600)) return send(res, 429, { error: 'Te veel pogingen. Probeer het over tien minuten opnieuw.' });
   if (req.method === 'GET') {
     const code = new URL(req.url, 'http://x').searchParams.get('code') || '';
     const v = await getVoucher(code);

@@ -140,7 +140,7 @@
   /* ── agenda ── */
   const dayLabel = ds => {
     const d = new Date(ds + 'T12:00:00Z');
-    const f = o => d.toLocaleDateString('nl-NL', { ...o, timeZone: 'UTC' }).replace('.', '');
+    const f = o => d.toLocaleDateString(window.ELIANDI_LOCALE || 'nl-NL', { ...o, timeZone: 'UTC' }).replace('.', '');
     return { wd: f({ weekday: 'short' }), day: d.getUTCDate(), mo: f({ month: 'short' }), long: f({ weekday: 'long', day: 'numeric', month: 'long' }) };
   };
   /* past dit gezelschap vanaf dit moment? 'run' = vrije halfuren achter elkaar */
@@ -171,7 +171,9 @@
       $('xpLoading').hidden = false;
       $('xpLoading').textContent = state.people > 1
         ? `Er is de komende weken geen aaneengesloten plek voor ${state.people} personen. Probeer een kleiner gezelschap, of app Angelo.`
-        : 'Alle momenten zijn volgeboekt. App Angelo voor een plekje.';
+        : 'Alle momenten zijn volgeboekt.';
+      $('xpWait').hidden = false;
+      ['Name', 'Phone', 'Email'].forEach(k => { if (!$('wl' + k).value) $('wl' + k).value = $('xp' + k).value; });
     } else $('xpLoading').hidden = true;
     if (!days.find(d => d.date === state.date)) { state.date = days[0] && days[0].date; state.slot = null; }
     $('xpDays').innerHTML = days.map(d => {
@@ -269,6 +271,26 @@
       err.textContent = x.message;
       summary();
     }
+  });
+
+  /* ── wachtlijst: geen plek voor dit gezelschap ── */
+  $('xpWaitToggle').addEventListener('click', () => {
+    $('xpWait').hidden = false;
+    ['Name', 'Phone', 'Email'].forEach(k => { if (!$('wl' + k).value) $('wl' + k).value = $('xp' + k).value; });
+    $('xpWait').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  $('wlSend').addEventListener('click', async () => {
+    const msg = $('wlMsg'), btn = $('wlSend');
+    msg.textContent = ''; btn.disabled = true;
+    try {
+      const r = await fetch('/api/book', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wachtlijst: true, people: state.people, name: $('wlName').value, phone: $('wlPhone').value, email: $('wlEmail').value, wens: $('wlWens').value }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Er ging iets mis.');
+      $('xpWait').innerHTML = `<h3 class="xp-wait-done">Je staat op de wachtlijst.</h3><p>Angelo neemt contact met je op zodra er een plek is voor ${state.people} ${state.people === 1 ? 'persoon' : 'personen'}.</p>`;
+    } catch (x) { msg.textContent = x.message; btn.disabled = false; }
   });
 
   /* ── cadeaubon ── */

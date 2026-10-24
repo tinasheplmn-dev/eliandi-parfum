@@ -3,7 +3,10 @@
    Body: { action, ... }. Alles behalve 'login' vereist het token
    (Authorization: Bearer ...) dat 'login' teruggeeft.
    ═══════════════════════════════════════════════════════════════ */
-const { send, readJson, clean, store, newId, makeToken, isAdmin, checkPassword, sanitizeHtml } = require('./_lib');
+const { send, readJson, clean, store, newId, makeToken, isAdmin, checkPassword, sanitizeHtml, loginGeblokkeerd, loginMislukt, loginGelukt } = require('./_lib');
+const { getOrder, setOrderStatus, ORDER_STATUSSEN } = require('./_records');
+const { getBedrijf, saveBedrijf, factuurPdf } = require('./_factuur');
+const korting = require('./_korting');
 const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
 const { analyze, getCustom, getOverrides, BASE_PRICES } = require('./_catalog');
@@ -16,6 +19,21 @@ async function list(idx, prefix) {
   const ids = await store.smembers(idx);
   const items = await store.mgetJson(ids.map(id => prefix + id));
   return items.filter(Boolean);
+}
+
+/* klanten: afgeleid uit bestellingen en boekingen, geen aparte administratie */
+function klanten(orders, bookings) {
+  const map = {};
+  const voeg = (email, naam, tel, bedrag, ts, soort) => {
+    const k = String(email || '').toLowerCase().trim();
+    if (!k) return;
+    const c = map[k] || (map[k] = { email: k, naam: naam || '', tel: tel || '', bestellingen: 0, boekingen: 0, besteed: 0, laatst: 0 });
+    if (naam) c.naam = naam; if (tel) c.tel = tel;
+    c[soort] += 1; c.besteed += bedrag || 0; c.laatst = Math.max(c.laatst, ts || 0);
+  };
+  orders.filter(o => o.status !== 'wacht op betaling' && o.status !== 'geannuleerd').forEach(o => voeg(o.email, o.name, o.phone, o.total, o.created, 'bestellingen'));
+  bookings.filter(b => b.status === 'geboekt').forEach(b => voeg(b.email, b.name, b.phone, b.paid || 0, b.created, 'boekingen'));
+  return Object.values(map).sort((a, b) => b.laatst - a.laatst);
 }
 
 /* wat staat er aan: agenda en betaalprovider */
@@ -31,7 +49,12 @@ const actions = {
   /* ── inloggen ── */
   async login(req, b) {
     await new Promise(r => setTimeout(r, 400)); // remt raden af
-    if (!checkPassword(req, b.password)) return [401, { error: 'Onjuist wachtwoord.' }];
+    if (await loginGeblokkeerd(req)) return [429, { error: 'Te veel pogingen. Probeer het over een kwartier opnieuw.' }];
+    if (!checkPassword(req, b.password)) {
+      const n = await loginMislukt(req);
+      return [401, { error: n >= 7 ? `Onjuist wachtwoord. Nog ${10 - n} ${10 - n === 1 ? 'poging' : 'pogingen'}.` : 'Onjuist wachtwoord.' }];
+    }
+    await loginGelukt(req);
     return [200, { token: makeToken(req), persistent: store.persistent }];
   },
 
@@ -47,7 +70,8 @@ const actions = {
     bookings.sort((a, b) => a.slot.localeCompare(b.slot));
     orders.sort((a, b) => b.created - a.created);
     vouchers.sort((a, b) => b.created - a.created);
-    return [200, { bookings, orders, vouchers, persistent: store.persistent, koppelingen: koppelingen() }];
+    const wachtlijst = (await list('idx:wachtlijst', 'wachtlijst:')).sort((a, b) => b.created - a.created);
+    return [200, { bookings, orders, vouchers, wachtlijst, klanten: klanten(orders, bookings), statussen: ORDER_STATUSSEN, persistent: store.persistent, koppelingen: koppelingen() }];
   },
 
   async bookingCancel(req, b) {
@@ -161,6 +185,89 @@ const actions = {
     return [200, { ok: true }];
   },
 
+  /* ── bestellingen: status, notitie, klanten ── */
+  async orderStatus(req, b) {
+    const o = await setOrderStatus(clean(b.id, 20), clean(b.status, 30), { trackTrace: b.trackTrace !== undefined ? clean(b.trackTrace, 200) : undefined });
+    return o ? [200, { ok: true }] : [400, { error: 'Onbekende bestelling of status.' }];
+  },
+  async orderNote(req, b) {
+    const o = await getOrder(clean(b.id, 20));
+    if (!o) return [404, { error: 'Bestelling niet gevonden.' }];
+    o.note = clean(b.note, 600);
+    await require('./_records').saveOrder(o);
+    return [200, { ok: true }];
+  },
+
+  /* ── kortingscodes ── */
+  async kortingList() { return [200, { codes: await korting.getCodes() }]; },
+  async kortingSave(req, b) {
+    const codes = await korting.getCodes();
+    const code = clean(b.code, 24).toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    if (!code) return [400, { error: 'Vul een code in (letters en cijfers).' }];
+    const soort = b.soort === 'bedrag' ? 'bedrag' : 'pct';
+    const waarde = soort === 'pct' ? Math.max(1, Math.min(100, parseInt(b.waarde, 10) || 0)) : Math.round(parseFloat(String(b.waarde).replace(',', '.')) * 100);
+    if (!waarde) return [400, { error: 'Vul een geldige korting in.' }];
+    const min = b.min ? Math.round(parseFloat(String(b.min).replace(',', '.')) * 100) || 0 : 0;
+    const tot = /^\d{4}-\d{2}-\d{2}$/.test(String(b.tot || '')) ? b.tot : '';
+    const max = parseInt(b.max, 10) || 0;
+    const bestaand = codes.find(c => c.code === code);
+    const nieuw = { code, soort, waarde, min, tot, max, gebruikt: bestaand ? bestaand.gebruikt || 0 : 0, actief: b.actief !== false, created: bestaand ? bestaand.created : Date.now() };
+    await korting.saveCodes([...codes.filter(c => c.code !== code), nieuw]);
+    return [200, { ok: true }];
+  },
+  async kortingDelete(req, b) {
+    const code = clean(b.code, 24).toUpperCase();
+    await korting.saveCodes((await korting.getCodes()).filter(c => c.code !== code));
+    return [200, { ok: true }];
+  },
+
+  /* ── bedrijfsgegevens (facturen, gratis verzending) ── */
+  async bedrijfGet() { return [200, { bedrijf: await getBedrijf() }]; },
+  async bedrijfSave(req, b) {
+    const cur = await getBedrijf();
+    const d = b.bedrijf || {};
+    const txt = (k, n) => (d[k] !== undefined ? clean(d[k], n) : cur[k]);
+    const out = {
+      ...cur,
+      naam: txt('naam', 80), straat: txt('straat', 80), postcode: txt('postcode', 12), plaats: txt('plaats', 60), land: txt('land', 40),
+      tel: txt('tel', 30), email: txt('email', 120), kvk: txt('kvk', 20), btwNummer: txt('btwNummer', 24), iban: txt('iban', 34),
+      btwPct: Math.max(0, Math.min(30, parseInt(d.btwPct, 10) || cur.btwPct)),
+      factuurPrefix: clean(d.factuurPrefix !== undefined ? d.factuurPrefix : cur.factuurPrefix, 6).toUpperCase() || 'IN',
+      factuurStart: Math.max(1, parseInt(d.factuurStart, 10) || cur.factuurStart),
+      gratisVanaf: d.gratisVanaf !== undefined ? Math.max(0, Math.round(parseFloat(String(d.gratisVanaf).replace(',', '.')) * 100) || 0) : cur.gratisVanaf,
+    };
+    await saveBedrijf(out);
+    return [200, { ok: true }];
+  },
+
+  /* ── reviews per geur ── */
+  async reviewSave(req, b) {
+    const alle = await store.getJson('cms:reviews', {});
+    const n = clean(b.product, 120);
+    if (!n) return [400, { error: 'Kies een geur.' }];
+    const r = { id: clean(b.id, 20) || newId(4), naam: clean(b.naam, 60) || 'Klant', tekst: clean(b.tekst, 500), sterren: Math.max(1, Math.min(5, parseInt(b.sterren, 10) || 5)), datum: Date.now() };
+    if (!r.tekst) return [400, { error: 'Vul een tekst in.' }];
+    alle[n] = [...(alle[n] || []).filter(x => x.id !== r.id), r].slice(-20);
+    await store.setJson('cms:reviews', alle);
+    return [200, { ok: true }];
+  },
+  async reviewDelete(req, b) {
+    const alle = await store.getJson('cms:reviews', {});
+    const n = clean(b.product, 120);
+    alle[n] = (alle[n] || []).filter(x => x.id !== clean(b.id, 20));
+    if (!alle[n].length) delete alle[n];
+    await store.setJson('cms:reviews', alle);
+    return [200, { ok: true }];
+  },
+  async reviewsList() { return [200, { reviews: await store.getJson('cms:reviews', {}) }]; },
+
+  /* ── wachtlijst Experience ── */
+  async wachtlijstDelete(req, b) {
+    const id = clean(b.id, 20);
+    await store.del('wachtlijst:' + id); await store.srem('idx:wachtlijst', id);
+    return [200, { ok: true }];
+  },
+
   /* ── producten ── */
   async productsList() {
     const [custom, overrides] = await Promise.all([getCustom(), getOverrides()]);
@@ -173,8 +280,12 @@ const actions = {
     const overrides = await getOverrides();
     const money = v => { const x = parseFloat(String(v).replace(',', '.')); return x > 0 ? Math.round(x * 100) / 100 : null; };
     const v = Array.isArray(b.v) ? b.v.slice(0, 3).map(money) : null;
-    overrides[n] = { ...(v ? { v } : {}), ...(b.hidden ? { hidden: true } : {}) };
-    if (!overrides[n].v && !overrides[n].hidden) delete overrides[n];
+    /* voorraad per maat: leeg = onbeperkt, 0 = uitverkocht */
+    const stock = Array.isArray(b.stock) ? b.stock.slice(0, 3).map(x => (x === '' || x === null || x === undefined ? null : Math.max(0, parseInt(x, 10) || 0))) : null;
+    const prev = overrides[n] || {};
+    overrides[n] = { ...(v ? { v } : prev.v ? { v: prev.v } : {}), ...(b.hidden ? { hidden: true } : {}), ...(stock && stock.some(x => x !== null) ? { stock } : {}) };
+    if (b.v === undefined && b.hidden === undefined && prev.hidden) overrides[n].hidden = true;
+    if (!overrides[n].v && !overrides[n].hidden && !overrides[n].stock) delete overrides[n];
     await store.setJson('cms:product-overrides', overrides);
     return [200, { ok: true }];
   },
@@ -223,7 +334,48 @@ const actions = {
   },
 };
 
+async function dagelijks() {
+  /* herinnering bij een winkelmand die na een dag nog niet betaald is */
+  const mail = require('./_mail');
+  const orders = await list('idx:orders', 'order:');
+  const nu = Date.now();
+  let verstuurd = 0;
+  for (const o of orders) {
+    if (o.status !== 'wacht op betaling' || o.herinnerd || !o.email) continue;
+    const uur = (nu - o.created) / 3600000;
+    if (uur < 20 || uur > 72) continue;
+    const ok = await mail.winkelmandHerinnering(o);
+    o.herinnerd = nu; await require('./_records').saveOrder(o);
+    if (ok) verstuurd++;
+  }
+  return { herinneringen: verstuurd };
+}
+
 module.exports = async (req, res) => {
+  if (req.method === 'GET') {
+    const u = new URL(req.url, 'http://x');
+    /* dagelijkse taak (Vercel cron stuurt de CRON_SECRET mee) */
+    if (u.searchParams.get('taak') === 'dagelijks') {
+      const auth = req.headers.authorization || '';
+      if (!process.env.CRON_SECRET || auth !== 'Bearer ' + process.env.CRON_SECRET) return send(res, 401, { error: 'Geen toegang.' });
+      try { return send(res, 200, await dagelijks()); } catch (e) { console.error('dagelijks', e.message); return send(res, 500, { error: 'mislukt' }); }
+    }
+    /* factuur downloaden (ingelogd in het dashboard) */
+    const factuur = u.searchParams.get('factuur');
+    if (factuur) {
+      req.headers.authorization = req.headers.authorization || ('Bearer ' + (u.searchParams.get('token') || ''));
+      if (!isAdmin(req)) return send(res, 401, { error: 'Log opnieuw in.' });
+      const o = await getOrder(clean(factuur, 20));
+      if (!o || !o.factuur) return send(res, 404, { error: 'Geen factuur voor deze bestelling.' });
+      const pdf = factuurPdf(o, await getBedrijf());
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="factuur-${o.factuur.nummer}.pdf"`);
+      res.setHeader('Cache-Control', 'no-store');
+      return res.end(pdf);
+    }
+    return send(res, 405, { error: 'Method not allowed' });
+  }
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
   const b = await readJson(req);
   const fn = actions[b.action];

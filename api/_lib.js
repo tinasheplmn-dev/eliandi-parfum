@@ -108,6 +108,17 @@ const store = {
     if (this.persistent) return redis(['DEL', key]);
     memory.delete(key);
   },
+  /* teller, bijvoorbeeld voor factuurnummers: altijd oplopend, nooit dubbel */
+  async incr(key) {
+    if (this.persistent) return Number(await redis(['INCR', key]));
+    const n = (Number(memGet(key)) || 0) + 1;
+    memory.set(key, { value: String(n), expires: 0 });
+    return n;
+  },
+  async expire(key, seconds) {
+    if (this.persistent) return redis(['EXPIRE', key, String(seconds)]);
+    const e = memory.get(key); if (e) e.expires = Date.now() + seconds * 1000;
+  },
   /* sets: indexen van boekingen, bestellingen en bonnen */
   async sadd(key, member) {
     if (this.persistent) return redis(['SADD', key, member]);
@@ -159,6 +170,33 @@ function isAdmin(req) {
   const good = sign(exp, pw);
   try { return crypto.timingSafeEqual(Buffer.from(good), Buffer.from(sig)); } catch (e) { return false; }
 }
+/* Rem op raden: na tien foute pogingen per adres is het een kwartier dicht. */
+function clientIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket && req.socket.remoteAddress || '?').split(',')[0].trim();
+}
+/* Eenvoudige limiet per IP-adres, bijvoorbeeld tegen het raden van
+   kortingscodes of cadeaubonnen en het volspammen van formulieren.
+   Geeft true als dit verzoek boven de limiet zit. */
+async function teVaak(req, soort, max, seconden) {
+  try {
+    const key = 'limiet:' + soort + ':' + clientIp(req);
+    const n = await store.incr(key);
+    if (n === 1) await store.expire(key, seconden);
+    return n > max;
+  } catch (e) { return false; }
+}
+async function loginGeblokkeerd(req) {
+  const n = Number(await store.get('login-fout:' + clientIp(req))) || 0;
+  return n >= 10;
+}
+async function loginMislukt(req) {
+  const key = 'login-fout:' + clientIp(req);
+  const n = await store.incr(key);
+  if (n === 1) await store.expire(key, 15 * 60);
+  return n;
+}
+async function loginGelukt(req) { await store.del('login-fout:' + clientIp(req)); }
+
 function checkPassword(req, given) {
   const pw = adminPassword(req);
   if (!pw || typeof given !== 'string') return false;
@@ -253,4 +291,5 @@ async function getPayment(id) {
 module.exports = {
   send, readRaw, readJson, siteUrl, clean, isEmail, isPhone, store, createPayment, getPayment,
   newId, makeToken, isAdmin, checkPassword, sanitizeHtml,
+  loginGeblokkeerd, loginMislukt, loginGelukt, clientIp, teVaak,
 };
