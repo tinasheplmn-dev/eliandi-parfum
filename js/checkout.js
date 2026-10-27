@@ -31,6 +31,7 @@
     $('coLines').innerHTML = items.map(i => `
       <li><span>${i.qty}&times; ${i.n}<small>${i.kind === 'discovery'
         ? '5 &times; 10 ml &middot; ' + (i.perfumes || []).join(', ')
+        : i.kind === 'olie' ? i.ml + ' ml &middot; parfumolie'
         : i.ml + ' ml &middot; extrait de parfum'}</small></span>
       <b>${euro(i.p * i.qty)}</b></li>`).join('');
     const sub = cart.total();

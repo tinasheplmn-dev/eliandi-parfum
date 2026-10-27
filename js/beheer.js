@@ -332,6 +332,9 @@
     const f = $('bedrijfForm').elements;
     ['naam', 'tel', 'straat', 'postcode', 'plaats', 'email', 'kvk', 'btwNummer', 'iban', 'btwPct', 'factuurPrefix', 'factuurStart'].forEach(k => { f[k].value = bedrijf[k] == null ? '' : bedrijf[k]; });
     f.gratisVanaf.value = fmt((bedrijf.gratisVanaf || 0) / 100);
+    f.olie.value = bedrijf.olie === false ? 'nee' : 'ja';
+    f.olie6.value = fmt((bedrijf.olie6 || 0) / 100);
+    f.olie13.value = fmt((bedrijf.olie13 || 0) / 100);
   }
   $('bedrijfForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -367,7 +370,8 @@
         <div class="bh-card-main"><p class="bh-name">${esc(p.n)}</p></div>
         <div class="bh-base-fields">
           ${['30', '50', '100'].map((ml, i) => `<label>${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
-          ${['30', '50', '100'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
+          ${['30', '50', '100', 'olie 6', 'olie 13'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
+          <label class="bh-tags">Zoektermen<input name="tags" value="${esc(p.tags || '')}" placeholder="bijv. Bleu de Chanel"></label>
           <label class="bh-check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> Verbergen</label>
           <button class="bh-btn bh-sm bh-gold" type="submit">Opslaan</button>
         </div>
@@ -399,7 +403,7 @@
     e.preventDefault();
     const f = e.target, d = Object.fromEntries(new FormData(f));
     try {
-      await api({ action: 'productOverride', n: f.dataset.n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2], hidden: Boolean(d.hidden) });
+      await api({ action: 'productOverride', n: f.dataset.n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden) });
       toast('Opgeslagen');
       state.products = await api({ action: 'productsList' });
     } catch (x) { toast(x.message, true); }
@@ -409,7 +413,7 @@
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
     try {
-      await api({ action: 'productSave', product: { id: d.id || undefined, n: d.n, g: d.g, f: d.f, t: d.t, h: d.h, b: d.b, i: d.i, v: [d.v0, d.v1, d.v2] } });
+      await api({ action: 'productSave', product: { id: d.id || undefined, n: d.n, g: d.g, f: d.f, t: d.t, h: d.h, b: d.b, i: d.i, v: [d.v0, d.v1, d.v2], tags: d.tags } });
       e.target.reset();
       e.target.elements.id.value = '';
       toast('Parfum opgeslagen');
@@ -423,7 +427,7 @@
       const f = $('prodForm').elements;
       f.id.value = p.id; f.n.value = p.n; f.g.value = p.g; f.f.value = p.f.join(', ');
       f.t.value = p.t.join(', '); f.h.value = p.h.join(', '); f.b.value = p.b.join(', '); f.i.value = p.i;
-      f.v0.value = fmt(p.v[0]); f.v1.value = fmt(p.v[1]); f.v2.value = fmt(p.v[2]);
+      f.v0.value = fmt(p.v[0]); f.v1.value = fmt(p.v[1]); f.v2.value = fmt(p.v[2]); f.tags.value = p.tags || '';
       $('prodForm').scrollIntoView({ behavior: 'smooth' });
     }
     if (del && confirm('Dit parfum verwijderen?')) {

@@ -134,6 +134,7 @@
           <label>Prijs 30 ml<input name="v0" inputmode="decimal" placeholder="24,99"></label>
           <label>Prijs 50 ml<input name="v1" inputmode="decimal" placeholder="39,95"></label>
           <label>Prijs 100 ml<input name="v2" inputmode="decimal" placeholder="64,99"></label>
+          <label class="bh-wide">Zoektermen <small>(waar klanten ook op mogen zoeken, bijvoorbeeld de geur waar deze op lijkt; scheid met komma's)</small><input name="tags" placeholder="Bleu de Chanel, blauw, fris"></label>
           <div class="bh-wide bh-actions">
             <button class="bh-btn bh-gold" type="submit">Opslaan</button>
             <button class="bh-btn" type="reset" id="prodReset">Leegmaken</button>
@@ -142,7 +143,7 @@
         <div class="bh-list" id="customList"></div>
 
         <h3 class="bh-sub">Bestaande collectie</h3>
-        <p class="bh-hint">Zoek een parfum om de prijzen of de voorraad per maat aan te passen, het tijdelijk te verbergen, of een review toe te voegen. Voorraad leeg laten = onbeperkt; 0 = uitverkocht.</p>
+        <p class="bh-hint">Zoek een parfum om de prijzen of de voorraad per maat (ook parfumolie) aan te passen, zoektermen toe te voegen, het tijdelijk te verbergen, of een review toe te voegen. Voorraad leeg laten = onbeperkt; 0 = uitverkocht. Zoektermen zijn woorden waarop klanten deze geur ook vinden, zoals de geur waar hij op lijkt; ze zijn niet zichtbaar op de site.</p>
         <input class="bh-search" id="prodSearch" placeholder="Zoek op naam…">
         <div class="bh-list" id="baseList"></div>
       </section>
@@ -165,6 +166,10 @@
           <label>Factuurreeks: voorvoegsel<input name="factuurPrefix" placeholder="IN"></label>
           <label>Factuurreeks: eerste nummer<input name="factuurStart" inputmode="numeric"></label>
           <label>Gratis verzending vanaf (€, 0 = nooit)<input name="gratisVanaf" inputmode="decimal"></label>
+          <p class="bh-wide bh-hint bh-hint-kop"><b>Parfumolie</b> wordt bij elke geur met een prijs aangeboden, tegen deze vaste prijzen. Voorraad per geur stel je in bij Producten.</p>
+          <label>Parfumolie aanbieden<select name="olie"><option value="ja">Ja</option><option value="nee">Nee</option></select></label>
+          <label>Prijs olie 6 ml (€)<input name="olie6" inputmode="decimal" placeholder="9,95"></label>
+          <label>Prijs olie 13 ml (€)<input name="olie13" inputmode="decimal" placeholder="14,95"></label>
           <div class="bh-wide bh-actions"><button class="bh-btn bh-gold" type="submit">Opslaan</button></div>
         </form>
       </section>

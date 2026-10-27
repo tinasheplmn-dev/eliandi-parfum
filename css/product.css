@@ -143,3 +143,17 @@
 .pd-stars-link { display: inline-flex; gap: 8px; align-items: center; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--tekst-dim); text-decoration: none; margin: -4px 0 10px; }
 .pd-stars-link:hover { color: var(--goud-glans); }
 .pd-recent[hidden] { display: none !important; }
+
+/* ── productfoto's (witte achtergrond) en parfumolie ── */
+.pd-stage:has(img) { background: #fbfaf7; }
+.pd-stage:has(img)::before { display: none; }
+.pd-stage img { object-fit: contain; padding: 4%; }
+.pd-thumbs.has-olie { grid-template-columns: repeat(4, 1fr); }
+.pd-thumb:has(img) { background: #fbfaf7; }
+.pd-thumb img { object-fit: contain; padding: 6% 6% 22%; }
+.pd-thumb:has(img) span { color: #6b5a3a; }
+.pd-thumb.is-on:has(img) span { color: #9a7417; }
+.pd-label-olie { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.pd-label-olie small { font-size: 11px; letter-spacing: .04em; text-transform: none; color: var(--tekst-dim); }
+.pd-sizes-olie { grid-template-columns: repeat(2, 1fr); max-width: 66%; }
+@media (max-width: 560px) { .pd-sizes-olie { max-width: none; } }

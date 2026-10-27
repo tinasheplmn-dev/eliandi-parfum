@@ -1,1 +1,5 @@
-{}
+{
+  "dames":  { "30": "assets/producten/dames-30.webp",  "50": "assets/producten/dames-50.webp",  "100": "assets/producten/dames-100.webp",  "olie": "assets/producten/olie-goud.webp" },
+  "heren":  { "30": "assets/producten/heren-30.webp",  "50": "assets/producten/heren-50.webp",  "100": "assets/producten/heren-100.webp",  "olie": "assets/producten/olie-zwart.webp" },
+  "unisex": { "30": "assets/producten/unisex-30.webp", "50": "assets/producten/unisex-50.webp", "100": "assets/producten/unisex-100.webp", "olie": "assets/producten/olie-zwart.webp" }
+}

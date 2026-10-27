@@ -373,3 +373,16 @@
 .sh-set-none { color: var(--tekst-dim); font-size: 13px; }
 @media (max-width: 760px) { .sh-set-slots { grid-template-columns: repeat(5, minmax(96px, 1fr)); overflow-x: auto; } .sh-set-slot { min-height: 120px; } .sh-set-slot .sh-bottle { height: 54px; } }
 .sh-cmp-overlay[hidden], .sh-cmpbar[hidden], .sh-suggest[hidden], .sh-set[hidden], .sh-recent[hidden] { display: none !important; }
+
+/* ── productfoto's op de kaarten en parfumolie ── */
+.sh-card-visual.has-foto { background: #fbfaf7; height: 236px; }
+.sh-card-visual.has-foto::before { display: none; }
+.sh-foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 14px 10px 8px; transition: transform .6s var(--ease-lux); }
+.sh-card:hover .sh-foto { transform: scale(1.035); }
+.sh-card-visual.has-foto .sh-card-tag { background: rgba(20,20,20,.82); }
+.sh-sizes-olie { grid-template-columns: auto 1fr 1fr; align-items: stretch; }
+.sh-olie-label { display: grid; place-items: center; padding: 0 8px; font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--tekst-dim); border: 1px dashed rgba(184,134,11,.3); }
+.sh-grid.is-list .sh-card-visual.has-foto { height: 92px; }
+.sh-grid.is-list .sh-foto { padding: 4px; }
+.sh-grid.is-list .sh-buy { flex-wrap: wrap; }
+.sh-recent-row .sh-bottle, .sh-set-slot .sh-bottle { flex: none; }

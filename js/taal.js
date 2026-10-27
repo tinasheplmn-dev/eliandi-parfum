@@ -89,6 +89,8 @@
       [/^Kies nog (\d+) geuren?$/, m => `Choose ${m[1]} more`],
       [/^In winkelmand · (€[\d.,]+)$/, m => `Add to bag · ${m[1]}`],
       [/^vanaf (€[\d.,]+)$/i, m => `from ${m[1]}`],
+      [/^(\d+) ml olie$/, m => `${m[1]} ml oil`],
+      [/^Zoekterm: (.+)$/, m => `Search term: ${m[1]}`],
       [/^(\d+) reviews?$/, m => `${m[1]} ${meer(m[1], 'review', 'reviews')}`],
       [/^([\d,]+) van 5 · (\d+) reviews?$/, m => `${m[1].replace(',', '.')} out of 5 · ${m[2]} ${meer(m[2], 'review', 'reviews')}`],
       [/^(\d+) (bestelling|bestellingen)$/, m => `${m[1]} ${meer(m[1], 'order', 'orders')}`],
@@ -128,6 +130,8 @@
       [/^Kies nog (\d+) geuren?$/, m => `اختر ${m[1]} أخرى`],
       [/^In winkelmand · (€[\d.,]+)$/, m => `أضف إلى السلة · ${m[1]}`],
       [/^vanaf (€[\d.,]+)$/i, m => `ابتداءً من ${m[1]}`],
+      [/^(\d+) ml olie$/, m => `زيت ${m[1]} مل`],
+      [/^Zoekterm: (.+)$/, m => `كلمة البحث: ${m[1]}`],
       [/^(\d+) reviews?$/, m => `${m[1]} ${meer(m[1], 'تقييم', 'تقييمات')}`],
       [/^([\d,]+) van 5 · (\d+) reviews?$/, m => `${m[1].replace(',', '.')} من 5 · ${m[2]} ${meer(m[2], 'تقييم', 'تقييمات')}`],
       [/^(\d+) (bestelling|bestellingen)$/, m => `${m[1]} ${meer(m[1], 'طلب', 'طلبات')}`],
@@ -262,8 +266,13 @@
     while ((x = w.nextNode())) (x.nodeType === 3 ? tekst(x) : attrs(x));
   }
 
+  /* extra vertaalparen: productomschrijvingen (js/i18n-producten.js) en
+     het verhaal op een productpagina (<script id="i18nExtra">) */
+  function extra(rijen) { (rijen || []).forEach(r => { if (r && r[0] && r[L]) { D[norm(r[0])] = r[L]; vertaald.add(norm(r[L])); } }); }
   function start() {
     if (!D || !document.body) return;
+    extra(window.ELIANDI_I18N_PRODUCTEN);
+    try { const el = document.getElementById('i18nExtra'); if (el) extra(JSON.parse(el.textContent)); } catch (e) { /* geen extra */ }
     keuze();
     const t = tr(document.title);
     if (t) document.title = t;
@@ -276,6 +285,12 @@
     })).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'aria-label'] });
     if (debug) setInterval(() => { if (gemist.size) { console.log('[i18n] nog niet vertaald:', JSON.stringify([...gemist], null, 1)); gemist.clear(); } }, 3000);
   }
+
+  /* productomschrijvingen: los bestand, laadt naast de interfaceteksten */
+  const pr = document.createElement('script');
+  pr.src = basis + 'js/i18n-producten.js';
+  pr.onload = () => { if (D && document.body) { extra(window.ELIANDI_I18N_PRODUCTEN); boom(document.body); } };
+  document.head.append(pr);
 
   const sc = document.createElement('script');
   sc.src = basis + 'js/i18n-data.js';

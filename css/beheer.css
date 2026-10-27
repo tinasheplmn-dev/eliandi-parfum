@@ -164,3 +164,4 @@ input, select, textarea, button { font: inherit; }
 .bh-review-add { display: grid; grid-template-columns: 1fr 70px 2fr auto; gap: 6px; margin-top: 8px; }
 .bh-review-add input, .bh-review-add select { background: rgba(255,255,255,.04); border: 1px solid rgba(212,167,60,.3); color: var(--ivoor); font: 400 12px Montserrat, sans-serif; padding: 7px 9px; min-width: 0; }
 @media (max-width: 700px) { .bh-review-add { grid-template-columns: 1fr 1fr; } }
+.bh-tags input { width: 240px; }

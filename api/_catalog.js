@@ -45,6 +45,7 @@ function analyze(input) {
     i: String(input.i || '').trim().slice(0, 400),
     v: [money(input.v && input.v[0]), money(input.v && input.v[1]), money(input.v && input.v[2])],
     img: input.img || '', custom: true,
+    tags: String(input.tags || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 300),
   };
   const text = [p.i, ...p.f, ...p.t, ...p.h, ...p.b].join(' ').toLowerCase();
   const d = {};
@@ -74,4 +75,10 @@ async function priceTable() {
   return table;
 }
 
-module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES };
+/* Maten: 30/50/100 ml extrait op plek 0-2, parfumolie 6/13 ml op plek 3-4
+   (ook in de voorraad-array per product). */
+const SIZES = { 30: 0, 50: 1, 100: 2 };
+const OLIE = { 6: 3, 13: 4 };
+const oliePrijs = (bedrijf, ml) => (bedrijf && bedrijf.olie !== false ? Number(bedrijf[ml === 6 ? 'olie6' : 'olie13']) || 0 : 0);
+
+module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs };

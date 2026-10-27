@@ -11,10 +11,15 @@
    sterkste geurfamilie. */
 const fs = require('fs');
 const path = require('path');
-const { getCustom, getOverrides } = require('./_catalog');
+const { getCustom, getOverrides, oliePrijs } = require('./_catalog');
+const { getBedrijf } = require('./_factuur');
 const { store } = require('./_lib');
 
 const TEKSTEN = require('./_teksten.json');
+/* Engelse en Arabische versie van intro en verhaal (gegenereerd, zie README).
+   Een vertaling telt alleen zolang de Nederlandse tekst nog gelijk is. */
+let VERTALINGEN = {};
+try { VERTALINGEN = require('./_vertalingen.json'); } catch (e) { /* nog geen vertalingen */ }
 const FOTOS = require('./_fotos.json');
 const ML = [30, 50, 100];
 
@@ -108,27 +113,35 @@ async function lijst() {
     if (!o) return p;
     const v = o.v || p.v || [];
     const ps = v.filter(Boolean);
-    return { ...p, v, stock: o.stock || null, p: ps.length ? Math.min(...ps) : p.p };
+    return { ...p, v, stock: o.stock || null, tags: o.tags || '', p: ps.length ? Math.min(...ps) : p.p };
   });
   const namen = new Set(uit.map(p => p.n));
   (custom || []).forEach(p => { if (!namen.has(p.n)) uit.push({ ...p, custom: true }); });
   return uit;
 }
 
-function pagina(p, alle, site, reviews) {
+/* maten: plek 0-2 extrait, 3-4 parfumolie */
+const MATEN = [30, 50, 100, 6, 13];
+const label = i => (i >= 3 ? `${MATEN[i]} ml olie` : `${MATEN[i]} ml`);
+
+function pagina(p, alle, site, reviews, olie) {
   const fams = families(p);
   const tint = TINT[fams[0]] || '#8a6a2a';
   const k = karakter(p);
-  const prijzen = p.v || [];
+  const extrait = (p.v || []).slice(0, 3);
+  const heeftExtrait = extrait.some(Boolean);
+  /* parfumolie bij elke geur met een prijs, tegen de vaste prijs uit het dashboard */
+  const prijzen = [...extrait, heeftExtrait ? olie[6] : 0, heeftExtrait ? olie[13] : 0];
   const op = i => Boolean(p.stock && p.stock[i] === 0);
   /* een uitverkochte maat telt als niet leverbaar */
   const v = prijzen.map((x, i) => (op(i) ? 0 : x));
-  const beschikbaar = ML.map((ml, i) => ({ ml, i, prijs: v[i] })).filter(x => x.prijs);
+  const beschikbaar = MATEN.map((ml, i) => ({ ml, i, prijs: v[i] })).filter(x => x.prijs);
   const gekozen = v[1] ? 1 : (beschikbaar[0] ? beschikbaar[0].i : -1);
   const alleOp = prijzen.some(Boolean) && !beschikbaar.length;
   const rv = reviews || [];
   const gem = rv.length ? rv.reduce((a, r) => a + Number(r.sterren || 5), 0) / rv.length : 0;
   const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
+  const fotoVan = i => (FOTOS[p.g] && FOTOS[p.g][i >= 3 ? 'olie' : String(MATEN[i])]) || '';
   const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
   const story = (TEKSTEN[p.n] || []).filter(t => t !== p.i);
   const noten = [['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
@@ -136,6 +149,14 @@ function pagina(p, alle, site, reviews) {
   const titel = `${p.n} | Extrait de parfum | Eliandi Parfum`;
   const omschrijving = (p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi in 's-Hertogenbosch.`).slice(0, 155);
   const verwanten = verwant(p, alle);
+  /* vertaalparen [nl, en, ar] voor js/taal.js, alleen voor teksten die nog kloppen */
+  const vt = VERTALINGEN[p.n];
+  const paren = [];
+  if (vt) {
+    if (p.i && vt.nl.i === p.i) paren.push([p.i, vt.en.i, vt.ar.i]);
+    (TEKSTEN[p.n] || []).forEach((t, j) => { if (vt.nl.s[j] === t) paren.push([t, vt.en.s[j], vt.ar.s[j]]); });
+  }
+  const vertaald = paren.length > 0;
 
   const ld = {
     '@context': 'https://schema.org', '@type': 'Product', name: p.n,
@@ -151,11 +172,12 @@ function pagina(p, alle, site, reviews) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${esc(titel)}</title>
   <meta name="description" content="${esc(omschrijving)}">
+  ${p.tags ? `<meta name="keywords" content="${esc(p.tags)}">` : ''}
   <meta property="og:title" content="${esc(p.n)} | Eliandi Parfum">
   <meta property="og:description" content="${esc(omschrijving)}">
   <meta property="og:type" content="product">
   <meta property="og:url" content="${esc(url)}">
-  <meta property="og:image" content="${site}/assets/parfumeur-mengt-geur-pipet.jpg">
+  <meta property="og:image" content="${site}/${fotoVan(gekozen >= 0 ? gekozen : 1) ? esc(fotoVan(gekozen >= 0 ? gekozen : 1).replace(/\.webp$/, '.jpg')) : 'assets/parfumeur-mengt-geur-pipet.jpg'}">
   <meta name="theme-color" content="#141414">
   <link rel="canonical" href="${esc(url)}">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
@@ -167,6 +189,7 @@ function pagina(p, alle, site, reviews) {
   <link rel="stylesheet" href="/css/shop.css">
   <link rel="stylesheet" href="/css/product.css">
   <script type="application/ld+json">${JSON.stringify(ld)}</script>
+  ${vertaald ? `<script type="application/json" id="i18nExtra">${JSON.stringify(paren).replace(/</g, '\\u003c')}</script>` : ''}
   <script src="/js/taal.js"></script>
 </head>
 <body class="shoppage productpage" data-page="geur">
@@ -184,14 +207,14 @@ function pagina(p, alle, site, reviews) {
     <section class="wrap pd-top">
       <div class="pd-gallery" style="--tint:${tint}">
         <div class="pd-stage" id="pdStage">
-          ${foto(ML[gekozen]) ? `<img src="/${esc(foto(ML[gekozen]))}" alt="${esc(p.n)}, flacon van ${ML[gekozen]} ml">` : bottle(tint, 'groot')}
-          <span class="pd-stage-ml" id="pdStageMl">${gekozen >= 0 ? ML[gekozen] + ' ml' : ''}</span>
+          ${gekozen >= 0 && fotoVan(gekozen) ? `<img src="/${esc(fotoVan(gekozen))}" alt="${esc(p.n)}, ${label(gekozen)}">` : bottle(tint, 'groot')}
+          <span class="pd-stage-ml" id="pdStageMl">${gekozen >= 0 ? label(gekozen) : ''}</span>
         </div>
-        <div class="pd-thumbs" role="list">
-          ${ML.map((ml, i) => `<button type="button" class="pd-thumb${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="listitem" aria-label="${ml} ml">
-            ${foto(ml) ? `<img src="/${esc(foto(ml))}" alt="">` : bottle(tint, 'klein' + i)}<span>${ml} ml</span></button>`).join('')}
+        <div class="pd-thumbs${heeftExtrait ? ' has-olie' : ''}" role="list">
+          ${MATEN.map((ml, i) => (i >= 3 && !heeftExtrait) || (i === 4) ? '' : `<button type="button" class="pd-thumb${i === gekozen || (i === 3 && gekozen === 4) ? ' is-on' : ''}" data-k="${i}" ${v[i] || (i === 3 && v[4]) ? '' : 'disabled'} role="listitem" aria-label="${i >= 3 ? 'Parfumolie' : ml + ' ml'}">
+            ${fotoVan(i) ? `<img src="/${esc(fotoVan(i).replace(/\.webp$/, '-600.webp'))}" alt="" loading="lazy">` : bottle(tint, 'klein' + i)}<span>${i >= 3 ? 'Olie' : ml + ' ml'}</span></button>`).join('')}
         </div>
-        <p class="pd-gallery-note">Foto's volgen. Elke flacon wordt in de winkel gevuld en met de hand afgewerkt.</p>
+        <p class="pd-gallery-note">Elke flacon wordt in de winkel gevuld en met de hand afgewerkt. De verpakking verschilt per geur.</p>
       </div>
 
       <div class="pd-info">
@@ -204,8 +227,12 @@ function pagina(p, alle, site, reviews) {
         ${beschikbaar.length ? `<div class="pd-buy" id="pdBuy" data-n="${esc(p.n)}">
           <p class="pd-label">Kies je maat</p>
           <div class="pd-sizes" role="radiogroup" aria-label="Maat">
-            ${ML.map((ml, i) => `<button type="button" class="pd-size${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="radio" aria-checked="${i === gekozen}"><b>${ml} ml</b><span>${v[i] ? euro(v[i]) : op(i) ? 'uitverkocht' : 'niet leverbaar'}</span></button>`).join('')}
+            ${[0, 1, 2].map(i => `<button type="button" class="pd-size${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="radio" aria-checked="${i === gekozen}"><b>${MATEN[i]} ml</b><span>${v[i] ? euro(v[i]) : op(i) ? 'uitverkocht' : 'niet leverbaar'}</span></button>`).join('')}
           </div>
+          ${heeftExtrait && (prijzen[3] || prijzen[4]) ? `<p class="pd-label pd-label-olie">Of als parfumolie <small>dezelfde geur, geconcentreerd in olie</small></p>
+          <div class="pd-sizes pd-sizes-olie" role="radiogroup" aria-label="Parfumolie">
+            ${[3, 4].filter(i => prijzen[i]).map(i => `<button type="button" class="pd-size${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="radio" aria-checked="${i === gekozen}"><b>${MATEN[i]} ml</b><span>${v[i] ? euro(v[i]) : 'uitverkocht'}</span></button>`).join('')}
+          </div>` : ''}
           <div class="pd-price-row">
             <p class="pd-price" id="pdPrice">${gekozen >= 0 ? euro(v[gekozen]) : ''}</p>
             <button type="button" class="btn btn-gold pd-add" id="pdAdd">In winkelmand</button>
@@ -227,7 +254,7 @@ function pagina(p, alle, site, reviews) {
     <section class="wrap pd-body">
       <div class="pd-story">
         <p class="kicker">Het verhaal van deze geur</p>
-        <p class="pd-nl-hint" lang="en">Angelo wrote this description in Dutch.</p>
+        ${vertaald ? '' : '<p class="pd-nl-hint" lang="en">Angelo wrote this description in Dutch.</p>'}
         ${story.length ? story.map(t => `<p>${esc(t)}</p>`).join('') : `<p>${esc(p.n)} is een extrait de parfum van Eliandi: hoog geconcentreerd, met de hand samengesteld in de winkel aan de Vughterstraat en gemaakt om de hele dag bij je te blijven.</p>`}
       </div>
 
@@ -302,7 +329,7 @@ function pagina(p, alle, site, reviews) {
     <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9 3 3.3 8.6 3.3 15.5c0 2.4.7 4.7 2 6.7L3.5 29l7-1.8a12.9 12.9 0 0 0 5.5 1.2c7 0 12.7-5.6 12.7-12.5S23 3 16 3zm0 22.8c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-4.2 1.1 1.1-4-.2-.4a10.1 10.1 0 0 1-1.6-5.4C5.6 9.9 10.3 5.3 16 5.3s10.4 4.6 10.4 10.2S21.7 25.8 16 25.8zm5.7-7.6c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-.9-2.3c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1-1.1 2.5s1.1 2.9 1.3 3.1c.2.2 2.2 3.4 5.4 4.7 2 .9 2.8 1 3.8.8.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>
   </a>
 
-  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, v: v, slug: slug(p.n), fotos: ML.map(ml => foto(ml)) }).replace(/</g, '\\u003c')};</script>
+  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, v: v, slug: slug(p.n), fotos: MATEN.map((ml, i) => fotoVan(i)) }).replace(/</g, '\\u003c')};</script>
   <script src="/js/cart.js"></script>
   <script src="/js/product.js"></script>
   <script src="/js/zonder-server.js" defer></script>
@@ -317,7 +344,8 @@ module.exports = async (req, res) => {
     .replace(/^https:\/\/(localhost|127\.0\.0\.1)/, 'http://$1');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   try {
-    const [alle, reviews] = await Promise.all([lijst(), store.getJson('cms:reviews', {}).catch(() => ({}))]);
+    const [alle, reviews, bedrijf] = await Promise.all([lijst(), store.getJson('cms:reviews', {}).catch(() => ({})), getBedrijf()]);
+    const olie = { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 };
     const p = alle.find(q => slug(q.n) === wanted);
     if (!p) {
       res.statusCode = 404;
@@ -327,7 +355,7 @@ module.exports = async (req, res) => {
     }
     res.statusCode = 200;
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
-    res.end(pagina(p, alle, site, (reviews || {})[p.n]));
+    res.end(pagina(p, alle, site, (reviews || {})[p.n], olie));
   } catch (e) {
     console.error('geur', e.message);
     res.statusCode = 500;

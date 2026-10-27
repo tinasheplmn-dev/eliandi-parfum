@@ -30,12 +30,10 @@ html[dir="rtl"] .sh-suggest a, html[dir="rtl"] .sh-suggest button, html[dir="rtl
 /* prijzen, telefoonnummers en codes blijven links-naar-rechts leesbaar */
 html[dir="rtl"] input[type="tel"], html[dir="rtl"] input[type="email"], html[dir="rtl"] .xp-voucher input { direction: ltr; text-align: right; }
 
-/* Productomschrijvingen komen uit de sheet en zijn (nog) alleen Nederlands */
-html[lang="en"] .sh-intro, html[lang="ar"] .sh-intro { display: none; }
+/* Productomschrijvingen zijn vertaald (api/_vertalingen.json). Ontbreekt een
+   vertaling, dan staat er een korte melding boven het Nederlandse verhaal. */
 .pd-nl-hint { display: none; }
 html[lang="en"] .pd-nl-hint, html[lang="ar"] .pd-nl-hint { display: block; font-size: 12px; color: var(--tekst-dim, #a39d90); margin: 0 0 10px; }
-html[lang="en"] .pd-story > p:not(.kicker):not(.pd-nl-hint), html[lang="ar"] .pd-story > p:not(.kicker):not(.pd-nl-hint),
-html[lang="en"] .pd-lead, html[lang="ar"] .pd-lead { direction: ltr; text-align: left; }
 .xp-nav .taal-keuze { margin-left: auto; }
 @media (max-width: 700px) { .xp-nav .taal-keuze a { padding: 5px 4px; font-size: 9.5px; } }
 html[dir="rtl"] .sh-size, html[dir="rtl"] .pd-size, html[dir="rtl"] .pd-thumb span, html[dir="rtl"] .pd-stage-ml { direction: ltr; }

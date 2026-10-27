@@ -98,13 +98,14 @@ const getOrder = id => store.getJson('order:' + id);
 async function voorraadAfboeken(o) {
   const { getOverrides } = require('./_catalog');
   const overrides = await getOverrides();
-  const SIZES = { 30: 0, 50: 1, 100: 2 };
+  const { SIZES, OLIE } = require('./_catalog');
   let gewijzigd = false;
   (o.items || []).forEach(i => {
-    if (!i.n || SIZES[i.ml] === undefined) return;
+    const plek = i.kind === 'olie' ? OLIE[i.ml] : SIZES[i.ml];
+    if (!i.n || plek === undefined) return;
     const ov = overrides[i.n];
-    if (!ov || !Array.isArray(ov.stock) || ov.stock[SIZES[i.ml]] == null) return;
-    ov.stock[SIZES[i.ml]] = Math.max(0, ov.stock[SIZES[i.ml]] - i.qty);
+    if (!ov || !Array.isArray(ov.stock) || ov.stock[plek] == null) return;
+    ov.stock[plek] = Math.max(0, ov.stock[plek] - i.qty);
     gewijzigd = true;
   });
   if (gewijzigd) await store.setJson('cms:product-overrides', overrides);

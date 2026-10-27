@@ -264,3 +264,10 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 - De dagelijkse taak draait alleen met het juiste `CRON_SECRET`.
 
 **Vercel Hobby:** maximaal twaalf functies. Er zijn er nu precies twaalf, dus nieuwe functies gaan in een bestaand bestand (zoals de factuurdownload en de dagtaak in `api/admin.js`).
+
+## Parfumolie, productfoto's, zoektermen en vertaalde productteksten (oktober 2026)
+
+- **Parfumolie:** elke geur met een prijs is ook te koop als olie van 6 ml (€9,95) en 13 ml (€14,95). Prijzen en aan/uit staan onder **Bedrijf & facturen**, voorraad per geur onder **Producten** (plekken 4 en 5 in de voorraadlijst). In bestellingen en op de factuur heet de regel "<geur> · parfumolie 6 ml".
+- **Productfoto's** staan in `assets/producten/` en zijn gekoppeld in `api/_fotos.json` per doelgroep en maat: dames = crème 30 ml, wit 50 ml, rood 100 ml; heren = donker 30 ml, zwart met zilver 50 en 100 ml; unisex = wit met zwarte dop 30 ml, mat zwart 50 ml, helder met goud 100 ml; olie = gouden dop (dames), zwarte dop (heren en unisex). Andere koppeling? Pas alleen dat bestand aan.
+- **Zoektermen per product:** in het dashboard per geur (en bij zelf toegevoegde parfums). Klanten vinden de geur ook op die woorden, bijvoorbeeld de bekende geur waar hij op lijkt. De termen staan niet zichtbaar op de site, alleen als "Zoekterm" in de zoeksuggestie van wie erop zoekt.
+- **Vertaalde productteksten:** intro en verhaal van alle 379 geuren staan in het Engels en Arabisch in `api/_vertalingen.json`. `js/i18n-producten.js` (intro's voor shop en geurwijzer) maak je opnieuw met `node tools/vertalingen_bouw.js`. Na een nieuwe export van de sheet of nieuwe producten toont `node tools/vertalingen_ontbrekend.js` welke teksten nog vertaald moeten worden; tot dan staat daar de Nederlandse tekst met een korte melding.

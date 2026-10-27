@@ -8,7 +8,8 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const ML = [30, 50, 100];
+  /* plek 0-2: extrait 30/50/100 ml, plek 3-4: parfumolie 6/13 ml */
+  const ML = [30, 50, 100, 6, 13];
   const PER_PAGE = 24;
   const euro = n => '€' + Number(n).toFixed(2).replace('.', ',');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -41,7 +42,7 @@
   };
 
   const state = {
-    all: [], q: '', sort: 'aanbevolen', shown: PER_PAGE, view: 'grid', reviews: {},
+    all: [], q: '', sort: 'aanbevolen', shown: PER_PAGE, view: 'grid', reviews: {}, fotos: {},
     cmp: [], set: [],
     f: { g: new Set(), n: new Set(), k: new Set(), f: new Set(), p: new Set() },
   };
@@ -49,6 +50,8 @@
   const lees = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
   const bewaar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* privémodus */ } };
   const uitverkocht = (p, k) => Boolean(p.stock && p.stock[k] === 0);
+  /* productfoto per doelgroep en maat (api/_fotos.json), kleine versie voor de kaart */
+  const fotoVan = (p, k) => { const f = state.fotos[p.g]; const pad = f && f[k >= 3 ? 'olie' : String(ML[k])]; return pad ? '/' + pad.replace(/\.webp$/, '-600.webp') : ''; };
   const leverbaar = (p, k) => Boolean((p.v || [])[k]) && !uitverkocht(p, k);
   const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
   const review = p => { const r = state.reviews[p.n] || []; return r.length ? { n: r.length, avg: r.reduce((a, x) => a + Number(x.sterren || 5), 0) / r.length } : null; };
@@ -67,7 +70,7 @@
       const dims = p.d || {};
       const top = Object.entries(dims).sort((a, b) => b[1] - a[1]).map(([k]) => k);
       const tint = TINT[top[0]] || '#8a6a2a';
-      const tekst = strip([p.n, (p.f || []).join(' '), (p.t || []).join(' '), (p.h || []).join(' '), (p.b || []).join(' '), p.i || '', p.g,
+      const tekst = strip([p.n, p.tags || '', (p.f || []).join(' '), (p.t || []).join(' '), (p.h || []).join(' '), (p.b || []).join(' '), p.i || '', p.g,
         top.map(k => FAMILIE_NAAM[k]).join(' ')].join(' '));
       const karakter = new Set();
       if ((p.w || 0) >= 1) karakter.add('warm'); if ((p.w || 0) <= -1) karakter.add('fris');
@@ -127,15 +130,16 @@
     const heeftPrijs = v.some(Boolean);
     const sel = leverbaar(p, 1) ? 1 : ML.findIndex((_, k) => leverbaar(p, k));
     const alleOp = heeftPrijs && sel < 0;
+    const foto = fotoVan(p, sel >= 0 ? sel : 1);
     const noten = [['Top', p.t], ['Hart', p.h], ['Basis', p.b]].filter(([, l]) => l && l.length);
     const rv = review(p);
     const inCmp = state.cmp.includes(p.n), inSet = state.set.includes(p.n);
     return `<article class="sh-card${alleOp ? ' is-soldout' : ''}" data-n="${esc(p.n)}">
-      <a class="sh-card-visual" href="/geur/${slugify(p.n)}" style="--tint:${p._tint}" aria-label="Bekijk ${esc(p.n)}">
+      <a class="sh-card-visual${foto ? ' has-foto' : ''}" href="/geur/${slugify(p.n)}" style="--tint:${p._tint}" aria-label="Bekijk ${esc(p.n)}">
         <span class="sh-card-tag">${esc(p.g)}</span>
         ${p._nieuw ? '<span class="sh-card-tag sh-card-new">Nieuw</span>' : ''}
         ${alleOp ? '<span class="sh-card-tag sh-card-out">Uitverkocht</span>' : ''}
-        ${bottle(p._tint)}
+        ${foto ? `<img class="sh-foto" src="${foto}" alt="${esc(p.n)}" loading="lazy" decoding="async">` : bottle(p._tint)}
       </a>
       <div class="sh-card-body">
         <h3><a href="/geur/${slugify(p.n)}">${esc(p.n)}</a></h3>
@@ -146,8 +150,11 @@
           <div class="sh-notes" hidden>${noten.map(([k, l]) => `<p><b>${k}</b>${esc(l.join(', '))}</p>`).join('')}</div>` : ''}
         ${heeftPrijs && !alleOp ? `<div class="sh-buy">
           <div class="sh-sizes" role="radiogroup" aria-label="Kies een maat">
-            ${ML.map((ml, k) => `<button type="button" class="sh-size${k === sel ? ' is-on' : ''}" data-k="${k}" ${leverbaar(p, k) ? '' : 'disabled'} role="radio" aria-checked="${k === sel}">${ml} ml<small>${leverbaar(p, k) ? euro(v[k]) : uitverkocht(p, k) ? 'uitverkocht' : 'n.v.t.'}</small></button>`).join('')}
+            ${[0, 1, 2].map(k => `<button type="button" class="sh-size${k === sel ? ' is-on' : ''}" data-k="${k}" ${leverbaar(p, k) ? '' : 'disabled'} role="radio" aria-checked="${k === sel}">${ML[k]} ml<small>${leverbaar(p, k) ? euro(v[k]) : uitverkocht(p, k) ? 'uitverkocht' : 'n.v.t.'}</small></button>`).join('')}
           </div>
+          ${v[3] || v[4] ? `<div class="sh-sizes sh-sizes-olie" role="radiogroup" aria-label="Parfumolie"><span class="sh-olie-label">Olie</span>
+            ${[3, 4].filter(k => v[k]).map(k => `<button type="button" class="sh-size${k === sel ? ' is-on' : ''}" data-k="${k}" ${leverbaar(p, k) ? '' : 'disabled'} role="radio" aria-checked="${k === sel}">${ML[k]} ml<small>${leverbaar(p, k) ? euro(v[k]) : 'uitverkocht'}</small></button>`).join('')}
+          </div>` : ''}
           <button type="button" class="btn btn-gold sh-add">In winkelmand</button>
         </div>` : alleOp ? `<p class="sh-ask">Tijdelijk uitverkocht. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wanneer is ' + p.n + ' er weer?')}" target="_blank" rel="noopener">App Angelo</a> voor wanneer hij er weer is.</p>`
           : `<p class="sh-ask">Prijs op aanvraag. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wat kost ' + p.n + '?')}" target="_blank" rel="noopener">App Angelo</a> of kom langs in de winkel.</p>`}
@@ -275,7 +282,12 @@
     if (t) { const n = t.nextElementSibling; n.hidden = !n.hidden; t.setAttribute('aria-expanded', !n.hidden); t.textContent = n.hidden ? 'Noten' : 'Verberg noten'; return; }
     const size = e.target.closest('.sh-size');
     if (size && !size.disabled) {
-      size.closest('.sh-sizes').querySelectorAll('.sh-size').forEach(b => { b.classList.toggle('is-on', b === size); b.setAttribute('aria-checked', b === size); });
+      const kaart = size.closest('.sh-card');
+      kaart.querySelectorAll('.sh-size').forEach(b => { b.classList.toggle('is-on', b === size); b.setAttribute('aria-checked', b === size); });
+      const p = state.all.find(x => x.n === kaart.dataset.n);
+      const img = kaart.querySelector('.sh-foto');
+      const f = p && fotoVan(p, +size.dataset.k);
+      if (img && f && img.getAttribute('src') !== f) img.src = f;
       return;
     }
     const add = e.target.closest('.sh-add');
@@ -284,7 +296,7 @@
     const p = state.all.find(x => x.n === cardEl.dataset.n);
     const k = Number((cardEl.querySelector('.sh-size.is-on') || {}).dataset?.k ?? -1);
     if (!p || k < 0 || !leverbaar(p, k)) return;
-    window.EliandiCart.add(p.n, ML[k], p.v[k]);
+    window.EliandiCart.add(p.n, ML[k], p.v[k], k >= 3 ? { kind: 'olie' } : undefined);
     add.textContent = 'Toegevoegd ✓'; add.classList.add('is-done');
     setTimeout(() => { add.textContent = 'In winkelmand'; add.classList.remove('is-done'); }, 1800);
   });
@@ -305,12 +317,15 @@
   function suggest() {
     const q = strip(state.q);
     if (q.length < 2) { sug.hidden = true; return; }
-    const namen = state.all.filter(p => strip(p.n).includes(q)).sort((a, b) => strip(a.n).startsWith(q) === strip(b.n).startsWith(q) ? 0 : strip(a.n).startsWith(q) ? -1 : 1).slice(0, 5);
+    const opNaam = p => strip(p.n).includes(q);
+    const opTerm = p => !opNaam(p) && p.tags && strip(p.tags).includes(q);
+    const namen = state.all.filter(p => opNaam(p) || opTerm(p)).sort((a, b) => (opNaam(b) - opNaam(a)) || (strip(a.n).startsWith(q) === strip(b.n).startsWith(q) ? 0 : strip(a.n).startsWith(q) ? -1 : 1)).slice(0, 6);
+    const term = p => { const t = String(p.tags || '').split(/\s*,\s*/).find(x => strip(x).includes(q)); return t || ''; };
     const woorden = new Map();
     state.all.forEach(p => [...(p.t || []), ...(p.h || []), ...(p.b || []), ...(p.f || [])].forEach(w => { if (strip(w).includes(q)) woorden.set(strip(w), w); }));
     const termen = [...woorden.values()].slice(0, 4);
     if (!namen.length && !termen.length) { sug.hidden = true; return; }
-    sug.innerHTML = namen.map(p => `<li><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}"><i></i><b>${esc(p.n)}</b><small>${esc(p._top.slice(0, 2).join(' · '))}${p.p ? ' · vanaf ' + euro(p.p) : ''}</small></a></li>`).join('')
+    sug.innerHTML = namen.map(p => `<li><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}"><i></i><b>${esc(p.n)}</b><small>${opTerm(p) ? 'Zoekterm: ' + esc(term(p)) : esc(p._top.slice(0, 2).join(' · ')) + (p.p ? ' · vanaf ' + euro(p.p) : '')}</small></a></li>`).join('')
       + termen.map(w => `<li><button type="button" data-term="${esc(w)}"><i class="is-term"></i><b>${esc(w)}</b><small>alle geuren met deze noot</small></button></li>`).join('');
     sug.hidden = false;
   }
@@ -470,15 +485,17 @@
     if (!d) return basis;
     const ov = d.overrides || {};
     state.reviews = d.reviews || {};
+    state.fotos = d.fotos || {};
+    const olie = d.olie || {};
     const lijst = basis.filter(p => !(ov[p.n] && ov[p.n].hidden)).map(p => {
-      const o = ov[p.n];
-      if (!o) return p;
-      const v = o.v || p.v || [];
+      const o = ov[p.n] || {};
+      const v = (o.v || p.v || []).slice(0, 3);
       const ps = v.filter(Boolean);
-      return { ...p, v, stock: o.stock || null, p: ps.length ? Math.min(...ps) : p.p };
+      return { ...p, v: metOlie(v), stock: o.stock || null, tags: o.tags || '', p: ps.length ? Math.min(...ps) : p.p };
     });
     const namen = new Set(lijst.map(p => p.n));
-    (d.custom || []).forEach(p => { if (!namen.has(p.n)) lijst.push({ ...p, custom: true }); });
+    (d.custom || []).forEach(p => { if (!namen.has(p.n)) lijst.push({ ...p, v: metOlie((p.v || []).slice(0, 3)), custom: true }); });
+    function metOlie(v) { return v.some(Boolean) ? [...v, olie[6] || 0, olie[13] || 0] : v; }
     return lijst;
   }
   /* eerst de lichte catalogus (snel op het scherm), daarna de volledige

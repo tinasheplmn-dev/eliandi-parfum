@@ -19,5 +19,10 @@ module.exports = async (req, res) => {
     require('./_factuur').getBedrijf(), require('./_lib').store.getJson('cms:reviews', {}),
   ]);
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=20, stale-while-revalidate=120');
-  send(res, 200, { custom, overrides, abonnement, gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews });
+  const { oliePrijs } = require('./_catalog');
+  send(res, 200, {
+    custom, overrides, abonnement, gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,
+    olie: { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 },
+    fotos: require('./_fotos.json'),
+  });
 };

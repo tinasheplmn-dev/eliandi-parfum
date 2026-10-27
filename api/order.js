@@ -6,7 +6,7 @@
    Bezorgen of ophalen in de winkel.
    Env: SHIPPING_PRICE_CENTS (standaard 495 = €4,95). */
 const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak } = require('./_lib');
-const { priceTable, getOverrides } = require('./_catalog');
+const { priceTable, getOverrides, OLIE, oliePrijs } = require('./_catalog');
 const { saveOrder } = require('./_records');
 const { getBedrijf } = require('./_factuur');
 const korting = require('./_korting');
@@ -44,6 +44,19 @@ module.exports = async (req, res) => {
 
     const name = clean(it.n, 120);
     const ml = parseInt(it.ml, 10);
+
+    /* parfumolie: vaste prijs per maat uit het dashboard, bij elke geur met een prijs */
+    if (it.kind === 'olie') {
+      const cents = OLIE[ml] !== undefined ? oliePrijs(bedrijf, ml) : 0;
+      if (!cents || !PRICES[name]) return send(res, 400, { error: `${name || 'Een product'} is niet leverbaar als parfumolie van ${ml} ml.` });
+      const vr = overrides[name] && Array.isArray(overrides[name].stock) ? overrides[name].stock[OLIE[ml]] : null;
+      if (vr !== null && vr !== undefined) {
+        if (vr <= 0) return send(res, 400, { error: `${name} als parfumolie van ${ml} ml is op dit moment uitverkocht.` });
+        if (vr < qty) return send(res, 400, { error: `Van ${name} als olie van ${ml} ml ${vr === 1 ? 'is er nog maar één' : 'zijn er nog maar ' + vr}.` });
+      }
+      lines.push({ name: `${name} · parfumolie ${ml} ml`, n: name, ml, kind: 'olie', description: 'Parfumolie', cents, qty });
+      continue;
+    }
     const prices = PRICES[name];
     const price = prices && SIZES[ml] !== undefined ? prices[SIZES[ml]] : null;
     if (!price) return send(res, 400, { error: `${name || 'Een product'} is niet leverbaar in ${ml} ml.` });

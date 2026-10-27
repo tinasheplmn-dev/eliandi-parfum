@@ -235,6 +235,9 @@ const actions = {
       factuurPrefix: clean(d.factuurPrefix !== undefined ? d.factuurPrefix : cur.factuurPrefix, 6).toUpperCase() || 'IN',
       factuurStart: Math.max(1, parseInt(d.factuurStart, 10) || cur.factuurStart),
       gratisVanaf: d.gratisVanaf !== undefined ? Math.max(0, Math.round(parseFloat(String(d.gratisVanaf).replace(',', '.')) * 100) || 0) : cur.gratisVanaf,
+      olie: d.olie !== undefined ? Boolean(d.olie) && d.olie !== 'nee' : cur.olie,
+      olie6: d.olie6 !== undefined ? Math.max(0, Math.round(parseFloat(String(d.olie6).replace(',', '.')) * 100) || 0) : cur.olie6,
+      olie13: d.olie13 !== undefined ? Math.max(0, Math.round(parseFloat(String(d.olie13).replace(',', '.')) * 100) || 0) : cur.olie13,
     };
     await saveBedrijf(out);
     return [200, { ok: true }];
@@ -271,7 +274,10 @@ const actions = {
   /* ── producten ── */
   async productsList() {
     const [custom, overrides] = await Promise.all([getCustom(), getOverrides()]);
-    const base = Object.entries(BASE_PRICES).map(([n, v]) => ({ n, v: (overrides[n] && overrides[n].v) || v, hidden: Boolean(overrides[n] && overrides[n].hidden) }));
+    const base = Object.entries(BASE_PRICES).map(([n, v]) => {
+      const o = overrides[n] || {};
+      return { n, v: o.v || v, hidden: Boolean(o.hidden), stock: o.stock || null, tags: o.tags || '' };
+    });
     return [200, { base, custom }];
   },
   async productOverride(req, b) {
@@ -281,11 +287,19 @@ const actions = {
     const money = v => { const x = parseFloat(String(v).replace(',', '.')); return x > 0 ? Math.round(x * 100) / 100 : null; };
     const v = Array.isArray(b.v) ? b.v.slice(0, 3).map(money) : null;
     /* voorraad per maat: leeg = onbeperkt, 0 = uitverkocht */
-    const stock = Array.isArray(b.stock) ? b.stock.slice(0, 3).map(x => (x === '' || x === null || x === undefined ? null : Math.max(0, parseInt(x, 10) || 0))) : null;
+    /* plekken 0-2: 30/50/100 ml extrait, 3-4: parfumolie 6/13 ml */
+    const stock = Array.isArray(b.stock) ? b.stock.slice(0, 5).map(x => (x === '' || x === null || x === undefined ? null : Math.max(0, parseInt(x, 10) || 0))) : null;
     const prev = overrides[n] || {};
-    overrides[n] = { ...(v ? { v } : prev.v ? { v: prev.v } : {}), ...(b.hidden ? { hidden: true } : {}), ...(stock && stock.some(x => x !== null) ? { stock } : {}) };
+    /* zoektermen: namen waar klanten op kunnen zoeken, bijvoorbeeld de geur waar deze op lijkt */
+    const tags = b.tags !== undefined ? clean(b.tags, 300) : (prev.tags || '');
+    overrides[n] = {
+      ...(v ? { v } : prev.v ? { v: prev.v } : {}),
+      ...(b.hidden ? { hidden: true } : {}),
+      ...(stock ? (stock.some(x => x !== null) ? { stock } : {}) : prev.stock ? { stock: prev.stock } : {}),
+      ...(tags ? { tags } : {}),
+    };
     if (b.v === undefined && b.hidden === undefined && prev.hidden) overrides[n].hidden = true;
-    if (!overrides[n].v && !overrides[n].hidden && !overrides[n].stock) delete overrides[n];
+    if (!Object.keys(overrides[n]).length) delete overrides[n];
     await store.setJson('cms:product-overrides', overrides);
     return [200, { ok: true }];
   },

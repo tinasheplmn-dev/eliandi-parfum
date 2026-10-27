@@ -333,6 +333,12 @@ window.ELIANDI_I18N = [
   ["tot gratis verzending", "to free shipping", "للشحن المجاني"],
   ["✦ Gratis verzending", "✦ Free shipping", "✦ شحن مجاني"],
   ["ml · extrait de parfum", "ml · extrait de parfum", "مل · إكستريه دو بارفان"],
+  ["ml · parfumolie", "ml · perfume oil", "مل · زيت عطري"],
+  ["Olie", "Oil", "زيت"],
+  ["Parfumolie", "Perfume oil", "زيت عطري"],
+  ["Of als parfumolie", "Or as perfume oil", "أو كزيت عطري"],
+  ["dezelfde geur, geconcentreerd in olie", "the same scent, concentrated in oil", "العطر نفسه، مركّزًا في زيت"],
+  ["Elke flacon wordt in de winkel gevuld en met de hand afgewerkt. De verpakking verschilt per geur.", "Every bottle is filled in the boutique and finished by hand. Packaging varies by scent.", "كل زجاجة تُعبّأ في البوتيك وتُشطّب يدويًا. يختلف التغليف من عطر لآخر."],
 
   /* ── productpagina ── */
   ["Je bent hier", "You are here", "أنت هنا"],

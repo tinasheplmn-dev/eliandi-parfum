@@ -17,6 +17,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const meta = i => i.kind === 'discovery'
     ? '5 &times; 10 ml &middot; ' + esc((i.perfumes || []).join(', '))
+    : i.kind === 'olie' ? esc(i.ml) + ' ml &middot; parfumolie'
     : esc(i.ml) + ' ml &middot; extrait de parfum';
   const write = items => {
     try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) { /* privémodus */ }

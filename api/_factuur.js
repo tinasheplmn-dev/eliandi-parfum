@@ -27,6 +27,9 @@ const BEDRIJF_STANDAARD = {
   factuurPrefix: 'IN',
   factuurStart: 1000,      // eerste nummer van deze reeks
   gratisVanaf: 7500,       // gratis verzending vanaf dit bedrag (centen); 0 = nooit
+  olie: true,              // parfumolie aanbieden bij elke geur met een prijs
+  olie6: 995,              // parfumolie 6 ml (centen)
+  olie13: 1495,            // parfumolie 13 ml (centen)
 };
 
 async function getBedrijf() {
