@@ -477,7 +477,10 @@ a { color: inherit; }
 /* overflow verbergt de regel tot hij opkomt; de italieke J haalt links
    uit, dus we geven het vak daar ruimte en halen die er met een even
    grote negatieve marge weer af. De tekst blijft dus op zijn plek. */
-.hero-title .line { display: block; overflow: hidden; padding-left: .32em; margin-left: -.32em; padding-right: .2em; }
+/* Onder dezelfde gedachte: de staart van de italieke J zakt ver onder de
+   regel. Het vak krijgt daar ruimte (padding) die met een even grote
+   negatieve marge wordt teruggenomen, zodat de regelafstand gelijk blijft. */
+.hero-title .line { display: block; overflow: hidden; padding: .06em .2em .34em .32em; margin: -.06em 0 -.34em -.32em; }
 .hero-title .line.is-free { overflow: visible; }
 .hero-title .line > span {
   display: block;
@@ -492,8 +495,11 @@ a { color: inherit; }
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  padding: 0 .12em 0 .3em;
-  margin-left: -.3em;
+  /* background-clip: text schildert alleen binnen dit vak: ruimte rondom,
+     vooral onder voor de staart van de J, en die ruimte weer terugnemen */
+  padding: .08em .14em .36em .3em;
+  margin: -.08em 0 -.36em -.3em;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 @keyframes heroRise { to { transform: translateY(0); } }
 @keyframes heroFade { to { opacity: 1; } }

@@ -157,3 +157,10 @@
 .pd-label-olie small { font-size: 11px; letter-spacing: .04em; text-transform: none; color: var(--tekst-dim); }
 .pd-sizes-olie { grid-template-columns: repeat(2, 1fr); max-width: 66%; }
 @media (max-width: 560px) { .pd-sizes-olie { max-width: none; } }
+
+/* ── foto's bij "Geuren die hierbij passen" en recent bekeken ── */
+.pd-vcard.has-foto img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #fbfaf7; padding: 10px; transition: transform .6s var(--ease-lux, ease); }
+.pd-vcard.has-foto:hover img { transform: scale(1.03); }
+.pd-recent-row a.has-foto { display: grid; grid-template-columns: 44px auto; align-items: center; gap: 12px; padding: 6px 16px 6px 6px; }
+.pd-recent-row a.has-foto img { width: 44px; height: 44px; object-fit: contain; background: #fbfaf7; }
+.pd-vcard.has-foto { grid-template-rows: auto auto; }

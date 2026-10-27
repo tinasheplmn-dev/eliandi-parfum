@@ -296,7 +296,8 @@ function pagina(p, alle, site, reviews, olie) {
       <div class="pd-verwant-grid">
         ${verwanten.map(q => {
           const qf = families(q); const qt = TINT[qf[0]] || '#8a6a2a';
-          return `<a class="pd-vcard" href="/geur/${slug(q.n)}" style="--tint:${qt}">${bottle(qt, 'v' + slug(q.n).slice(0, 6))}<span><b>${esc(q.n)}</b><small>${qf.slice(0, 2).map(f => FAM_NAAM[f]).join(' · ')}${q.p ? ' · vanaf ' + euro(q.p) : ''}</small></span></a>`;
+          const qf50 = FOTOS[q.g] && (FOTOS[q.g]['50'] || FOTOS[q.g]['30']);
+          return `<a class="pd-vcard${qf50 ? ' has-foto' : ''}" href="/geur/${slug(q.n)}" style="--tint:${qt}">${qf50 ? `<img src="/${esc(qf50.replace(/\.webp$/, '-600.webp'))}" alt="${esc(q.n)}" loading="lazy" decoding="async">` : bottle(qt, 'v' + slug(q.n).slice(0, 6))}<span><b>${esc(q.n)}</b><small>${qf.slice(0, 2).map(f => FAM_NAAM[f]).join(' · ')}${q.p ? ' · vanaf ' + euro(q.p) : ''}</small></span></a>`;
         }).join('')}
       </div>
     </section>` : ''}
@@ -329,7 +330,7 @@ function pagina(p, alle, site, reviews, olie) {
     <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9 3 3.3 8.6 3.3 15.5c0 2.4.7 4.7 2 6.7L3.5 29l7-1.8a12.9 12.9 0 0 0 5.5 1.2c7 0 12.7-5.6 12.7-12.5S23 3 16 3zm0 22.8c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-4.2 1.1 1.1-4-.2-.4a10.1 10.1 0 0 1-1.6-5.4C5.6 9.9 10.3 5.3 16 5.3s10.4 4.6 10.4 10.2S21.7 25.8 16 25.8zm5.7-7.6c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-.9-2.3c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1-1.1 2.5s1.1 2.9 1.3 3.1c.2.2 2.2 3.4 5.4 4.7 2 .9 2.8 1 3.8.8.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>
   </a>
 
-  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, v: v, slug: slug(p.n), fotos: MATEN.map((ml, i) => fotoVan(i)) }).replace(/</g, '\\u003c')};</script>
+  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, g: p.g, v: v, slug: slug(p.n), fotos: MATEN.map((ml, i) => fotoVan(i)) }).replace(/</g, '\\u003c')};</script>
   <script src="/js/cart.js"></script>
   <script src="/js/product.js"></script>
   <script src="/js/zonder-server.js" defer></script>

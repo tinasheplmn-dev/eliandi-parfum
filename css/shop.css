@@ -386,3 +386,8 @@
 .sh-grid.is-list .sh-foto { padding: 4px; }
 .sh-grid.is-list .sh-buy { flex-wrap: wrap; }
 .sh-recent-row .sh-bottle, .sh-set-slot .sh-bottle { flex: none; }
+.sh-mini { object-fit: contain; background: #fbfaf7; }
+.sh-recent-row .sh-mini { grid-row: 1 / 3; width: 40px; height: 44px; padding: 2px; }
+.sh-cmp-table thead .sh-mini { width: 110px; height: 110px; padding: 6px; }
+.sh-set-slot .sh-mini { width: 72px; height: 80px; padding: 3px; }
+@media (max-width: 760px) { .sh-set-slot .sh-mini { width: 54px; height: 60px; } }

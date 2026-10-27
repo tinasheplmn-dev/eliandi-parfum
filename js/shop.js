@@ -359,7 +359,7 @@
     const items = namen.map(n => state.all.find(p => p.n === n)).filter(Boolean).slice(0, 8);
     box.hidden = !items.length;
     if (!items.length) return;
-    box.innerHTML = `<p class="kicker">Recent bekeken</p><div class="sh-recent-row">${items.map(p => `<a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}">${bottle(p._tint)}<b>${esc(p.n)}</b>${p.p ? `<small>vanaf ${euro(p.p)}</small>` : ''}</a>`).join('')}</div>`;
+    box.innerHTML = `<p class="kicker">Recent bekeken</p><div class="sh-recent-row">${items.map(p => { const f = fotoVan(p, 1); return `<a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}">${f ? `<img class="sh-mini" src="${f}" alt="" loading="lazy">` : bottle(p._tint)}<b>${esc(p.n)}</b>${p.p ? `<small>vanaf ${euro(p.p)}</small>` : ''}</a>`; }).join('')}</div>`;
   }
 
   /* ── vergelijken: tot drie geuren naast elkaar ── */
@@ -385,7 +385,7 @@
     const rij = (kop, f) => `<tr><th>${kop}</th>${ps.map(p => `<td>${f(p)}</td>`).join('')}</tr>`;
     const ks = ps.map(karakter);
     cmpOverlay.querySelector('.sh-cmp-table').innerHTML = `<table>
-      <thead><tr><th></th>${ps.map(p => `<th><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}">${bottle(p._tint)}<b>${esc(p.n)}</b></a></th>`).join('')}</tr></thead>
+      <thead><tr><th></th>${ps.map(p => { const f = fotoVan(p, 1); return `<th><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}">${f ? `<img class="sh-mini" src="${f}" alt="">` : bottle(p._tint)}<b>${esc(p.n)}</b></a></th>`; }).join('')}</tr></thead>
       <tbody>
         ${rij('Voor wie', p => esc(p.g))}
         ${rij('Geurfamilie', p => esc(p._top.join(', ')) || '–')}
@@ -425,7 +425,8 @@
     const slots = setBox.querySelector('.sh-set-slots');
     slots.innerHTML = Array.from({ length: 5 }, (_, i) => {
       const n = state.set[i]; const p = n && state.all.find(x => x.n === n);
-      return p ? `<div class="sh-set-slot is-full" style="--tint:${p._tint}">${bottle(p._tint)}<b>${esc(p.n)}</b><button type="button" data-set="${esc(p.n)}" aria-label="${esc(p.n)} uit je set halen">&times;</button></div>`
+      const f = p && fotoVan(p, 1);
+      return p ? `<div class="sh-set-slot is-full" style="--tint:${p._tint}">${f ? `<img class="sh-mini" src="${f}" alt="">` : bottle(p._tint)}<b>${esc(p.n)}</b><button type="button" data-set="${esc(p.n)}" aria-label="${esc(p.n)} uit je set halen">&times;</button></div>`
         : `<div class="sh-set-slot"><span>${i + 1}</span><small>kies een geur</small></div>`;
     }).join('');
     setBox.querySelector('.sh-set-count').textContent = `${state.set.length} van 5 gekozen`;

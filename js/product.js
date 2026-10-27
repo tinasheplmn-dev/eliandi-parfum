@@ -39,11 +39,13 @@
   let recent = [];
   try { recent = JSON.parse(localStorage.getItem('eliandi_recent') || '[]'); } catch (e) { /* privémodus */ }
   const vorige = recent.filter(r => r.n !== P.n).slice(0, 8);
-  try { localStorage.setItem('eliandi_recent', JSON.stringify([{ n: P.n, s: P.slug }, ...vorige].slice(0, 12))); } catch (e) { /* privémodus */ }
+  /* foto van 50 ml (anders de eerste) voor de rij recent bekeken */
+  const klein = f => (f ? f.replace(/\.webp$/, '-600.webp') : '');
+  try { localStorage.setItem('eliandi_recent', JSON.stringify([{ n: P.n, s: P.slug, g: P.g, f: klein(P.fotos[1] || P.fotos[0] || '') }, ...vorige].slice(0, 12))); } catch (e) { /* privémodus */ }
   const box = $('pdRecent');
   if (box && vorige.length) {
     const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    box.innerHTML = `<p class="kicker">Recent bekeken</p><div class="pd-recent-row">${vorige.filter(r => r.s).map(r => `<a href="/geur/${esc(r.s)}">${esc(r.n)}</a>`).join('')}</div>`;
+    box.innerHTML = `<p class="kicker">Recent bekeken</p><div class="pd-recent-row">${vorige.filter(r => r.s).map(r => `<a href="/geur/${esc(r.s)}"${r.f ? ' class="has-foto"' : ''}>${r.f ? `<img src="/${esc(r.f)}" alt="" loading="lazy">` : ''}<span>${esc(r.n)}</span></a>`).join('')}</div>`;
     box.hidden = false;
   }
 })();
