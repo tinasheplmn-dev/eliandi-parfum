@@ -20,6 +20,7 @@ const DEFAULTS = {
   depositPct: 50,           // aanbetaling online, de rest in de winkel
   schedule: {               // weekdag (0 = zondag) -> starttijden
     2: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'],
+    3: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'],
     4: ['18:00', '18:30', '19:00', '19:30'],
   },
   blockedDates: [],         // hele dagen dicht, bijv. '2026-12-24'

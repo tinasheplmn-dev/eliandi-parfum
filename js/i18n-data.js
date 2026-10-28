@@ -134,7 +134,7 @@ window.ELIANDI_I18N = [
   ["Boek jouw sessie", "Book your session", "احجز جلستك"],
   ["Voor één tot zes personen, ook als", "For one to six people, also as a", "من شخص إلى ستة أشخاص، وأيضًا كـ"],
   ["cadeaubon", "gift voucher", "قسيمة هدية"],
-  ["· dinsdag en donderdag", "· Tuesday and Thursday", "· الثلاثاء والخميس"],
+  ["· dinsdag, woensdag en donderdag", "· Tuesday, Wednesday and Thursday", "· الثلاثاء والأربعاء والخميس"],
   ["Angelo mengt druppel voor druppel een parfum op maat", "Angelo blends a bespoke perfume drop by drop", "أنجيلو يمزج عطرًا حسب الطلب قطرة بعد قطرة"],
 
   /* ── home: reviews ── */
