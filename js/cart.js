@@ -7,6 +7,9 @@
 (() => {
   'use strict';
   const KEY = 'eliandi_cart';
+  /* de site-root, ook op /geur/<naam> en op de GitHub Pages-kopie in een submap */
+  const script = document.currentScript;
+  const basis = script && script.src ? script.src.replace(/js\/cart\.js.*$/, '') : '/';
   const euro = n => '€' + n.toFixed(2).replace('.', ',');
 
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
@@ -73,7 +76,7 @@
     <div class="cart-foot">
       <p class="cart-free"></p>
       <p class="cart-sum"><span>Subtotaal</span><b class="cart-total"></b></p>
-      <a class="btn btn-gold cart-go" href="afrekenen.html">Afrekenen</a>
+      <a class="btn btn-gold cart-go" href="${basis}afrekenen.html">Afrekenen</a>
     </div>`;
   const veil = document.createElement('div');
   veil.className = 'cart-veil';

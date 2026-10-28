@@ -856,9 +856,12 @@
 .qd-adres-totaal b { color: var(--goud-glans); font-weight: 500; }
 @media (max-width: 560px) { .qd-adres-rij { grid-template-columns: 1fr; } }
 
+/* bestellen en winkelmand: even breed onder elkaar, hoofd- en bijzaak */
+.qd-order, .qd-tocart { display: block; width: 100%; text-align: center; letter-spacing: .16em; line-height: 1.5; }
 .qd-order { font-size: 13px; }
 .qd-order[disabled] { opacity: .6; cursor: wait; }
-.qd-tocart { font-size: 12px; margin-left: 10px; }
+.qd-tocart { font-size: 11.5px; margin: 10px 0 0; padding: 14px 24px; border-color: rgba(212,167,60,.45); color: var(--ivoor); }
+.qd-tocart:hover { border-color: var(--goud-glans); color: var(--goud-glans); }
 .qd-tocart[hidden] { display: none; }
 .qd-tocart.is-done { border-color: var(--goud-glans); color: var(--goud-glans); }
 
@@ -953,8 +956,6 @@
   .qr-side-visual { padding-top: 6px; }
   .qr-discovery { grid-template-columns: 1fr; }
   .qd-media { max-width: 330px; margin: 0 auto; }
-  .qd-order { width: 100%; justify-content: center; text-align: center; }
-  .qd-tocart { width: 100%; justify-content: center; text-align: center; margin: 10px 0 0; }
   .qr-pyr-row { grid-template-columns: 1fr; gap: 5px; padding: 8px 0; }
 }
 
