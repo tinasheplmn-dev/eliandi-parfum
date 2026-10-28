@@ -1308,3 +1308,76 @@ a { color: inherit; }
   /* angelo: foto niet paginahoog */
   .angelo-photo .frame img { aspect-ratio: 4 / 3; object-fit: cover; }
 }
+
+/* ═══════════ De belofte: zes waarden rond het Eliandi-embleem ═══════════ */
+.values { position: relative; overflow: hidden; background:
+  radial-gradient(ellipse 60% 55% at 50% 58%, rgba(184,134,11,.13), transparent 70%),
+  radial-gradient(ellipse 120% 80% at 50% 120%, rgba(90,45,20,.25), transparent 60%),
+  var(--zwart); }
+.values::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, rgba(233,199,103,.07) 1px, transparent 1.4px); background-size: 34px 34px;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 55%, #000 20%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 55%, #000 20%, transparent 75%); }
+.values .wrap { position: relative; z-index: 1; }
+.oath { margin-top: 64px; display: grid; grid-template-columns: 1fr minmax(260px, 380px) 1fr; align-items: center; gap: clamp(20px, 3vw, 48px); }
+.oath-col { display: grid; gap: clamp(26px, 3.4vw, 46px); }
+.oath-item { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; padding: 4px 0; }
+.oath-col-l .oath-item { grid-template-columns: 1fr auto; text-align: right; }
+.oath-col-l .oath-ico { order: 2; }
+/* gouden lijntje van elke waarde naar het embleem */
+.oath-item::after { content: ''; position: absolute; top: 38px; width: clamp(14px, 2.4vw, 40px); height: 1px; transition: width .6s var(--ease-lux), opacity .6s; opacity: .55; }
+.oath-col-l .oath-item::after { right: calc(-1 * clamp(20px, 3vw, 48px)); background: linear-gradient(90deg, transparent, var(--goud-glans)); }
+.oath-col-r .oath-item::after { left: calc(-1 * clamp(20px, 3vw, 48px)); background: linear-gradient(270deg, transparent, var(--goud-glans)); }
+.oath-col-l .oath-item:nth-child(2), .oath-col-r .oath-item:nth-child(2) { transform: translateX(var(--bol, 0)); }
+.oath-col-l .oath-item:nth-child(2) { --bol: calc(-1 * clamp(0px, 2.4vw, 34px)); }
+.oath-col-r .oath-item:nth-child(2) { --bol: clamp(0px, 2.4vw, 34px); }
+.oath-ico { position: relative; width: 76px; height: 76px; display: grid; place-items: center; flex: none; }
+.oath-ico::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; background: radial-gradient(circle, rgba(233,199,103,.28), transparent 68%); opacity: .55; transition: opacity .6s, transform .6s var(--ease-lux); }
+.oath-ico img { position: relative; width: 76px; height: 76px; transition: transform .6s var(--ease-lux), filter .6s; filter: drop-shadow(0 8px 18px rgba(0,0,0,.55)); }
+.oath-nr { display: block; font: 500 11px/1 var(--sans); letter-spacing: .34em; color: var(--goud); margin-bottom: 10px; opacity: .85; }
+.oath-item h3 { font: 500 clamp(1.25rem, 1.9vw, 1.5rem)/1.2 var(--serif); color: var(--ivoor); margin-bottom: 10px; letter-spacing: .02em; transition: color .5s; }
+.oath-item p { font-size: .93rem; line-height: 1.7; color: var(--tekst-dim); max-width: 34ch; transition: color .5s; }
+.oath-col-l .oath-item p { margin-left: auto; }
+.oath-item:hover h3 { color: var(--goud-glans); }
+.oath-item:hover p { color: var(--tekst); }
+.oath-item:hover .oath-ico img { transform: translateY(-4px) scale(1.06); filter: drop-shadow(0 10px 22px rgba(184,134,11,.45)); }
+.oath-item:hover .oath-ico::before { opacity: 1; transform: scale(1.15); }
+.oath-item:hover::after { opacity: 1; width: clamp(20px, 3.4vw, 56px); }
+
+/* het hart: embleem met langzaam draaiende gouden ringen */
+.oath-heart { position: relative; aspect-ratio: 1; display: grid; place-items: center; }
+.oath-halo { position: absolute; inset: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(233,199,103,.30), rgba(184,134,11,.10) 45%, transparent 70%); filter: blur(6px); animation: oathPulse 6s ease-in-out infinite; }
+.oath-rings { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.oath-rings circle { fill: none; stroke: var(--goud); }
+.oath-rings .r1 { stroke-opacity: .35; stroke-width: .8; stroke-dasharray: 2 7; transform-origin: 200px 200px; animation: oathSpin 90s linear infinite; }
+.oath-rings .r2 { stroke-opacity: .55; stroke-width: 1; }
+.oath-rings .r3 { stroke-opacity: .25; stroke-width: .6; stroke-dasharray: 60 14 4 14; transform-origin: 200px 200px; animation: oathSpin 60s linear infinite reverse; }
+.oath-ticks { stroke: var(--goud-glans); stroke-opacity: .5; stroke-width: 1; transform-origin: 200px 200px; animation: oathSpin 140s linear infinite; }
+.oath-mark { position: relative; width: 44%; height: auto; filter: drop-shadow(0 0 28px rgba(233,199,103,.35)) drop-shadow(0 14px 30px rgba(0,0,0,.6)); animation: oathFloat 7s ease-in-out infinite; }
+.oath-seal { position: absolute; bottom: 19%; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; white-space: nowrap; font-size: 9.5px; letter-spacing: .3em; text-transform: uppercase; color: var(--goud-licht); }
+.oath-seal span + span::before { content: '·'; margin-right: 10px; color: var(--goud); }
+.oath:has(.oath-item:hover) .oath-halo { animation-duration: 2.4s; }
+@keyframes oathSpin { to { transform: rotate(360deg); } }
+@keyframes oathPulse { 0%, 100% { opacity: .75; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes oathFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .oath-rings *, .oath-halo, .oath-mark, .oath-ticks { animation: none !important; } }
+
+@media (max-width: 1180px) {
+  .oath { grid-template-columns: 1fr 1fr; grid-template-areas: "hart hart" "l r"; row-gap: 40px; }
+  .oath-heart { grid-area: hart; width: min(300px, 70vw); margin: 0 auto; }
+  .oath-col-l { grid-area: l; } .oath-col-r { grid-area: r; }
+  .oath-col-l .oath-item { grid-template-columns: auto 1fr; text-align: left; }
+  .oath-col-l .oath-ico { order: 0; }
+  .oath-col-l .oath-item p { margin-left: 0; }
+  .oath-item::after { display: none; }
+  .oath-col-l .oath-item:nth-child(2), .oath-col-r .oath-item:nth-child(2) { transform: none; }
+}
+@media (max-width: 640px) {
+  .oath { grid-template-columns: 1fr; grid-template-areas: "hart" "l" "r"; margin-top: 40px; row-gap: 0; }
+  .oath-heart { width: min(240px, 66vw); margin-bottom: 30px; }
+  .oath-col { gap: 0; }
+  .oath-item { grid-template-columns: 56px 1fr !important; gap: 16px; padding: 20px 0; border-top: 1px solid rgba(184,134,11,.16); }
+  .oath-col-r .oath-item:last-child { border-bottom: 1px solid rgba(184,134,11,.16); }
+  .oath-ico, .oath-ico img { width: 56px; height: 56px; }
+  .oath-nr { margin-bottom: 6px; }
+  .oath-item h3 { margin-bottom: 6px; }
+}

@@ -23,6 +23,45 @@ try { VERTALINGEN = require('./_vertalingen.json'); } catch (e) { /* nog geen ve
 const FOTOS = require('./_fotos.json');
 const ML = [30, 50, 100];
 
+/* ── vertalen op de server: dezelfde woordenlijst en regels als js/taal.js ── */
+let TAAL = null;
+function taalKern() {
+  if (TAAL) return TAAL;
+  const vm = require('vm');
+  const ctx = { window: {} }; vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n-data.js'), 'utf8'), ctx);
+  const w = ctx.window, norm = t => String(t).replace(/\s+/g, ' ').trim();
+  const W = {};
+  String(w.ELIANDI_NOTEN || '').trim().split('\n').forEach(r => { const d = r.split('|'); if (d.length === 3) W[d[0].trim().toLowerCase()] = [d[1].trim(), d[2].trim()]; });
+  TAAL = {};
+  ['en', 'ar'].forEach((lang, i) => {
+    const D = {};
+    (w.ELIANDI_I18N || []).forEach(r => { if (r[i + 1] != null) D[norm(r[0])] = r[i + 1]; });
+    TAAL[lang] = { D, tr: w.ELIANDI_I18N_KERN(lang, D, W).tr, norm };
+  });
+  return TAAL;
+}
+const ENT = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&middot;': '·', '&nbsp;': '\u00a0', '&times;': '×' };
+const ontsnap = t => t.replace(/&(amp|lt|gt|quot|#39|middot|nbsp|times);/g, m => ENT[m]);
+/* vertaal alle zichtbare tekst en de toegankelijke attributen van een pagina */
+function vertaalHtml(html, lang, paren) {
+  const k = taalKern()[lang];
+  const extra = {}; (paren || []).forEach(r => { extra[k.norm(r[0])] = r[lang === 'en' ? 1 : 2]; });
+  const t = tekst => { const n = k.norm(tekst); if (!n) return null; if (extra[n]) return extra[n]; return k.tr(n); };
+  const vervang = tekst => {
+    const echt = ontsnap(tekst); const v = t(echt);
+    if (v == null) return tekst;
+    return echt.match(/^\s*/)[0] + esc(v) + echt.match(/\s*$/)[0];
+  };
+  return html.split(/(<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>)/).map(deel => {
+    if (!deel) return deel;
+    if (deel[0] !== '<') return /[A-Za-zÀ-ÿ]/.test(deel) ? vervang(deel) : deel;
+    if (/^<(script|style)/i.test(deel)) return deel;
+    return deel.replace(/\b(alt|title|aria-label|placeholder)="([^"]*)"/g, (m, a, v) => { const x = t(ontsnap(v)); return x == null ? m : `${a}="${esc(x)}"`; })
+      .replace(/(<meta (?:name="description"|property="og:(?:title|description)") content=")([^"]*)(")/, (m, a, v, z) => { const x = t(ontsnap(v)); return x == null ? m : a + esc(x) + z; });
+  }).join('');
+}
+
 /* de catalogus is een browserbestand; we lezen de JSON eruit */
 let CATALOG = null;
 function catalog() {
@@ -124,7 +163,8 @@ async function lijst() {
 const MATEN = [30, 50, 100, 6, 13];
 const label = i => (i >= 3 ? `${MATEN[i]} ml olie` : `${MATEN[i]} ml`);
 
-function pagina(p, alle, site, reviews, olie) {
+function pagina(p, alle, site, reviews, olie, lang) {
+  lang = lang || 'nl';
   const fams = families(p);
   const tint = TINT[fams[0]] || '#8a6a2a';
   const k = karakter(p);
@@ -145,9 +185,12 @@ function pagina(p, alle, site, reviews, olie) {
   const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
   const story = (TEKSTEN[p.n] || []).filter(t => t !== p.i);
   const noten = [['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
-  const url = `${site}/geur/${slug(p.n)}`;
+  const basisUrl = `${site}/geur/${slug(p.n)}`;
+  const url = lang === 'nl' ? basisUrl : `${basisUrl}?lang=${lang}`;
   const titel = `${p.n} | Extrait de parfum | Eliandi Parfum`;
-  const omschrijving = (p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi in 's-Hertogenbosch.`).slice(0, 155);
+  const vtI = VERTALINGEN[p.n];
+  const introTaal = lang !== 'nl' && vtI && vtI.nl.i === p.i && vtI[lang] && vtI[lang].i ? vtI[lang].i : '';
+  const omschrijving = (introTaal || p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi in 's-Hertogenbosch.`).slice(0, 155);
   const verwanten = verwant(p, alle);
   /* vertaalparen [nl, en, ar] voor js/taal.js, alleen voor teksten die nog kloppen */
   const vt = VERTALINGEN[p.n];
@@ -158,15 +201,36 @@ function pagina(p, alle, site, reviews, olie) {
   }
   const vertaald = paren.length > 0;
 
+  /* gestructureerde gegevens voor Google: prijs per maat, voorraad, verzending, reviews */
+  const vt0 = VERTALINGEN[p.n];
+  const ldOmschrijving = lang !== 'nl' && vt0 && vt0[lang] && vt0[lang].i && vt0.nl.i === p.i ? vt0[lang].i : omschrijving;
+  const verzending = land => ({ '@type': 'OfferShippingDetails', shippingDestination: { '@type': 'DefinedRegion', addressCountry: land },
+    shippingRate: { '@type': 'MonetaryAmount', value: '4.95', currency: 'EUR' },
+    deliveryTime: { '@type': 'ShippingDeliveryTime', handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 3, unitCode: 'DAY' }, transitTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 2, unitCode: 'DAY' } } });
+  const fotoAbs = i => (fotoVan(i) ? `${site}/${fotoVan(i).replace(/\.webp$/, '.jpg')}` : `${site}/assets/parfumeur-mengt-geur-pipet.jpg`);
   const ld = {
-    '@context': 'https://schema.org', '@type': 'Product', name: p.n,
-    description: omschrijving, brand: { '@type': 'Brand', name: 'Eliandi Parfum' }, url,
-    ...(p.p ? { offers: { '@type': 'AggregateOffer', priceCurrency: 'EUR', lowPrice: Math.min(...beschikbaar.map(x => x.prijs)), highPrice: Math.max(...beschikbaar.map(x => x.prijs)), offerCount: beschikbaar.length, availability: 'https://schema.org/InStock' } } : {}),
-    ...(rv.length ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: gem.toFixed(1), reviewCount: rv.length, bestRating: 5 } } : {}),
+    '@context': 'https://schema.org', '@type': 'Product', name: p.n, sku: slug(p.n), inLanguage: lang,
+    description: ldOmschrijving, brand: { '@type': 'Brand', name: 'Eliandi Parfum' }, url,
+    image: [...new Set([0, 1, 2].map(fotoAbs))],
+    category: 'Parfum > Extrait de parfum',
+    ...(prijzen.some(Boolean) ? { offers: MATEN.map((ml, i) => (prijzen[i] ? {
+      '@type': 'Offer', name: label(i), sku: `${slug(p.n)}-${i >= 3 ? 'olie-' : ''}${ml}`, price: Number(prijzen[i]).toFixed(2), priceCurrency: 'EUR', url,
+      availability: op(i) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock', itemCondition: 'https://schema.org/NewCondition',
+      seller: { '@type': 'Organization', name: 'Eliandi Parfum' }, shippingDetails: [verzending('NL'), verzending('BE')],
+    } : null)).filter(Boolean) } : {}),
+    ...(rv.length ? {
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: gem.toFixed(1), reviewCount: rv.length, bestRating: 5, worstRating: 1 },
+      review: rv.slice(0, 10).map(r => ({ '@type': 'Review', author: { '@type': 'Person', name: r.naam }, reviewBody: r.tekst, reviewRating: { '@type': 'Rating', ratingValue: Number(r.sterren || 5), bestRating: 5 } })),
+    } : {}),
   };
+  const kruimel = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Shop', item: `${site}/shop` },
+    { '@type': 'ListItem', position: 2, name: doelgroep(p), item: `${site}/shop?f=g%3A${p.g}` },
+    { '@type': 'ListItem', position: 3, name: p.n, item: basisUrl },
+  ] };
 
-  return `<!DOCTYPE html>
-<html lang="nl">
+  const html = `<!DOCTYPE html>
+<html lang="${lang}"${lang === 'ar' ? ' dir="rtl"' : ''}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -180,6 +244,11 @@ function pagina(p, alle, site, reviews, olie) {
   <meta property="og:image" content="${site}/${fotoVan(gekozen >= 0 ? gekozen : 1) ? esc(fotoVan(gekozen >= 0 ? gekozen : 1).replace(/\.webp$/, '.jpg')) : 'assets/parfumeur-mengt-geur-pipet.jpg'}">
   <meta name="theme-color" content="#141414">
   <link rel="canonical" href="${esc(url)}">
+  <link rel="alternate" hreflang="nl" href="${esc(basisUrl)}">
+  <link rel="alternate" hreflang="en" href="${esc(basisUrl)}?lang=en">
+  <link rel="alternate" hreflang="ar" href="${esc(basisUrl)}?lang=ar">
+  <link rel="alternate" hreflang="x-default" href="${esc(basisUrl)}">
+  <meta property="og:locale" content="${{ nl: 'nl_NL', en: 'en_GB', ar: 'ar_AR' }[lang]}">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -188,9 +257,11 @@ function pagina(p, alle, site, reviews, olie) {
   <link rel="stylesheet" href="/css/cart.css">
   <link rel="stylesheet" href="/css/shop.css">
   <link rel="stylesheet" href="/css/product.css">
-  <script type="application/ld+json">${JSON.stringify(ld)}</script>
+  <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
+  <script type="application/ld+json">${JSON.stringify(kruimel).replace(/</g, '\\u003c')}</script>
   ${vertaald ? `<script type="application/json" id="i18nExtra">${JSON.stringify(paren).replace(/</g, '\\u003c')}</script>` : ''}
   <script src="/js/taal.js"></script>
+  <script src="/js/meet.js" defer></script>
 </head>
 <body class="shoppage productpage" data-page="geur">
   <header class="qnav sh-nav">
@@ -323,7 +394,7 @@ function pagina(p, alle, site, reviews, olie) {
   </main>
 
   <footer class="sh-footer">
-    <p>Eliandi Parfum &middot; Vughterstraat 70, 5211 GK 's-Hertogenbosch &middot; <a href="tel:+31687080256">06 870 802 56</a> &middot; <a href="mailto:info@eliandiparfum.com">info@eliandiparfum.com</a></p>
+    <p>Eliandi Parfum &middot; Vughterstraat 70, 5211 GK 's-Hertogenbosch &middot; <a href="tel:+31687080256">06 870 802 56</a> &middot; <a href="mailto:info@eliandiparfum.com">info@eliandiparfum.com</a> &middot; <a href="/privacy">Privacy</a></p>
   </footer>
 
   <a class="wa-widget" href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, ik heb een vraag over ' + p.n)}" target="_blank" rel="noopener" aria-label="Stuur Angelo een WhatsApp-bericht">
@@ -336,13 +407,76 @@ function pagina(p, alle, site, reviews, olie) {
   <script src="/js/zonder-server.js" defer></script>
 </body>
 </html>`;
+  return lang === 'nl' ? html : vertaalHtml(html, lang, paren);
+}
+
+/* ── sitemap met alle geuren in drie talen ── */
+function sitemap(alle, site) {
+  const vast = ['/', '/shop', '/experience', '/quiz', '/privacy'];
+  const alt = loc => ['nl', 'en', 'ar'].map(l => `<xhtml:link rel="alternate" hreflang="${l}" href="${esc(loc + (l === 'nl' ? '' : (loc.includes('?') ? '&' : '?') + 'lang=' + l))}"/>`).join('')
+    + `<xhtml:link rel="alternate" hreflang="x-default" href="${esc(loc)}"/>`;
+  const urls = vast.map(pad => `<url><loc>${esc(site + pad)}</loc><changefreq>weekly</changefreq><priority>${pad === '/' ? '1.0' : '0.8'}</priority></url>`)
+    .concat(alle.map(p => { const loc = `${site}/geur/${slug(p.n)}`; return ['nl', 'en', 'ar'].map(l => `<url><loc>${esc(l === 'nl' ? loc : loc + '?lang=' + l)}</loc>${alt(loc)}<changefreq>monthly</changefreq><priority>0.7</priority></url>`).join(''); }));
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`;
+}
+
+/* ── productfeed voor Google Merchant Center (gratis vermeldingen in Google Shopping) ── */
+function feed(alle, site, olie) {
+  const GESLACHT = { dames: 'female', heren: 'male', unisex: 'unisex' };
+  const items = [];
+  alle.forEach(p => {
+    const v = (p.v || []).slice(0, 3);
+    if (!v.some(Boolean)) return;
+    const prijzen = [...v, olie[6], olie[13]];
+    const foto = i => { const f = FOTOS[p.g] && FOTOS[p.g][i >= 3 ? 'olie' : String(MATEN[i])]; return f ? `${site}/${f.replace(/\.webp$/, '.jpg')}` : `${site}/assets/parfumeur-mengt-geur-pipet.jpg`; };
+    const tekst = (p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi uit 's-Hertogenbosch.`).slice(0, 4900);
+    MATEN.forEach((ml, i) => {
+      if (!prijzen[i]) return;
+      const op = p.stock && p.stock[i] === 0;
+      items.push(`<item>
+<g:id>${esc(slug(p.n) + '-' + (i >= 3 ? 'olie-' : '') + ml)}</g:id>
+<g:item_group_id>${esc(slug(p.n))}</g:item_group_id>
+<title>${esc(`${p.n} ${i >= 3 ? 'parfumolie' : 'extrait de parfum'} ${ml} ml`)}</title>
+<description>${esc(tekst)}</description>
+<link>${esc(`${site}/geur/${slug(p.n)}`)}</link>
+<g:image_link>${esc(foto(i))}</g:image_link>
+<g:price>${Number(prijzen[i]).toFixed(2)} EUR</g:price>
+<g:availability>${op ? 'out_of_stock' : 'in_stock'}</g:availability>
+<g:condition>new</g:condition>
+<g:brand>Eliandi Parfum</g:brand>
+<g:identifier_exists>no</g:identifier_exists>
+<g:google_product_category>479</g:google_product_category>
+<g:product_type>${esc(i >= 3 ? 'Parfumolie' : 'Extrait de parfum')} &gt; ${esc(doelgroep(p))}</g:product_type>
+<g:gender>${GESLACHT[p.g] || 'unisex'}</g:gender>
+<g:age_group>adult</g:age_group>
+<g:size>${ml} ml</g:size>
+<g:shipping><g:country>NL</g:country><g:price>4.95 EUR</g:price></g:shipping>
+<g:shipping><g:country>BE</g:country><g:price>4.95 EUR</g:price></g:shipping>
+</item>`);
+    });
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel>\n<title>Eliandi Parfum</title><link>${esc(site)}</link><description>Handgemaakte extrait de parfum uit 's-Hertogenbosch</description>\n${items.join('\n')}\n</channel></rss>\n`;
 }
 
 module.exports = async (req, res) => {
   const u = new URL(req.url, 'http://x');
   const wanted = (u.searchParams.get('slug') || '').toLowerCase();
+  const lang = ['en', 'ar'].includes(u.searchParams.get('lang')) ? u.searchParams.get('lang') : 'nl';
   const site = (process.env.SITE_URL || `https://${req.headers['x-forwarded-host'] || req.headers.host || 'eliandi-parfum.vercel.app'}`).replace(/\/$/, '')
     .replace(/^https:\/\/(localhost|127\.0\.0\.1)/, 'http://$1');
+  if (u.searchParams.get('robots')) {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.end(`User-agent: *\nAllow: /\nDisallow: /bedankt\nDisallow: /afrekenen\nDisallow: /beheer\nDisallow: /cadeaubon\nDisallow: /api/\n\nSitemap: ${site}/sitemap.xml\n`);
+  }
+  if (u.searchParams.get('sitemap') || u.searchParams.get('feed')) {
+    try {
+      const [alle, bedrijf] = await Promise.all([lijst(), getBedrijf()]);
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+      return res.end(u.searchParams.get('feed') ? feed(alle, site, { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 }) : sitemap(alle, site));
+    } catch (e) { console.error('sitemap', e.message); res.statusCode = 500; return res.end(''); }
+  }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   try {
     const [alle, reviews, bedrijf] = await Promise.all([lijst(), store.getJson('cms:reviews', {}).catch(() => ({})), getBedrijf()]);
@@ -356,7 +490,8 @@ module.exports = async (req, res) => {
     }
     res.statusCode = 200;
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
-    res.end(pagina(p, alle, site, (reviews || {})[p.n], olie));
+    res.setHeader('Content-Language', lang);
+    res.end(pagina(p, alle, site, (reviews || {})[p.n], olie, lang));
   } catch (e) {
     console.error('geur', e.message);
     res.statusCode = 500;

@@ -36,6 +36,7 @@
       const hit = items.find(i => same(i, line));
       if (hit) hit.qty = Math.min(10, hit.qty + 1); else items.push(line);
       write(items);
+      if (window.EliandiMeet) window.EliandiMeet.eens('winkelmand');
       open();
     },
     setQty(idx, qty) {

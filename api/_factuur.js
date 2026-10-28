@@ -198,4 +198,41 @@ async function maakFactuur(o) {
   return { factuur: o.factuur, pdf: factuurPdf(o, bedrijf), bedrijf };
 }
 
-module.exports = { getBedrijf, saveBedrijf, maakFactuur, factuurPdf, BEDRIJF_STANDAARD, excl };
+/* Pakbon: wat er in het pakket moet, zonder prijzen, met vinkvakjes.
+   De privénotitie van Angelo staat er bewust niet op. */
+function pakbonPdf(o, bedrijf) {
+  const GOUD = '0.72 0.53 0.06';
+  return pdfMaken(p => {
+    p.tekst(40, 788, 26, 'ELIANDI', { bold: true, kleur: GOUD });
+    p.tekst(40, 764, 13, 'P A R F U M', { kleur: GOUD });
+    p.tekst(555, 790, 16, 'PAKBON', { align: 'right', kleur: '0.35 0.35 0.35' });
+    p.tekst(555, 772, 10, 'Bestelling #' + o.id.toUpperCase(), { align: 'right', kleur: '0.45 0.45 0.45' });
+    p.tekst(555, 758, 10, datum(o.created), { align: 'right', kleur: '0.45 0.45 0.45' });
+
+    p.tekst(40, 712, 11, o.delivery === 'ophalen' ? 'Wordt opgehaald door' : 'Verzenden naar', { bold: true });
+    adresRegels(o).forEach((r, i) => p.tekst(40, 692 - i * 14, 10, r));
+    p.tekst(320, 712, 11, 'Afzender', { bold: true });
+    [bedrijf.naam, bedrijf.straat, `${bedrijf.postcode} ${bedrijf.plaats}`, bedrijf.tel].filter(Boolean).forEach((r, i) => p.tekst(320, 692 - i * 14, 10, r));
+
+    let y = 600;
+    p.vlak(40, y, 515, 22);
+    p.tekst(48, y + 7, 9.5, 'Aantal', { bold: true }); p.tekst(100, y + 7, 9.5, 'Product', { bold: true }); p.tekst(547, y + 7, 9.5, 'Ingepakt', { align: 'right', bold: true });
+    y -= 6;
+    (o.items || []).forEach(i => {
+      y -= 22;
+      p.tekst(60, y, 11, String(i.qty) + '×', { bold: true });
+      p.tekst(100, y, 10.5, i.name);
+      p.kader(525, y - 3, 14, 14);
+      p.lijn(40, y - 9, 555, y - 9);
+      if (i.kind === 'discovery' && o.perfumes && o.perfumes.length) {
+        o.perfumes.forEach(n => { y -= 16; p.tekst(116, y, 9.5, '· ' + n, { kleur: '0.35 0.35 0.35' }); p.kader(525, y - 3, 11, 11); });
+        y -= 6; p.lijn(40, y - 4, 555, y - 4);
+      }
+    });
+    y -= 40;
+    p.tekst(40, y, 10, 'Bedankt voor je bestelling. Vragen? Bel of app ' + (bedrijf.tel || '') + ' of mail ' + (bedrijf.email || '') + '.', { kleur: '0.35 0.35 0.35' });
+    p.tekst(40, y - 16, 10, 'Past de geur toch niet bij je? Kom langs in de winkel; Angelo zoekt samen met jou de geur die wel klopt.', { kleur: '0.35 0.35 0.35' });
+  });
+}
+
+module.exports = { getBedrijf, saveBedrijf, maakFactuur, factuurPdf, pakbonPdf, BEDRIJF_STANDAARD, excl };

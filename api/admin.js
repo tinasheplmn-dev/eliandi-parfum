@@ -3,9 +3,11 @@
    Body: { action, ... }. Alles behalve 'login' vereist het token
    (Authorization: Bearer ...) dat 'login' teruggeeft.
    ═══════════════════════════════════════════════════════════════ */
-const { send, readJson, clean, store, newId, makeToken, isAdmin, checkPassword, sanitizeHtml, loginGeblokkeerd, loginMislukt, loginGelukt } = require('./_lib');
+const { send, readJson, clean, store, newId, sanitizeHtml, isEmail, loginGeblokkeerd, loginMislukt, loginGelukt } = require('./_lib');
+const bev = require('./_beveiliging');
+const { maakXlsx } = require('./_xlsx');
 const { getOrder, setOrderStatus, ORDER_STATUSSEN } = require('./_records');
-const { getBedrijf, saveBedrijf, factuurPdf } = require('./_factuur');
+const { getBedrijf, saveBedrijf, factuurPdf, pakbonPdf } = require('./_factuur');
 const korting = require('./_korting');
 const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
@@ -17,8 +19,19 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 async function list(idx, prefix) {
   const ids = await store.smembers(idx);
+  if (!ids.length) return [];
   const items = await store.mgetJson(ids.map(id => prefix + id));
   return items.filter(Boolean);
+}
+/* kalenderdag in Nederlandse tijd, YYYY-MM-DD */
+const dag = ts => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date(ts));
+const BETAALD = o => o.status !== 'wacht op betaling' && o.status !== 'geannuleerd' && o.status !== 'verlopen';
+const euroTxt = c => '€ ' + (c / 100).toFixed(2).replace('.', ',');
+async function mgetGetallen(keys) {
+  if (!keys.length) return [];
+  const uit = [];
+  for (let i = 0; i < keys.length; i += 400) uit.push(...(await store.mget(keys.slice(i, i + 400))).map(v => Number(v) || 0));
+  return uit;
 }
 
 /* klanten: afgeleid uit bestellingen en boekingen, geen aparte administratie */
@@ -50,13 +63,86 @@ const actions = {
   async login(req, b) {
     await new Promise(r => setTimeout(r, 400)); // remt raden af
     if (await loginGeblokkeerd(req)) return [429, { error: 'Te veel pogingen. Probeer het over een kwartier opnieuw.' }];
-    if (!checkPassword(req, b.password)) {
+    if (!(await bev.wachtwoordKlopt(req, b.password))) {
       const n = await loginMislukt(req);
+      await bev.logboek(req, 'inloggen mislukt', 'onjuist wachtwoord');
       return [401, { error: n >= 7 ? `Onjuist wachtwoord. Nog ${10 - n} ${10 - n === 1 ? 'poging' : 'pogingen'}.` : 'Onjuist wachtwoord.' }];
     }
+    /* tweestapsverificatie aan: eerst de code uit de app */
+    if (await bev.tweestap()) {
+      if (!b.code) return [200, { tweestap: true }];
+      const ok = await bev.tweestapKlopt(b.code);
+      if (!ok) {
+        await loginMislukt(req);
+        await bev.logboek(req, 'inloggen mislukt', 'onjuiste code');
+        return [401, { error: 'Die code klopt niet. Kijk of de tijd op je telefoon goed staat.', tweestap: true }];
+      }
+      if (ok === 'herstel') await bev.logboek(req, 'herstelcode gebruikt');
+    }
     await loginGelukt(req);
-    return [200, { token: makeToken(req), persistent: store.persistent }];
+    await bev.logboek(req, 'ingelogd');
+    return [200, { token: await bev.maakToken(req), persistent: store.persistent }];
   },
+
+  /* ── account en beveiliging ── */
+  async beveiliging() {
+    const t = await bev.tweestap();
+    const eigen = await store.getJson('admin:wachtwoord', null);
+    return [200, { tweestap: Boolean(t), herstelOver: t ? (t.herstel || []).length : 0, wachtwoordSinds: eigen ? eigen.sinds : null, logboek: (await store.getJson('admin:logboek', [])).slice(0, 80) }];
+  },
+  async wachtwoordWijzigen(req, b) {
+    if (!(await bev.wachtwoordKlopt(req, b.huidig))) return [400, { error: 'Je huidige wachtwoord klopt niet.' }];
+    const fout = bev.wachtwoordSterk(b.nieuw);
+    if (fout) return [400, { error: fout }];
+    await bev.wachtwoordWijzigen(b.nieuw);
+    return [200, { ok: true, token: await bev.maakToken(req) }];
+  },
+  async overalUitloggen(req) {
+    await bev.overalUitloggen();
+    return [200, { ok: true, token: await bev.maakToken(req) }];
+  },
+  async tweestapStart() { return [200, await bev.tweestapStart()]; },
+  async tweestapBevestig(req, b) {
+    const codes = await bev.tweestapBevestig(b.code);
+    if (!codes) return [400, { error: 'Die code klopt niet. Probeer de nieuwste code uit de app.' }];
+    return [200, { codes }];
+  },
+  async tweestapUit(req, b) {
+    if (!(await bev.wachtwoordKlopt(req, b.wachtwoord))) return [400, { error: 'Je wachtwoord klopt niet.' }];
+    await bev.tweestapUit();
+    return [200, { ok: true }];
+  },
+  async downloadLink(req, b) {
+    const soort = clean(b.soort, 30), id = clean(b.id || '-', 40);
+    if (!/^(factuur|pakbon|export-bestellingen|export-klanten|export-voorraad|backup)$/.test(soort)) return [400, { error: 'Onbekende download.' }];
+    return [200, { url: await bev.downloadLink(req, soort, id) }];
+  },
+
+  /* ── klanten: privénotitie en privacyverzoek ── */
+  async klantNotitie(req, b) {
+    const email = clean(b.email, 120).toLowerCase();
+    if (!email) return [400, { error: 'Geen klant.' }];
+    const alle = await store.getJson('cms:klant-notities', {});
+    const notitie = clean(String(b.notitie || '').replace(/\r?\n/g, ' ⏎ '), 2000).replace(/ ⏎ /g, '\n');
+    if (notitie) alle[email] = { notitie, t: Date.now() }; else delete alle[email];
+    await store.setJson('cms:klant-notities', alle);
+    return [200, { ok: true }];
+  },
+  async klantWissen(req, b) {
+    /* AVG: notitie en wachtlijst weg. Bestellingen en boekingen blijven,
+       want die moeten voor de belasting zeven jaar bewaard blijven. */
+    const email = clean(b.email, 120).toLowerCase();
+    if (!email) return [400, { error: 'Geen klant.' }];
+    const alle = await store.getJson('cms:klant-notities', {});
+    delete alle[email]; await store.setJson('cms:klant-notities', alle);
+    const wl = await list('idx:wachtlijst', 'wachtlijst:');
+    let n = 0;
+    for (const w of wl) if (String(w.email).toLowerCase() === email) { await store.del('wachtlijst:' + w.id); await store.srem('idx:wachtlijst', w.id); n++; }
+    return [200, { ok: true, gewist: n }];
+  },
+
+  /* ── inzichten ── */
+  async inzichten(req, b) { return [200, await inzichten(Number(b.dagen) || 30)]; },
 
   /* ── overzicht: boekingen, bestellingen, cadeaubonnen ── */
   async overview() {
@@ -71,7 +157,13 @@ const actions = {
     orders.sort((a, b) => b.created - a.created);
     vouchers.sort((a, b) => b.created - a.created);
     const wachtlijst = (await list('idx:wachtlijst', 'wachtlijst:')).sort((a, b) => b.created - a.created);
-    return [200, { bookings, orders, vouchers, wachtlijst, klanten: klanten(orders, bookings), statussen: ORDER_STATUSSEN, persistent: store.persistent, koppelingen: koppelingen() }];
+    const [notities, overrides] = await Promise.all([store.getJson('cms:klant-notities', {}), getOverrides()]);
+    /* voorraad die bijna op is: 2 of minder (0 = uitverkocht) */
+    const MATEN = ['30 ml', '50 ml', '100 ml', 'olie 6 ml', 'olie 13 ml'];
+    const voorraadLaag = [];
+    Object.entries(overrides).forEach(([n, o]) => (o.stock || []).forEach((x, i) => { if (x !== null && x !== undefined && x <= 2) voorraadLaag.push({ n, maat: MATEN[i], over: x }); }));
+    voorraadLaag.sort((a, b) => a.over - b.over);
+    return [200, { bookings, orders, vouchers, wachtlijst, klanten: klanten(orders, bookings), notities, voorraadLaag, tweestap: Boolean(await bev.tweestap()), statussen: ORDER_STATUSSEN, persistent: store.persistent, koppelingen: koppelingen() }];
   },
 
   async bookingCancel(req, b) {
@@ -348,6 +440,138 @@ const actions = {
   },
 };
 
+/* ── inzichten: bezoek, conversie, omzet, bestsellers, zoekgedrag ── */
+const EVENTS = ['bezoek', 'product', 'winkelmand', 'afrekenen', 'zoek', 'geurwijzer', 'geurwijzer-klaar'];
+async function inzichten(dagen) {
+  dagen = [7, 30, 90, 365].includes(dagen) ? dagen : 30;
+  const nu = Date.now();
+  const datums = Array.from({ length: dagen }, (_, i) => dag(nu - (dagen - 1 - i) * 86400000));
+  const vorigeDatums = Array.from({ length: dagen }, (_, i) => dag(nu - (2 * dagen - 1 - i) * 86400000));
+  const sleutels = [...datums, ...vorigeDatums].flatMap(d => EVENTS.map(e => `stat:${d}:${e}`));
+  const waarden = await mgetGetallen(sleutels);
+  const tel = {}; sleutels.forEach((k, i) => { tel[k] = waarden[i]; });
+  const som = (ds, e) => ds.reduce((t, d) => t + (tel[`stat:${d}:${e}`] || 0), 0);
+
+  const [orders, bookings] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:')]);
+  const inPeriode = ts => datums.includes(dag(ts));
+  const inVorige = ts => vorigeDatums.includes(dag(ts));
+  const betaald = orders.filter(o => BETAALD(o) && inPeriode(o.created));
+  const betaaldVorig = orders.filter(o => BETAALD(o) && inVorige(o.created));
+  const afgebroken = orders.filter(o => o.status === 'wacht op betaling' && nu - o.created > 3600000 && inPeriode(o.created));
+  const boekingen = bookings.filter(b => b.status === 'geboekt' && inPeriode(b.created));
+
+  const perDag = datums.map(d => ({
+    d, bezoek: tel[`stat:${d}:bezoek`] || 0,
+    omzet: betaald.filter(o => dag(o.created) === d).reduce((t, o) => t + o.total, 0) + boekingen.filter(b => dag(b.created) === d).reduce((t, b) => t + (b.paid || 0), 0),
+    bestellingen: betaald.filter(o => dag(o.created) === d).length,
+  }));
+  const omzetWinkel = betaald.reduce((t, o) => t + o.total, 0);
+  const omzetExperience = boekingen.reduce((t, b) => t + (b.paid || 0), 0);
+
+  /* bestsellers en verdeling per soort */
+  const prod = {}, soort = { '30 ml': 0, '50 ml': 0, '100 ml': 0, 'olie 6 ml': 0, 'olie 13 ml': 0, 'Discovery Set': 0 };
+  betaald.forEach(o => (o.items || []).forEach(i => {
+    const naam = i.kind === 'discovery' ? 'Discovery Set' : (i.n || i.name);
+    const p = prod[naam] || (prod[naam] = { n: naam, stuks: 0, omzet: 0 });
+    p.stuks += i.qty; p.omzet += i.cents * i.qty;
+    const s = i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'olie' ? `olie ${i.ml} ml` : `${i.ml} ml`;
+    if (soort[s] !== undefined) soort[s] += i.qty;
+  }));
+  const kortingen = {};
+  betaald.filter(o => o.korting).forEach(o => { const k = kortingen[o.korting.code] || (kortingen[o.korting.code] = { code: o.korting.code, keer: 0, korting: 0 }); k.keer++; k.korting += o.korting.cents; });
+
+  /* nieuwe en terugkerende klanten */
+  const eerste = {};
+  orders.filter(BETAALD).forEach(o => { const e = String(o.email || '').toLowerCase(); if (e && (!eerste[e] || o.created < eerste[e])) eerste[e] = o.created; });
+  const kopers = [...new Set(betaald.map(o => String(o.email || '').toLowerCase()).filter(Boolean))];
+  const nieuw = kopers.filter(e => inPeriode(eerste[e])).length;
+
+  /* zoeken en bekeken producten, per maand bijgehouden */
+  const maanden = [...new Set(datums.map(d => d.slice(0, 7)))];
+  async function topLijst(setPrefix, telPrefix, max) {
+    const tot = {};
+    for (const m of maanden) {
+      const leden = await store.smembers(`${setPrefix}:${m}`);
+      if (!leden.length) continue;
+      const w = await mgetGetallen(leden.map(x => `${telPrefix}:${m}:${x}`));
+      leden.forEach((x, i) => { tot[x] = (tot[x] || 0) + w[i]; });
+    }
+    return Object.entries(tot).sort((a, b) => b[1] - a[1]).slice(0, max).map(([q, n]) => ({ q, n }));
+  }
+  const [zoekTop, zoekLeeg, bekeken] = await Promise.all([topLijst('zoeken', 'zoek', 15), topLijst('zoekenleeg', 'zoekleeg', 15), topLijst('pviews', 'pview', 10)]);
+
+  const bezoek = som(datums, 'bezoek'), bezoekVorig = som(vorigeDatums, 'bezoek');
+  const winkelmand = som(datums, 'winkelmand'), afrekenen = som(datums, 'afrekenen');
+  return {
+    dagen, perDag, meetSinds: await store.get('stat:sinds'),
+    totaal: {
+      bezoek, bezoekVorig, omzet: omzetWinkel + omzetExperience, omzetVorig: betaaldVorig.reduce((t, o) => t + o.total, 0),
+      omzetWinkel, omzetExperience, bestellingen: betaald.length, bestellingenVorig: betaaldVorig.length,
+      gemiddeld: betaald.length ? Math.round(omzetWinkel / betaald.length) : 0,
+      conversie: bezoek ? (betaald.length + boekingen.length) / bezoek : null,
+      boekingen: boekingen.length, personen: boekingen.reduce((t, b) => t + (b.people || 1), 0),
+      afgebroken: afgebroken.length, afgebrokenWaarde: afgebroken.reduce((t, o) => t + o.total, 0),
+      verlaten: Math.max(0, winkelmand - afrekenen), nieuweKlanten: nieuw, terugkerend: kopers.length - nieuw,
+      geurwijzer: som(datums, 'geurwijzer'), geurwijzerKlaar: som(datums, 'geurwijzer-klaar'),
+    },
+    trechter: [
+      { stap: 'Bezoeken', n: bezoek }, { stap: 'Product bekeken', n: som(datums, 'product') }, { stap: 'In winkelmand', n: winkelmand },
+      { stap: 'Naar afrekenen', n: afrekenen }, { stap: 'Betaald', n: betaald.length },
+    ],
+    bestsellers: Object.values(prod).sort((a, b) => b.stuks - a.stuks || b.omzet - a.omzet).slice(0, 10),
+    soort, kortingen: Object.values(kortingen).sort((a, b) => b.keer - a.keer),
+    zoekTop, zoekLeeg, bekeken,
+  };
+}
+
+/* ── exports naar Excel ── */
+async function exportBestand(soort) {
+  const nu = new Date();
+  if (soort === 'export-bestellingen') {
+    const orders = (await list('idx:orders', 'order:')).sort((a, b) => b.created - a.created);
+    return { naam: `eliandi-bestellingen-${dag(nu)}.xlsx`, data: maakXlsx([{
+      naam: 'Bestellingen', geld: [9, 10, 11],
+      kolommen: ['Datum', 'Bestelling', 'Factuur', 'Status', 'Klant', 'E-mail', 'Telefoon', 'Levering', 'Adres', 'Korting', 'Verzendkosten', 'Totaal', 'Kortingscode', 'Producten', 'Track & trace', 'Privénotitie'],
+      rijen: orders.map(o => [new Date(o.created), o.id.toUpperCase(), o.factuur ? o.factuur.nummer : '', o.status, o.name, o.email, o.phone, o.delivery, o.address || '',
+        o.korting ? o.korting.cents / 100 : 0, (o.shipping || 0) / 100, o.total / 100, o.korting ? o.korting.code : '',
+        (o.items || []).map(i => `${i.qty}x ${i.name}`).join('; ') + (o.perfumes && o.perfumes.length ? ` (set: ${o.perfumes.join(', ')})` : ''), o.trackTrace || '', o.note || '']),
+    }, {
+      naam: 'Regels', geld: [4, 5],
+      kolommen: ['Datum', 'Bestelling', 'Status', 'Product', 'Stukprijs', 'Regeltotaal', 'Aantal', 'Soort'],
+      rijen: orders.flatMap(o => (o.items || []).map(i => [new Date(o.created), o.id.toUpperCase(), o.status, i.name, i.cents / 100, i.cents * i.qty / 100, i.qty, i.kind === 'olie' ? 'parfumolie' : i.kind === 'discovery' ? 'Discovery Set' : 'extrait'])),
+    }]) };
+  }
+  if (soort === 'export-klanten') {
+    const [orders, bookings, notities] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), store.getJson('cms:klant-notities', {})]);
+    return { naam: `eliandi-klanten-${dag(nu)}.xlsx`, data: maakXlsx([{
+      naam: 'Klanten', geld: [5],
+      kolommen: ['Naam', 'E-mail', 'Telefoon', 'Bestellingen', 'Experiences', 'Totaal besteed', 'Laatste aankoop', 'Privénotitie'],
+      rijen: klanten(orders, bookings).map(k => [k.naam, k.email, k.tel, k.bestellingen, k.boekingen, k.besteed / 100, k.laatst ? new Date(k.laatst) : '', (notities[k.email] || {}).notitie || '']),
+    }]) };
+  }
+  if (soort === 'export-voorraad') {
+    const [overrides, custom] = await Promise.all([getOverrides(), getCustom()]);
+    const v = (o, i) => (o && o.stock && o.stock[i] != null ? o.stock[i] : 'onbeperkt');
+    const rijen = Object.entries(BASE_PRICES).map(([n, prijs]) => { const o = overrides[n] || {}; const p = o.v || prijs; return [n, o.hidden ? 'verborgen' : 'zichtbaar', p[0] || '', p[1] || '', p[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), o.tags || '']; })
+      .concat(custom.map(p => { const o = overrides[p.n] || {}; return [p.n + ' (eigen)', 'zichtbaar', p.v[0] || '', p.v[1] || '', p.v[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), p.tags || '']; }));
+    return { naam: `eliandi-voorraad-${dag(nu)}.xlsx`, data: maakXlsx([{
+      naam: 'Voorraad', geld: [2, 3, 4],
+      kolommen: ['Geur', 'Zichtbaar', 'Prijs 30 ml', 'Prijs 50 ml', 'Prijs 100 ml', 'Voorraad 30', 'Voorraad 50', 'Voorraad 100', 'Voorraad olie 6', 'Voorraad olie 13', 'Zoektermen'],
+      rijen,
+    }]) };
+  }
+  return null;
+}
+
+/* ── back-up: alles wat niet in de code staat ── */
+async function backup() {
+  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:reviews', 'cms:klant-notities', 'cms:settings', 'cms:content-index', 'cms:content-experience', 'cms:content-quiz'];
+  const waarden = await store.mgetJson(sleutels);
+  const [orders, bookings, vouchers, wachtlijst] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), list('idx:vouchers', 'voucher:'), list('idx:wachtlijst', 'wachtlijst:')]);
+  const cms = {}; sleutels.forEach((k, i) => { if (waarden[i] != null) cms[k] = waarden[i]; });
+  return { gemaakt: new Date().toISOString(), orders, bookings, vouchers, wachtlijst, cms };
+}
+
 async function dagelijks() {
   /* herinnering bij een winkelmand die na een dag nog niet betaald is */
   const mail = require('./_mail');
@@ -362,8 +586,21 @@ async function dagelijks() {
     o.herinnerd = nu; await require('./_records').saveOrder(o);
     if (ok) verstuurd++;
   }
+  /* dagelijkse back-up, 14 dagen bewaard */
+  try { await store.set('backup:' + dag(nu), JSON.stringify(await backup()), 14 * 86400); } catch (e) { console.error('backup', e.message); }
   return { herinneringen: verstuurd };
 }
+
+const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
+const ACTIE_NAAM = {
+  orderStatus: 'status bestelling', orderNote: 'notitie bestelling', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
+  productOverride: 'product aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
+  kortingSave: 'kortingscode opgeslagen', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
+  reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
+  bookingCancel: 'boeking geannuleerd', bookingAdd: 'boeking toegevoegd', bookingDone: 'boeking afgerond', recordDelete: 'verwijderd',
+  slotToggle: 'agenda aangepast', contentSave: 'tekst op de site aangepast', mediaUpload: 'afbeelding geüpload', wachtlijstDelete: 'wachtlijst afgehandeld',
+  wachtwoordWijzigen: 'wachtwoord gewijzigd', overalUitloggen: 'overal uitgelogd', tweestapBevestig: 'tweestapsverificatie aangezet', tweestapUit: 'tweestapsverificatie uitgezet',
+};
 
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
@@ -374,19 +611,36 @@ module.exports = async (req, res) => {
       if (!process.env.CRON_SECRET || auth !== 'Bearer ' + process.env.CRON_SECRET) return send(res, 401, { error: 'Geen toegang.' });
       try { return send(res, 200, await dagelijks()); } catch (e) { console.error('dagelijks', e.message); return send(res, 500, { error: 'mislukt' }); }
     }
-    /* factuur downloaden (ingelogd in het dashboard) */
-    const factuur = u.searchParams.get('factuur');
-    if (factuur) {
-      req.headers.authorization = req.headers.authorization || ('Bearer ' + (u.searchParams.get('token') || ''));
-      if (!isAdmin(req)) return send(res, 401, { error: 'Log opnieuw in.' });
-      const o = await getOrder(clean(factuur, 20));
-      if (!o || !o.factuur) return send(res, 404, { error: 'Geen factuur voor deze bestelling.' });
-      const pdf = factuurPdf(o, await getBedrijf());
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="factuur-${o.factuur.nummer}.pdf"`);
-      res.setHeader('Cache-Control', 'no-store');
-      return res.end(pdf);
+    /* downloads via een link die vijf minuten geldig is (zie downloadLink) */
+    const soort = u.searchParams.get('dl');
+    if (soort) {
+      const id = u.searchParams.get('id') || '-';
+      if (!(await bev.downloadKlopt(req, soort, id, u.searchParams.get('exp'), u.searchParams.get('sig')))) {
+        res.statusCode = 403; res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.end('<p style="font-family:sans-serif">Deze downloadlink is verlopen. Klik in het dashboard opnieuw op de knop.</p>');
+      }
+      const lever = (type, naam, data) => {
+        res.statusCode = 200; res.setHeader('Content-Type', type); res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Content-Disposition', `${type === 'application/pdf' ? 'inline' : 'attachment'}; filename="${naam}"`);
+        return res.end(data);
+      };
+      try {
+        if (soort === 'factuur' || soort === 'pakbon') {
+          const o = await getOrder(clean(id, 20));
+          if (!o || (soort === 'factuur' && !o.factuur)) return send(res, 404, { error: 'Niet gevonden.' });
+          const bedrijf = await getBedrijf();
+          return soort === 'factuur' ? lever('application/pdf', `factuur-${o.factuur.nummer}.pdf`, factuurPdf(o, bedrijf))
+            : lever('application/pdf', `pakbon-${o.id.toUpperCase()}.pdf`, pakbonPdf(o, bedrijf));
+        }
+        if (soort === 'backup') {
+          await bev.logboek(req, 'back-up gedownload');
+          return lever('application/json', `eliandi-backup-${dag(Date.now())}.json`, JSON.stringify(await backup(), null, 1));
+        }
+        const x = await exportBestand(soort);
+        if (!x) return send(res, 404, { error: 'Niet gevonden.' });
+        await bev.logboek(req, 'export gedownload', soort.replace('export-', ''));
+        return lever('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', x.naam, x.data);
+      } catch (e) { console.error('download', soort, e.message); return send(res, 500, { error: 'mislukt' }); }
     }
     return send(res, 405, { error: 'Method not allowed' });
   }
@@ -394,9 +648,15 @@ module.exports = async (req, res) => {
   const b = await readJson(req);
   const fn = actions[b.action];
   if (!fn) return send(res, 400, { error: 'Onbekende actie.' });
-  if (b.action !== 'login' && !isAdmin(req)) return send(res, 401, { error: 'Log opnieuw in.' });
+  if (b.action !== 'login' && !(await bev.ingelogd(req))) return send(res, 401, { error: 'Log opnieuw in.' });
   try {
     const [status, body] = await fn(req, b);
+    /* alles wat iets verandert komt in het logboek */
+    if (status < 400 && !LEZEN.has(b.action) && b.action !== 'login') {
+      const geheim = /^(tweestap|wachtwoord|overal)/.test(b.action);
+      const info = geheim ? '' : (b.id || b.n || b.code || b.email || (b.product && b.product.n) || b.status || '');
+      await bev.logboek(req, ACTIE_NAAM[b.action] || b.action, typeof info === 'string' ? info : '');
+    }
     send(res, status, body);
   } catch (e) {
     console.error('admin', b.action, e.message);

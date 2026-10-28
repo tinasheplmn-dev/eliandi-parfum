@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="css/cart.css">
   <link rel="stylesheet" href="css/checkout.css">
   <script src="js/taal.js"></script>
+  <script src="js/meet.js" defer></script>
 </head>
 <body class="quizpage" data-nocartfab>
 
@@ -33,6 +34,8 @@
       <a class="btn btn-gold" href="shop.html">Naar de shop</a>
     </div>
 
+    <a class="co-mini" id="coMini" href="#coSamenvatting" hidden><span id="coMiniTekst">Jouw bestelling</span><b id="coMiniTotaal"></b><i>Bekijk</i></a>
+
     <form class="co-grid" id="coForm" novalidate hidden>
       <div class="co-left">
         <fieldset class="co-block">
@@ -40,9 +43,9 @@
           <label class="ql-field"><span>Naam</span>
             <input type="text" id="coName" autocomplete="name" required></label>
           <label class="ql-field"><span>E-mailadres</span>
-            <input type="email" id="coEmail" autocomplete="email" required></label>
+            <input type="email" id="coEmail" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required></label>
           <label class="ql-field"><span>Telefoonnummer</span>
-            <input type="tel" id="coPhone" autocomplete="tel" required></label>
+            <input type="tel" id="coPhone" autocomplete="tel" inputmode="tel" required></label>
         </fieldset>
 
         <fieldset class="co-block">
@@ -64,7 +67,7 @@
               <input type="text" id="coStreet" autocomplete="street-address"></label>
             <div class="co-row">
               <label class="ql-field"><span>Postcode</span>
-                <input type="text" id="coPostcode" autocomplete="postal-code"></label>
+                <input type="text" id="coPostcode" autocomplete="postal-code" autocapitalize="characters" enterkeyhint="next"></label>
               <label class="ql-field"><span>Plaats</span>
                 <input type="text" id="coCity" autocomplete="address-level2"></label>
             </div>
@@ -74,7 +77,7 @@
         </fieldset>
       </div>
 
-      <aside class="co-summary">
+      <aside class="co-summary" id="coSamenvatting">
         <p class="co-sum-title">Jouw bestelling</p>
         <ul class="co-lines" id="coLines"></ul>
         <div class="co-code">
@@ -90,6 +93,7 @@
         <button class="btn btn-gold co-pay" id="coPay" type="submit">Betalen</button>
         <p class="ql-error" id="coError" role="alert"></p>
         <p class="co-trust">Veilig betalen met iDEAL of kaart</p>
+        <p class="co-trust co-privacy">Je gegevens gebruiken we alleen voor deze bestelling. <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>
       </aside>
     </form>
   </main>

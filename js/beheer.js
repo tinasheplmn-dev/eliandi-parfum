@@ -39,8 +39,14 @@
     e.preventDefault();
     $('loginErr').textContent = '';
     try {
-      const d = await api({ action: 'login', password: $('loginPw').value });
+      const d = await api({ action: 'login', password: $('loginPw').value, code: $('loginCode').value.replace(/\s/g, '') });
+      if (d.tweestap) {
+        $('loginCodeBox').hidden = false; $('loginCode').focus();
+        $('loginErr').textContent = 'Vul de code uit je authenticator-app in.';
+        return;
+      }
       localStorage.setItem(TOKEN, d.token);
+      $('loginCode').value = ''; $('loginCodeBox').hidden = true;
       start();
     } catch (x) { $('loginErr').textContent = x.message; }
   });
@@ -58,6 +64,11 @@
     document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('is-on', x === b));
     document.querySelectorAll('.bh-tab').forEach(t => { t.hidden = t.dataset.tab !== b.dataset.tab; });
     if (b.dataset.tab === 'producten' && !state.products) loadProducts();
+    if (b.dataset.tab === 'vandaag') renderVandaag();
+    if (b.dataset.tab === 'inzichten') loadInzichten();
+    if (b.dataset.tab === 'account') loadAccount();
+    try { sessionStorage.setItem('bh-tab', b.dataset.tab); } catch (x) { /* */ }
+    window.scrollTo(0, 0);
     if (b.dataset.tab === 'instellingen') loadSettings();
     if (b.dataset.tab === 'klanten') renderKlanten();
     if (b.dataset.tab === 'kortingen') loadKortingen().catch(x => toast(x.message, true));
@@ -75,8 +86,14 @@
     toonKoppelingen(d.koppelingen);
     renderBookings();
     renderOrders();
+    renderVandaag();
+    const teDoen = state.orders.filter(o => OPEN.includes(o.status)).length;
+    $('badgeOrders').hidden = !teDoen; $('badgeOrders').textContent = teDoen;
+    const sel = $('orStatus');
+    if (sel.options.length <= 1) (d.statussen || []).concat(['wacht op betaling']).forEach(st => sel.add(new Option(st, st)));
     if (!$('klList').closest('.bh-tab').hidden) renderKlanten();
   }
+  const naarTab = tab => { const b = document.querySelector(`#nav [data-tab="${tab}"]`); if (b) b.click(); };
 
   /* agenda en betalingen: alleen melden wat nog niet aanstaat */
   function toonKoppelingen(k) {
@@ -191,11 +208,15 @@
     const echt = state.orders.filter(o => o.status !== 'wacht op betaling' && o.status !== 'geannuleerd');
     const maand = Date.now() - 30 * 86400000;
     $('orStats').innerHTML = `<span><b>${state.orders.filter(o => OPEN.includes(o.status)).length}</b> te doen</span><span><b>${euro(echt.filter(o => o.created > maand).reduce((s, o) => s + o.total, 0))}</b> omzet 30 dagen</span>`;
-    const lijst = orFilter === 'open' ? state.orders.filter(o => OPEN.includes(o.status) || o.status === 'wacht op betaling') : state.orders;
+    let lijst = orFilter === 'open' ? state.orders.filter(o => OPEN.includes(o.status) || o.status === 'wacht op betaling') : state.orders;
+    const zq = ($('orZoek').value || '').trim().toLowerCase(), zs = $('orStatus').value, zp = Number($('orPeriode').value) || 0;
+    if (zq) lijst = lijst.filter(o => [o.name, o.email, o.phone, o.id, o.factuur && o.factuur.nummer, o.address, o.note, ...(o.items || []).map(i => i.name), ...(o.perfumes || [])].join(' ').toLowerCase().includes(zq));
+    if (zs) lijst = lijst.filter(o => o.status === zs);
+    if (zp) lijst = lijst.filter(o => o.created > Date.now() - zp * 86400000);
     const statussen = (state.statussen || []).filter(x => x !== 'betaald');
     $('orList').innerHTML = lijst.length ? lijst.map(o => `
       <article class="bh-card" data-order="${o.id}">
-        <div class="bh-card-when"><b>${date(o.created)}</b><span class="bh-pill">${o.delivery === 'ophalen' ? 'Ophalen' : 'Verzenden'}</span>${o.factuur ? `<a class="bh-link" href="/api/admin?factuur=${o.id}&token=${encodeURIComponent(localStorage.getItem(TOKEN) || '')}" target="_blank" rel="noopener">Factuur ${esc(o.factuur.nummer)}</a>` : ''}</div>
+        <div class="bh-card-when"><b>${date(o.created)}</b><span class="bh-pill">${o.delivery === 'ophalen' ? 'Ophalen' : 'Verzenden'}</span>${o.factuur ? `<button class="bh-link" data-dl="factuur" data-id="${o.id}">Factuur ${esc(o.factuur.nummer)}</button>` : ''}${o.status !== 'wacht op betaling' ? `<button class="bh-link" data-dl="pakbon" data-id="${o.id}">Pakbon</button>` : ''}</div>
         <div class="bh-card-main">
           <p class="bh-name">${esc(o.name)} <small class="bh-ref">#${esc(o.id.toUpperCase())}</small></p>
           <p class="bh-contact">${o.phone ? `<a href="tel:${esc(o.phone)}">${esc(o.phone)}</a> · ` : ''}<a href="mailto:${esc(o.email)}">${esc(o.email)}</a></p>
@@ -204,7 +225,7 @@
           ${o.address ? `<p class="bh-meta"><b>Adres:</b> ${esc(o.address)}</p>` : ''}
           ${o.korting ? `<p class="bh-meta"><b>Korting:</b> ${esc(o.korting.code)} (-${euro(o.korting.cents)})</p>` : ''}
           ${o.trackTrace ? `<p class="bh-meta"><b>Track &amp; trace:</b> ${esc(o.trackTrace)}</p>` : ''}
-          <p class="bh-meta bh-notitie"><b>Notitie:</b> <span data-note="${o.id}" contenteditable="true" spellcheck="false">${esc(o.note || '')}</span></p>
+          <p class="bh-meta bh-notitie"><b>Privénotitie</b> <small>alleen voor jou</small> <span data-note="${o.id}" contenteditable="true" spellcheck="false" data-leeg="Klik om iets te noteren">${esc(o.note || '')}</span></p>
         </div>
         <div class="bh-card-side">
           <span class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${o.status}</span>
@@ -216,7 +237,7 @@
           </div>` : ''}
           <div class="bh-card-actions"><button class="bh-btn bh-sm bh-weg" data-delorder="${o.id}" title="Definitief uit het overzicht halen">Verwijderen</button></div>
         </div>
-      </article>`).join('') : `<p class="bh-empty">${orFilter === 'open' ? 'Niets te doen. Alles is afgehandeld.' : 'Nog geen bestellingen.'}</p>`;
+      </article>`).join('') : `<p class="bh-empty">${zq || zs || zp ? 'Geen bestellingen gevonden met deze filters.' : orFilter === 'open' ? 'Niets te doen. Alles is afgehandeld.' : 'Nog geen bestellingen.'}</p>`;
     $('vcList').innerHTML = state.vouchers.length ? state.vouchers.map(v => `
       <article class="bh-card">
         <div class="bh-card-when"><b>${esc(v.code)}</b><span class="bh-pill">${gezelschap(v)}</span></div>
@@ -233,6 +254,10 @@
       </article>`).join('') : '<p class="bh-empty">Nog geen cadeaubonnen.</p>';
   }
 
+  ['orZoek', 'orStatus', 'orPeriode'].forEach(id => $(id).addEventListener('input', () => {
+    if ($('orZoek').value || $('orStatus').value || $('orPeriode').value) { orFilter = 'alle'; $('orFilter').querySelectorAll('button').forEach(x => x.classList.toggle('is-on', x.dataset.f === 'alle')); }
+    renderOrders();
+  }));
   $('orFilter').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     orFilter = b.dataset.f;
@@ -271,12 +296,13 @@
   function renderKlanten() {
     const q = ($('klSearch').value || '').trim().toLowerCase();
     const alle = state.klanten || [];
-    const rows = alle.filter(k => !q || k.naam.toLowerCase().includes(q) || k.email.includes(q));
+    const notities = state.notities || {};
+    const rows = alle.filter(k => !q || k.naam.toLowerCase().includes(q) || k.email.includes(q) || ((notities[k.email] || {}).notitie || '').toLowerCase().includes(q));
     $('klStats').innerHTML = `<span><b>${alle.length}</b> klanten</span><span><b>${euro(alle.reduce((s, k) => s + k.besteed, 0))}</b> besteed</span>`;
     $('klList').innerHTML = rows.length ? rows.map(k => `
-      <article class="bh-card bh-klant">
+      <article class="bh-card bh-klant${open === k.email ? ' is-open' : ''}" data-klant="${esc(k.email)}">
         <div class="bh-card-main">
-          <p class="bh-name">${esc(k.naam || k.email)}</p>
+          <p class="bh-name">${esc(k.naam || k.email)}${(notities[k.email] || {}).notitie ? ' <span class="bh-pill bh-pill-notitie" title="Heeft een privénotitie">notitie</span>' : ''}${k.bestellingen + k.boekingen > 1 ? ' <span class="bh-pill">vaste klant</span>' : ''}</p>
           <p class="bh-contact">${k.tel ? `<a href="tel:${esc(k.tel)}">${esc(k.tel)}</a> · ` : ''}<a href="mailto:${esc(k.email)}">${esc(k.email)}</a></p>
         </div>
         <div class="bh-card-side">
@@ -284,6 +310,7 @@
           <p class="bh-src">${k.bestellingen} ${k.bestellingen === 1 ? 'bestelling' : 'bestellingen'}${k.boekingen ? ` · ${k.boekingen} ${k.boekingen === 1 ? 'experience' : 'experiences'}` : ''}</p>
           <p class="bh-src">laatst ${date(k.laatst)}</p>
         </div>
+        ${open === k.email ? klantKaart(k, notities[k.email]) : ''}
       </article>`).join('') : '<p class="bh-empty">Nog geen klanten.</p>';
     const wl = state.wachtlijst || [];
     $('wlList').innerHTML = wl.length ? wl.map(w => `
@@ -298,6 +325,46 @@
       </article>`).join('') : '<p class="bh-empty">Niemand op de wachtlijst.</p>';
   }
   $('klSearch').addEventListener('input', renderKlanten);
+  let open = null;
+  function klantKaart(k, n) {
+    const mail = k.email;
+    const best = state.orders.filter(o => String(o.email).toLowerCase() === mail).sort((a, b) => b.created - a.created);
+    const boek = state.bookings.filter(b => String(b.email).toLowerCase() === mail);
+    return `<div class="bh-kaart">
+      <div class="bh-kaart-kol">
+        <h4>Aankopen</h4>
+        ${best.map(o => `<p class="bh-kaart-regel"><span>${date(o.created)}</span><span>${esc((o.items || []).map(i => i.qty + '× ' + i.name).join(', '))}</span><b>${euro(o.total)}</b><em class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${esc(o.status)}</em></p>`).join('') || '<p class="bh-meta">Geen bestellingen.</p>'}
+        ${boek.length ? `<h4>Experience</h4>${boek.map(b => `<p class="bh-kaart-regel"><span>${when(b.slot)}</span><span>${gezelschap(b)}</span><b>${euro(b.paid || 0)}</b><em class="bh-status">${esc(b.status)}</em></p>`).join('')}` : ''}
+      </div>
+      <div class="bh-kaart-kol">
+        <h4>Privénotitie <small>alleen voor jou, nooit zichtbaar voor de klant</small></h4>
+        <textarea class="bh-kaart-notitie" data-klantnotitie="${esc(mail)}" rows="5" placeholder="Bijvoorbeeld: houdt van oud en saffraan, verjaardag in maart, komt vaak op zaterdag">${esc(n ? n.notitie : '')}</textarea>
+        <div class="bh-card-actions">
+          <button class="bh-btn bh-sm bh-gold" data-klantopslaan="${esc(mail)}">Notitie opslaan</button>
+          <button class="bh-btn bh-sm bh-weg" data-klantwissen="${esc(mail)}" title="Voor een verzoek om gegevens te verwijderen">Gegevens wissen</button>
+        </div>
+        ${n && n.t ? `<p class="bh-meta">Laatst bijgewerkt ${date(n.t)}</p>` : ''}
+      </div>
+    </div>`;
+  }
+  $('klList').addEventListener('click', async e => {
+    const opslaan = e.target.closest('[data-klantopslaan]'), wissen = e.target.closest('[data-klantwissen]');
+    if (opslaan) {
+      const email = opslaan.dataset.klantopslaan;
+      const tekst = $('klList').querySelector(`[data-klantnotitie="${CSS.escape(email)}"]`).value;
+      try { await api({ action: 'klantNotitie', email, notitie: tekst }); state.notities = state.notities || {}; if (tekst.trim()) state.notities[email] = { notitie: tekst.trim(), t: Date.now() }; else delete state.notities[email]; toast('Notitie bewaard'); renderKlanten(); } catch (x) { toast(x.message, true); }
+      return;
+    }
+    if (wissen) {
+      if (!confirm('Privénotitie en wachtlijst-aanmeldingen van deze klant wissen?\n\nBestellingen en facturen blijven bewaard, omdat die wettelijk zeven jaar bewaard moeten worden.')) return;
+      try { const r = await api({ action: 'klantWissen', email: wissen.dataset.klantwissen }); toast(`Gewist${r.gewist ? ` (ook ${r.gewist} van de wachtlijst)` : ''}`); await loadOverview(); renderKlanten(); } catch (x) { toast(x.message, true); }
+      return;
+    }
+    if (e.target.closest('a, button, textarea, .bh-kaart')) return;
+    const kaart = e.target.closest('[data-klant]'); if (!kaart) return;
+    open = open === kaart.dataset.klant ? null : kaart.dataset.klant;
+    renderKlanten();
+  });
   $('wlList').addEventListener('click', async e => {
     const b = e.target.closest('[data-delwl]'); if (!b) return;
     try { await api({ action: 'wachtlijstDelete', id: b.dataset.delwl }); await loadOverview(); } catch (x) { toast(x.message, true); }
@@ -364,10 +431,14 @@
   }
   function renderBase() {
     const q = $('prodSearch').value.trim().toLowerCase();
-    const rows = q.length < 2 ? [] : state.products.base.filter(p => p.n.toLowerCase().includes(q)).slice(0, 12);
+    const metTags = $('prodMetTags').checked;
+    let rows = state.products.base;
+    if (metTags) rows = rows.filter(p => p.tags);
+    rows = q.length < 2 && !metTags ? [] : rows.filter(p => !q || p.n.toLowerCase().includes(q) || String(p.tags || '').toLowerCase().includes(q)).slice(0, metTags ? 60 : 12);
+    renderTags();
     $('baseList').innerHTML = rows.map(p => `
       <form class="bh-card bh-prod bh-base" data-n="${esc(p.n)}">
-        <div class="bh-card-main"><p class="bh-name">${esc(p.n)}</p></div>
+        <div class="bh-card-main"><p class="bh-name">${esc(p.n)}</p>${p.tags ? `<div class="bh-tagrij">${p.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => `<span class="bh-tag">${esc(t)}</span>`).join('')}</div>` : ''}</div>
         <div class="bh-base-fields">
           ${['30', '50', '100'].map((ml, i) => `<label>${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
           ${['30', '50', '100', 'olie 6', 'olie 13'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
@@ -382,6 +453,18 @@
       </form>`).join('') || (q.length >= 2 ? '<p class="bh-empty">Geen parfum gevonden.</p>' : '');
   }
   $('prodSearch').addEventListener('input', renderBase);
+  $('prodMetTags').addEventListener('change', renderBase);
+  function renderTags() {
+    const lijst = [...state.products.base, ...(state.products.custom || []).map(p => ({ ...p, eigen: true }))].filter(p => p.tags);
+    $('tagTel').textContent = lijst.length ? `${lijst.length} ${lijst.length === 1 ? 'geur' : 'geuren'}` : '';
+    $('tagLijst').innerHTML = lijst.length ? lijst.sort((a, b) => a.n.localeCompare(b.n)).map(p => `<button type="button" class="bh-tagregel" data-tagnaam="${esc(p.n)}"><b>${esc(p.n)}${p.eigen ? ' <small>(eigen)</small>' : ''}</b><span>${p.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => `<i class="bh-tag">${esc(t)}</i>`).join('')}</span></button>`).join('')
+      : '<p class="bh-empty">Nog geen zoektermen. Voeg ze toe bij een geur hierboven.</p>';
+  }
+  $('tagLijst').addEventListener('click', e => {
+    const b = e.target.closest('[data-tagnaam]'); if (!b) return;
+    $('prodMetTags').checked = false; $('prodSearch').value = b.dataset.tagnaam; renderBase();
+    $('prodSearch').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   $('baseList').addEventListener('click', async e => {
     const add = e.target.closest('[data-addreview]'), del = e.target.closest('[data-delreview]');
     if (!add && !del) return;
@@ -406,6 +489,7 @@
       await api({ action: 'productOverride', n: f.dataset.n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden) });
       toast('Opgeslagen');
       state.products = await api({ action: 'productsList' });
+      renderTags();
     } catch (x) { toast(x.message, true); }
   });
 
@@ -466,11 +550,192 @@
     } catch (x) { toast(x.message, true); }
   });
 
+  /* ── downloads: link die vijf minuten geldig is ── */
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-dl]'); if (!b) return;
+    e.preventDefault();
+    const pdf = b.dataset.dl === 'factuur' || b.dataset.dl === 'pakbon';
+    /* venster meteen openen, anders blokkeert Safari het */
+    const w = pdf ? window.open('', '_blank') : null;
+    try {
+      const { url } = await api({ action: 'downloadLink', soort: b.dataset.dl, id: b.dataset.id || '-' });
+      if (w) w.location = url; else { const a = document.createElement('a'); a.href = url; a.download = ''; document.body.append(a); a.click(); a.remove(); }
+    } catch (x) { if (w) w.close(); toast(x.message, true); }
+  });
+
+  /* ── vandaag ── */
+  const vandaagStr = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+  const dagVan = ts => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date(ts));
+  const BETAALD = o => !['wacht op betaling', 'geannuleerd', 'verlopen'].includes(o.status);
+  function kpi(label, waarde, sub, cls) { return `<div class="bh-kpi ${cls || ''}"><span>${label}</span><b>${waarde}</b>${sub ? `<small>${sub}</small>` : ''}</div>`; }
+  function renderVandaag() {
+    if (!state.orders) return;
+    const nu = new Date(), u = nu.getHours();
+    $('vdGroet').textContent = u < 6 ? 'Goedenacht, Angelo' : u < 12 ? 'Goedemorgen, Angelo' : u < 18 ? 'Goedemiddag, Angelo' : 'Goedenavond, Angelo';
+    $('vdDatum').textContent = nu.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, c => c.toUpperCase());
+    const vandaag = vandaagStr();
+    const startWeek = Date.now() - 6 * 86400000, startMaand = Date.now() - 29 * 86400000;
+    const omzet = from => state.orders.filter(o => BETAALD(o) && o.created >= from).reduce((t, o) => t + o.total, 0)
+      + state.bookings.filter(b => b.status === 'geboekt' && b.created >= from).reduce((t, b) => t + (b.paid || 0), 0);
+    const vandaagStart = state.orders.concat(state.bookings).filter(x => dagVan(x.created) === vandaag).reduce((m, x) => Math.min(m, x.created), Date.now());
+    const omzetVandaag = state.orders.filter(o => BETAALD(o) && dagVan(o.created) === vandaag).reduce((t, o) => t + o.total, 0)
+      + state.bookings.filter(b => b.status === 'geboekt' && dagVan(b.created) === vandaag).reduce((t, b) => t + (b.paid || 0), 0);
+    const todo = state.orders.filter(o => OPEN.includes(o.status));
+    $('vdKpis').innerHTML = kpi('Omzet vandaag', euro(omzetVandaag)) + kpi('Laatste 7 dagen', euro(omzet(startWeek))) + kpi('Laatste 30 dagen', euro(omzet(startMaand)))
+      + kpi('Te doen', todo.length, todo.length ? 'bestellingen klaarmaken' : 'alles is afgehandeld', todo.length ? 'is-let' : '');
+    $('vdTodo').innerHTML = todo.length ? todo.slice(0, 6).map(o => `<button class="bh-regel" data-ga="bestellingen" data-zoek="${esc(o.id)}"><b>${esc(o.name)}</b><span>${esc((o.items || []).map(i => i.qty + '× ' + i.name).join(', '))}</span><em>${o.delivery === 'ophalen' ? 'ophalen' : 'verzenden'} · ${euro(o.total)}</em></button>`).join('')
+      + (todo.length > 6 ? `<p class="bh-meta">en nog ${todo.length - 6}</p>` : '') : '<p class="bh-leeg">Niets klaar te maken. Mooi zo.</p>';
+    const morgen = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date(Date.now() + 86400000));
+    const boek = state.bookings.filter(b => b.status === 'geboekt' && (b.slot.startsWith(vandaag) || b.slot.startsWith(morgen)));
+    $('vdBoek').innerHTML = boek.length ? boek.map(b => `<div class="bh-regel"><b>${b.slot.startsWith(vandaag) ? 'Vandaag' : 'Morgen'} ${b.slot.slice(11)}</b><span>${esc(b.name)} · ${gezelschap(b)}</span><em>${b.phone ? `<a href="tel:${esc(b.phone)}">${esc(b.phone)}</a>` : ''}</em></div>`).join('') : '<p class="bh-leeg">Geen Experience vandaag of morgen.</p>';
+    const laag = state.voorraadLaag || [];
+    $('vdVoorraad').innerHTML = laag.length ? laag.slice(0, 8).map(v => `<div class="bh-regel"><b>${esc(v.n)}</b><span>${esc(v.maat)}</span><em class="${v.over === 0 ? 'bh-rood' : ''}">${v.over === 0 ? 'uitverkocht' : 'nog ' + v.over}</em></div>`).join('') : '<p class="bh-leeg">Geen voorraad die bijna op is. Voorraad bijhouden doe je per geur bij Producten.</p>';
+    const afgebroken = state.orders.filter(o => o.status === 'wacht op betaling' && Date.now() - o.created > 3600000 && Date.now() - o.created < 7 * 86400000);
+    const wl = state.wachtlijst || [];
+    const items = [];
+    if (afgebroken.length) items.push(`<div class="bh-regel"><b>${afgebroken.length} afgebroken ${afgebroken.length === 1 ? 'betaling' : 'betalingen'}</b><span>deze week, samen ${euro(afgebroken.reduce((t, o) => t + o.total, 0))}. Ze krijgen na een dag automatisch één herinnering.</span><em><button class="bh-link-btn" data-ga="bestellingen" data-status="wacht op betaling">Bekijk</button></em></div>`);
+    if (wl.length) items.push(`<div class="bh-regel"><b>${wl.length} op de wachtlijst</b><span>voor de Experience</span><em><button class="bh-link-btn" data-ga="klanten">Bekijk</button></em></div>`);
+    if (!state.tweestap) items.push(`<div class="bh-regel"><b>Beveilig je dashboard</b><span>Zet tweestapsverificatie aan, dan kan niemand inloggen zonder jouw telefoon.</span><em><button class="bh-link-btn" data-ga="account">Instellen</button></em></div>`);
+    $('vdOpvolgen').innerHTML = items.join('') || '<p class="bh-leeg">Niets op te volgen.</p>';
+    void vandaagStart;
+  }
+  document.addEventListener('click', e => {
+    const g = e.target.closest('[data-ga]'); if (!g || g.closest('#nav')) return;
+    naarTab(g.dataset.ga);
+    if (g.dataset.zoek) { $('orZoek').value = g.dataset.zoek; $('orZoek').dispatchEvent(new Event('input')); }
+    if (g.dataset.status) { $('orStatus').value = g.dataset.status; $('orStatus').dispatchEvent(new Event('input')); }
+  });
+
+  /* ── inzichten ── */
+  let inDagen = 30;
+  const pct = x => (x == null ? '–' : (x * 100).toFixed(1).replace('.', ',') + '%');
+  const verschil = (nu, toen) => {
+    if (!toen) return '';
+    const d = (nu - toen) / toen;
+    return `<i class="${d >= 0 ? 'bh-op' : 'bh-neer'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(d * 100))}%</i> t.o.v. de periode ervoor`;
+  };
+  const kortDatum = d => new Date(d + 'T12:00:00Z').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  function staven(el, data, waarde, label) {
+    /* één reeks, één kleur; elke staaf heeft een tooltip met datum en waarde */
+    const max = Math.max(1, ...data.map(waarde));
+    const groep = data.length > 120 ? 7 : 1;
+    const punten = groep === 1 ? data : data.reduce((acc, x, i) => { const k = Math.floor(i / groep); (acc[k] = acc[k] || []).push(x); return acc; }, []).map(g => ({ d: g[0].d, tot: g[g.length - 1].d, ...Object.fromEntries(['omzet', 'bezoek', 'bestellingen'].map(k => [k, g.reduce((t, y) => t + (y[k] || 0), 0)])) }));
+    const m = Math.max(1, ...punten.map(waarde));
+    el.innerHTML = `<div class="bh-bars-plot" style="--n:${punten.length}">${punten.map(x => { const v = waarde(x); return `<span class="bh-bar${v ? '' : ' is-nul'}" style="--h:${(v / m * 100).toFixed(1)}%" data-tip="${kortDatum(x.d)}${x.tot ? ' – ' + kortDatum(x.tot) : ''}: ${label(v)}" tabindex="0"></span>`; }).join('')}</div>
+      <div class="bh-bars-as"><span>${kortDatum(punten[0].d)}</span><span>${label(m)} hoogste</span><span>${kortDatum(punten[punten.length - 1].d)}</span></div>`;
+    void max;
+  }
+  function lijstBalken(rijen, maxV) {
+    const m = maxV || Math.max(1, ...rijen.map(r => r.v));
+    return rijen.length ? rijen.map(r => `<div class="bh-hbar" data-tip="${esc(r.tip || '')}"><span class="bh-hbar-label">${esc(r.l)}</span><span class="bh-hbar-spoor"><span style="width:${Math.max(1.5, r.v / m * 100).toFixed(1)}%"></span></span><b>${r.t}</b></div>`).join('') : '<p class="bh-leeg">Nog geen gegevens in deze periode.</p>';
+  }
+  async function loadInzichten() {
+    try {
+      const d = await api({ action: 'inzichten', dagen: inDagen });
+      const t = d.totaal;
+      $('inUitleg').textContent = `Bezoeken worden zonder cookies geteld: één bezoek per browservenster, geen persoonsgegevens.${d.meetSinds ? ` Gemeten sinds ${kortDatum(d.meetSinds)}.` : ' De meting is net gestart; cijfers bouwen vanaf nu op.'}`;
+      $('inKpis').innerHTML = kpi('Omzet', euro(t.omzet), verschil(t.omzet, t.omzetVorig))
+        + kpi('Bezoeken', t.bezoek.toLocaleString('nl-NL'), verschil(t.bezoek, t.bezoekVorig))
+        + kpi('Conversie', pct(t.conversie), 'bezoeken die bestelden of boekten')
+        + kpi('Bestellingen', t.bestellingen, `gemiddeld ${euro(t.gemiddeld)}`)
+        + kpi('Experiences', t.boekingen, `${t.personen} ${t.personen === 1 ? 'persoon' : 'personen'} · ${euro(t.omzetExperience)}`)
+        + kpi('Verlaten winkelwagens', t.verlaten, 'wel iets in de mand, niet naar afrekenen')
+        + kpi('Afgebroken betalingen', t.afgebroken, t.afgebroken ? `samen ${euro(t.afgebrokenWaarde)}` : 'niemand haakte af bij betalen')
+        + kpi('Klanten', t.nieuweKlanten + t.terugkerend, `${t.nieuweKlanten} nieuw · ${t.terugkerend} terugkerend`)
+        + kpi('Geurwijzer', t.geurwijzer, `${t.geurwijzerKlaar} keer helemaal afgerond`);
+      staven($('inOmzet'), d.perDag, x => x.omzet, euro);
+      staven($('inBezoek'), d.perDag, x => x.bezoek, v => `${v} ${v === 1 ? 'bezoek' : 'bezoeken'}`);
+      const top = d.trechter[0].n || 0;
+      $('inTrechter').innerHTML = lijstBalken(d.trechter.map((r, i) => ({ l: r.stap, v: r.n, t: `${r.n.toLocaleString('nl-NL')}${i && top ? ` <small>${pct(r.n / top)}</small>` : ''}` })), top || 1);
+      $('inSoort').innerHTML = lijstBalken(Object.entries(d.soort).filter(([, v]) => v).map(([l, v]) => ({ l, v, t: `${v}×` })));
+      $('inBest').innerHTML = lijstBalken(d.bestsellers.map(b => ({ l: b.n, v: b.stuks, t: `${b.stuks}× <small>${euro(b.omzet)}</small>` })));
+      $('inBekeken').innerHTML = lijstBalken(d.bekeken.map(b => ({ l: b.q.replace(/-/g, ' '), v: b.n, t: `${b.n}×` })));
+      $('inZoek').innerHTML = lijstBalken(d.zoekTop.map(b => ({ l: b.q, v: b.n, t: `${b.n}×` })));
+      $('inLeeg').innerHTML = lijstBalken(d.zoekLeeg.map(b => ({ l: b.q, v: b.n, t: `${b.n}×` })));
+      $('inKorting').innerHTML = lijstBalken(d.kortingen.map(k => ({ l: k.code, v: k.keer, t: `${k.keer}× <small>${euro(k.korting)} korting</small>` })));
+    } catch (x) { toast(x.message, true); }
+  }
+  $('inPeriode').addEventListener('click', e => {
+    const b = e.target.closest('[data-d]'); if (!b) return;
+    inDagen = Number(b.dataset.d);
+    $('inPeriode').querySelectorAll('button').forEach(x => x.classList.toggle('is-on', x === b));
+    loadInzichten();
+  });
+  /* tooltip voor staven en balken, ook met het toetsenbord */
+  const tip = document.createElement('div'); tip.className = 'bh-tip'; tip.hidden = true; document.body.append(tip);
+  const toonTip = el => { const r = el.getBoundingClientRect(); tip.textContent = el.dataset.tip; tip.hidden = !el.dataset.tip; tip.style.left = Math.min(innerWidth - 12 - tip.offsetWidth, Math.max(12, r.left + r.width / 2 - tip.offsetWidth / 2)) + 'px'; tip.style.top = (r.top + scrollY - tip.offsetHeight - 8) + 'px'; };
+  ['mouseover', 'focusin'].forEach(t => document.addEventListener(t, e => { const el = e.target.closest('.bh-bar[data-tip]'); if (el) toonTip(el); }));
+  ['mouseout', 'focusout'].forEach(t => document.addEventListener(t, e => { if (e.target.closest('.bh-bar[data-tip]')) tip.hidden = true; }));
+
+  /* ── account en beveiliging ── */
+  async function loadAccount() {
+    try {
+      const d = await api({ action: 'beveiliging' });
+      $('acTweestap').innerHTML = d.tweestap
+        ? `<p class="bh-ok">✓ Staat aan. Inloggen kan alleen met je wachtwoord én de code uit je app.</p>
+           <p class="bh-hint">Nog ${d.herstelOver} van de 8 herstelcodes over.${d.herstelOver <= 2 ? ' Zet tweestapsverificatie uit en weer aan voor nieuwe codes.' : ''}</p>
+           <form class="bh-form" id="acTweestapUit"><label>Wachtwoord, om uit te zetten<input type="password" name="wachtwoord" required></label><button class="bh-btn bh-weg" type="submit">Tweestapsverificatie uitzetten</button></form>`
+        : `<p class="bh-hint">Met tweestapsverificatie heeft iemand die je wachtwoord kent nog steeds je telefoon nodig. Je gebruikt een gratis app zoals Google Authenticator, Microsoft Authenticator of de ingebouwde codes van je iPhone.</p>
+           <button class="bh-btn bh-gold" id="acTweestapAan">Instellen</button><div id="acTweestapStap"></div>`;
+      $('acLog').innerHTML = d.logboek.length ? `<div class="bh-log">${d.logboek.map(l => `<p><span>${date(l.t)}</span><b>${esc(l.actie)}</b><em>${esc(l.info || '')}</em><small>${esc(l.apparaat || '')}${l.ip ? ' · ' + esc(l.ip) : ''}</small></p>`).join('')}</div>` : '<p class="bh-leeg">Nog niets gelogd.</p>';
+    } catch (x) { toast(x.message, true); }
+  }
+  $('acTweestap').addEventListener('click', async e => {
+    if (!e.target.closest('#acTweestapAan')) return;
+    try {
+      const d = await api({ action: 'tweestapStart' });
+      const qr = window.qrcode ? (() => { const q = window.qrcode(0, 'M'); q.addData(d.uri); q.make(); return q.createSvgTag({ cellSize: 5, margin: 3, scalable: true }); })() : '';
+      $('acTweestapStap').innerHTML = `<ol class="bh-stappen">
+          <li>Open je authenticator-app en scan deze code.<div class="bh-qr">${qr}</div><small>Scannen lukt niet? Voer deze sleutel handmatig in: <code>${esc(d.secret.replace(/(.{4})/g, '$1 ').trim())}</code></small></li>
+          <li>Vul de code van 6 cijfers in die de app nu laat zien.
+            <form class="bh-inline" id="acTweestapCode"><input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" maxlength="7" required><button class="bh-btn bh-gold" type="submit">Bevestigen</button></form></li>
+        </ol>`;
+      e.target.closest('#acTweestapAan').hidden = true;
+    } catch (x) { toast(x.message, true); }
+  });
+  $('acTweestap').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target;
+    try {
+      if (f.id === 'acTweestapCode') {
+        const { codes } = await api({ action: 'tweestapBevestig', code: f.code.value.replace(/\s/g, '') });
+        $('acTweestap').innerHTML = `<p class="bh-ok">✓ Tweestapsverificatie staat aan.</p>
+          <p><b>Bewaar deze herstelcodes op een veilige plek</b> (bijvoorbeeld uitgeprint in de kluis). Elke code werkt één keer, als je telefoon kwijt is. Je ziet ze maar één keer.</p>
+          <div class="bh-herstel">${codes.map(c => `<code>${c}</code>`).join('')}</div>
+          <button class="bh-btn" onclick="window.print()">Afdrukken</button> <button class="bh-btn bh-gold" id="acKlaar">Ik heb ze bewaard</button>`;
+        state.tweestap = true; renderVandaag();
+      }
+      if (f.id === 'acTweestapUit') {
+        if (!confirm('Tweestapsverificatie uitzetten? Je dashboard is dan alleen nog beveiligd met je wachtwoord.')) return;
+        await api({ action: 'tweestapUit', wachtwoord: f.wachtwoord.value });
+        toast('Tweestapsverificatie staat uit'); state.tweestap = false; loadAccount(); renderVandaag();
+      }
+    } catch (x) { toast(x.message, true); }
+  });
+  $('acTweestap').addEventListener('click', e => { if (e.target.closest('#acKlaar')) loadAccount(); });
+  $('acWachtwoord').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.nieuw.value !== f.nogmaals.value) { toast('De twee nieuwe wachtwoorden zijn niet gelijk.', true); return; }
+    try {
+      const d = await api({ action: 'wachtwoordWijzigen', huidig: f.huidig.value, nieuw: f.nieuw.value });
+      localStorage.setItem(TOKEN, d.token); f.reset();
+      toast('Wachtwoord gewijzigd. Andere apparaten zijn uitgelogd.');
+      loadAccount();
+    } catch (x) { toast(x.message, true); }
+  });
+  $('acOveral').addEventListener('click', async () => {
+    if (!confirm('Overal uitloggen? Alle andere telefoons en computers moeten opnieuw inloggen.')) return;
+    try { const d = await api({ action: 'overalUitloggen' }); localStorage.setItem(TOKEN, d.token); toast('Overal uitgelogd behalve hier'); loadAccount(); } catch (x) { toast(x.message, true); }
+  });
+
   /* ── start ── */
   async function start() {
     $('login').hidden = true;
     $('app').hidden = false;
     try { await loadOverview(); await loadAgenda(); } catch (x) { toast(x.message, true); }
+    let tab = 'vandaag'; try { tab = sessionStorage.getItem('bh-tab') || 'vandaag'; } catch (x) { /* */ }
+    naarTab(tab);
   }
   if (localStorage.getItem(TOKEN)) start();
   setInterval(() => { if (!$('app').hidden && !document.hidden) loadOverview().catch(() => {}); }, 60000);

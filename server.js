@@ -48,8 +48,10 @@ http.createServer((req, res) => {
   // Zonder STRIPE_SECRET_KEY rekenen ze in testmodus af.
   // productpagina's: /geur/<slug> -> api/geur.js (op Vercel via een rewrite)
   const geur = reqPath.match(/^\/geur\/([a-z0-9-]+)$/);
-  if (geur) req.url = '/api/geur?slug=' + geur[1];
-  const api = (geur ? '/api/geur' : reqPath).match(/^\/api\/([a-z0-9-]+)$/);
+  if (geur) req.url = '/api/geur?slug=' + geur[1] + (/[?&]lang=(en|ar)\b/.test(req.url) ? '&lang=' + req.url.match(/[?&]lang=(en|ar)\b/)[1] : '');
+  const xml = { '/sitemap.xml': 'sitemap', '/robots.txt': 'robots', '/feed.xml': 'feed' }[reqPath];
+  if (xml) req.url = '/api/geur?' + xml + '=1';
+  const api = (geur || xml ? '/api/geur' : reqPath).match(/^\/api\/([a-z0-9-]+)$/);
   if (api) {
     const file = path.join(ROOT, 'api', api[1] + '.js');
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('Niet gevonden'); }

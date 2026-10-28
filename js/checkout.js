@@ -26,6 +26,7 @@
   function render() {
     const items = cart.items();
     $('coEmpty').hidden = items.length > 0;
+    if (!items.length) $('coMini').hidden = true;
     $('coForm').hidden = items.length === 0;
     if (!items.length) return;
     $('coLines').innerHTML = items.map(i => `
@@ -44,6 +45,10 @@
     if (disc) { $('coDiscLabel').textContent = `Korting (${korting.code})`; $('coDisc').textContent = '-' + euro(disc); }
     $('coShip').textContent = ship ? euro(ship) : 'Gratis';
     $('coTotal').textContent = euro(naKorting + ship);
+    const stuks = items.reduce((t, i) => t + i.qty, 0);
+    $('coMini').hidden = false;
+    $('coMiniTekst').textContent = `Jouw bestelling · ${stuks} ${stuks === 1 ? 'artikel' : 'artikelen'}`;
+    $('coMiniTotaal').textContent = euro(naKorting + ship);
     $('coAddress').hidden = delivery() !== 'ship';
     const free = $('coFree');
     if (gratisVanaf && delivery() === 'ship') {

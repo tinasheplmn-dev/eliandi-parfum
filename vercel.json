@@ -7,7 +7,10 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/geur/:slug", "destination": "/api/geur?slug=:slug" }
+    { "source": "/geur/:slug", "destination": "/api/geur?slug=:slug" },
+    { "source": "/sitemap.xml", "destination": "/api/geur?sitemap=1" },
+    { "source": "/robots.txt", "destination": "/api/geur?robots=1" },
+    { "source": "/feed.xml", "destination": "/api/geur?feed=1" }
   ],
   "headers": [
     {

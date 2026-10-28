@@ -271,3 +271,31 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 - **Productfoto's** staan in `assets/producten/` en zijn gekoppeld in `api/_fotos.json` per doelgroep en maat: dames = crème 30 ml, wit 50 ml, rood 100 ml; heren = donker 30 ml, zwart met zilver 50 en 100 ml; unisex = wit met zwarte dop 30 ml, mat zwart 50 ml, helder met goud 100 ml; olie = gouden dop (dames), zwarte dop (heren en unisex). Andere koppeling? Pas alleen dat bestand aan.
 - **Zoektermen per product:** in het dashboard per geur (en bij zelf toegevoegde parfums). Klanten vinden de geur ook op die woorden, bijvoorbeeld de bekende geur waar hij op lijkt. De termen staan niet zichtbaar op de site, alleen als "Zoekterm" in de zoeksuggestie van wie erop zoekt.
 - **Vertaalde productteksten:** intro en verhaal van alle 379 geuren staan in het Engels en Arabisch in `api/_vertalingen.json`. `js/i18n-producten.js` (intro's voor shop en geurwijzer) maak je opnieuw met `node tools/vertalingen_bouw.js`. Na een nieuwe export van de sheet of nieuwe producten toont `node tools/vertalingen_ontbrekend.js` welke teksten nog vertaald moeten worden; tot dan staat daar de Nederlandse tekst met een korte melding.
+
+## Dashboard, inzichten, SEO en beveiliging (oktober 2026, ronde 2)
+
+**Dashboard (`/beheer`)**
+- **Vandaag** (startscherm): omzet vandaag, 7 en 30 dagen; bestellingen om klaar te maken; Experiences vandaag en morgen; voorraad die bijna op is; afgebroken betalingen en wachtlijst.
+- **Inzichten**: bezoeken, conversie, omzet per dag, trechter van bezoek tot betaling, verlaten winkelwagens, afgebroken betalingen, bestsellers, verdeling per maat en olie, kortingscodes, nieuwe en terugkerende klanten, geurwijzer, meest bekeken geuren, waar op gezocht wordt en zoekopdrachten zonder resultaat. Periode 7, 30, 90 dagen of een jaar, met vergelijking met de periode ervoor.
+- **Meten zonder cookies**: `js/meet.js` stuurt anonieme tellers naar `POST /api/products` (bezoek per browservenster, product bekeken, winkelmand, afrekenen, zoekwoord, geurwijzer). Geen IP-adressen of persoonsgegevens; zoekwoorden met @ of lange cijferreeksen worden genegeerd. Lokaal wordt niet meegeteld (behalve met `?meet=1`).
+- **Bestellingen**: zoeken (naam, e-mail, nummer, geur), filter op status en periode, privénotitie, factuur en pakbon als PDF, export naar Excel.
+- **Klanten**: klik op een klant voor alle aankopen, Experiences en een privénotitie; "Gegevens wissen" voor een AVG-verzoek (bestellingen blijven zeven jaar bewaard voor de belasting). Export naar Excel.
+- **Producten**: zoektermen zichtbaar als labels, filter "alleen met zoektermen", zoeken op zoekterm, overzicht van alle zoektermen, export van voorraad en prijzen naar Excel.
+- **Account & beveiliging**: tweestapsverificatie (authenticator-app met QR-code en acht herstelcodes), wachtwoord wijzigen (minstens 12 tekens; daarna zijn andere apparaten uitgelogd), overal uitloggen, back-up downloaden, logboek van alle handelingen.
+- **Op de telefoon**: het dashboard kan als app op het beginscherm (`beheer.webmanifest`).
+
+**Beveiliging, technisch** (`api/_beveiliging.js`)
+- Sessietokens bevatten een versienummer; "overal uitloggen" en een nieuw wachtwoord maken oude tokens ongeldig.
+- Downloads (factuur, pakbon, exports, back-up) lopen via links die vijf minuten geldig zijn; het inlogtoken staat nooit meer in een URL.
+- Elke nacht een back-up in de opslag (`backup:<datum>`, 14 dagen bewaard), naast de handmatige download.
+- Optioneel `ADMIN_SECRET` in Vercel: los geheim voor het ondertekenen van sessies (anders `ADMIN_PASSWORD`).
+
+**SEO**
+- `/sitemap.xml`, `/robots.txt` en `/feed.xml` komen uit `api/geur.js` en gebruiken automatisch het domein waarop de site draait.
+- Productpagina's bestaan in drie talen op de server: `/geur/<slug>`, `?lang=en`, `?lang=ar`, met `hreflang`-verwijzingen. De vertaling gebruikt dezelfde woordenlijst als de browser (`ELIANDI_I18N_KERN` in `js/i18n-data.js`).
+- Gestructureerde gegevens per product: prijs per maat, voorraad, verzendkosten NL/BE, reviews en kruimelpad.
+- `/feed.xml` is een productfeed voor Google Merchant Center (gratis vermeldingen in Google Shopping): per geur en maat, met foto, prijs en voorraad.
+- Zoektermen staan als `<meta name="keywords">` in de productpagina en werken in de zoekfunctie van de site. Google gebruikt meta-keywords niet voor de ranking.
+- Bij de overstap naar www.eliandiparfum.com: de `rel="canonical"` in de statische pagina's (index, shop, experience, quiz) nog omzetten naar het nieuwe domein, en het domein aanmelden bij Google Search Console met `/sitemap.xml`.
+
+**Privacy**: `privacy.html`, gelinkt in de voettekst en bij het afrekenen.

@@ -165,3 +165,121 @@ input, select, textarea, button { font: inherit; }
 .bh-review-add input, .bh-review-add select { background: rgba(255,255,255,.04); border: 1px solid rgba(212,167,60,.3); color: var(--ivoor); font: 400 12px Montserrat, sans-serif; padding: 7px 9px; min-width: 0; }
 @media (max-width: 700px) { .bh-review-add { grid-template-columns: 1fr 1fr; } }
 .bh-tags input { width: 240px; }
+
+/* ═══════════ uitbreidingen: vandaag, inzichten, account, klantkaart ═══════════ */
+.bh-login-code { display: grid; gap: 6px; text-align: left; }
+.bh-login-code span { font-size: 12px; color: var(--tekst); }
+.bh-login-code input { letter-spacing: .3em; font-size: 18px; }
+.bh-login-code small { color: var(--dim); font-size: 11px; }
+.bh-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: 10px; background: var(--glans); color: #1a1a1a; font: 700 11px var(--sans); }
+.bh-groet { margin: 0 0 4px; color: var(--glans); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; }
+button.bh-link { background: none; border: 0; border-bottom: 1px solid rgba(212,167,60,.4); padding: 0; cursor: pointer; margin-right: 12px; }
+.bh-link-btn { background: none; border: 0; padding: 0; cursor: pointer; color: var(--glans); font: 500 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; border-bottom: 1px solid rgba(212,167,60,.35); }
+.bh-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.bh-toolbar .bh-filter { margin: 0; }
+.bh-toolbar .bh-search { flex: 1 1 220px; margin: 0; }
+.bh-toolbar .bh-select { padding: 9px 10px; }
+.bh-search { padding: 10px 12px; background: var(--zwart); border: 1px solid var(--rand); color: var(--ivoor); width: 100%; }
+
+/* kerncijfers */
+.bh-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 22px; }
+.bh-kpi { display: grid; gap: 4px; padding: 16px 18px; background: var(--paneel); border: 1px solid var(--rand); position: relative; overflow: hidden; }
+.bh-kpi::before { content: ''; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, var(--goud), transparent); opacity: .5; }
+.bh-kpi span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.bh-kpi b { font: 500 1.65rem/1.15 var(--serif); color: var(--ivoor); }
+.bh-kpi small { font-size: 12px; color: var(--dim); }
+.bh-kpi.is-let { border-color: rgba(233,199,103,.6); }
+.bh-kpi.is-let b { color: var(--glans); }
+.bh-op { color: #8fe0b6; font-style: normal; } .bh-neer { color: #f0b3a3; font-style: normal; }
+
+/* panelen */
+.bh-vandaag, .bh-account { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.bh-paneel { background: var(--paneel); border: 1px solid var(--rand); padding: 18px 20px; min-width: 0; }
+.bh-paneel h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 500 1.15rem var(--serif); color: var(--ivoor); margin: 0 0 12px; }
+.bh-paneel h3 small { font: 400 12px var(--sans); color: var(--dim); }
+.bh-wide-paneel { grid-column: 1 / -1; }
+.bh-regel { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "b e" "s e"; gap: 2px 14px; width: 100%; text-align: left; padding: 10px 0; background: none; border: 0; border-top: 1px solid rgba(184,134,11,.12); color: var(--tekst); font: inherit; }
+button.bh-regel { cursor: pointer; } button.bh-regel:hover b { color: var(--glans); }
+.bh-regel:first-child { border-top: 0; padding-top: 0; }
+.bh-regel b { grid-area: b; color: var(--ivoor); font-weight: 500; }
+.bh-regel span { grid-area: s; font-size: 12.5px; color: var(--dim); min-width: 0; }
+.bh-regel em { grid-area: e; align-self: center; font-style: normal; font-size: 12px; color: var(--tekst); white-space: nowrap; }
+.bh-rood { color: #f0b3a3 !important; }
+.bh-leeg { color: var(--dim); font-size: 13px; margin: 0; }
+.bh-ok { color: #8fe0b6; }
+
+/* grafieken: één reeks in goud, dunne staven, tooltip per staaf */
+.bh-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.bh-chart { margin: 0; background: var(--paneel); border: 1px solid var(--rand); padding: 18px 20px 16px; min-width: 0; }
+.bh-wide-chart { grid-column: 1 / -1; }
+.bh-chart figcaption { font: 500 1.05rem var(--serif); color: var(--ivoor); margin-bottom: 14px; }
+.bh-chart figcaption small { display: block; font: 400 12px var(--sans); color: var(--dim); margin-top: 2px; }
+.bh-bars-plot { height: 150px; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; align-items: end; border-bottom: 1px solid rgba(184,134,11,.3);
+  background: repeating-linear-gradient(0deg, transparent 0 49px, rgba(184,134,11,.08) 49px 50px); }
+.bh-bar { height: var(--h); min-height: 1px; background: #d4a73c; border-radius: 3px 3px 0 0; outline: none; cursor: default; position: relative; }
+.bh-bar::after { content: ''; position: absolute; inset: -150px -1px 0; }
+.bh-bar:hover, .bh-bar:focus { background: var(--glans); }
+.bh-bar.is-nul { background: rgba(184,134,11,.18); }
+.bh-bars-as { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); margin-top: 6px; }
+.bh-tip { position: absolute; z-index: 50; background: #0d0c0a; border: 1px solid rgba(233,199,103,.5); color: var(--ivoor); font-size: 12px; padding: 6px 10px; pointer-events: none; white-space: nowrap; }
+.bh-hbar { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; gap: 10px; align-items: center; padding: 5px 0; font-size: 13px; }
+.bh-hbar-label { color: var(--tekst); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bh-hbar-spoor { height: 8px; background: rgba(184,134,11,.1); border-radius: 0 4px 4px 0; }
+.bh-hbar-spoor span { display: block; height: 100%; background: #d4a73c; border-radius: 0 4px 4px 0; }
+.bh-hbar b { color: var(--ivoor); font-weight: 500; white-space: nowrap; }
+.bh-hbar b small { color: var(--dim); font-weight: 400; margin-left: 4px; }
+
+/* klantkaart */
+.bh-klant { cursor: pointer; }
+.bh-klant:hover { border-color: rgba(233,199,103,.45); }
+.bh-klant.is-open { border-color: var(--glans); cursor: default; }
+.bh-pill-notitie { border-color: rgba(233,199,103,.6); color: var(--glans); }
+.bh-kaart { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; padding-top: 14px; border-top: 1px solid var(--rand); }
+.bh-kaart h4 { font: 500 1rem var(--serif); color: var(--ivoor); margin: 0 0 8px; }
+.bh-kaart h4 small { display: block; font: 400 11.5px var(--sans); color: var(--dim); }
+.bh-kaart-regel { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; margin: 0; padding: 7px 0; border-top: 1px solid rgba(184,134,11,.1); font-size: 12.5px; }
+.bh-kaart-regel span:first-child { color: var(--dim); }
+.bh-kaart-regel em { font-style: normal; font-size: 10px; }
+.bh-kaart-notitie { width: 100%; padding: 10px 12px; background: var(--zwart); border: 1px solid var(--rand); color: var(--ivoor); resize: vertical; margin-bottom: 10px; }
+.bh-notitie small { color: var(--dim); font-size: 10.5px; margin-right: 4px; }
+.bh-notitie span:empty::before { content: attr(data-leeg); color: var(--dim); font-style: italic; }
+
+/* zoektermen */
+.bh-tagrij { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.bh-tag { display: inline-block; padding: 2px 8px; border: 1px solid rgba(233,199,103,.5); color: var(--glans); font-size: 11px; font-style: normal; margin: 0 4px 4px 0; }
+.bh-tagtabel { display: grid; gap: 6px; }
+.bh-tagregel { display: grid; grid-template-columns: minmax(160px, 30%) 1fr; gap: 12px; align-items: center; text-align: left; padding: 10px 14px; background: var(--paneel); border: 1px solid var(--rand); color: var(--tekst); cursor: pointer; font: inherit; }
+.bh-tagregel:hover { border-color: var(--glans); }
+.bh-tagregel b { color: var(--ivoor); font-weight: 500; }
+
+/* account */
+.bh-qr { width: 200px; background: #fff; padding: 6px; margin: 10px 0; }
+.bh-qr svg { display: block; width: 100%; height: auto; }
+.bh-stappen { padding-left: 18px; display: grid; gap: 16px; }
+.bh-stappen code, .bh-herstel code { background: var(--zwart); border: 1px solid var(--rand); padding: 3px 7px; color: var(--ivoor); font-size: 13px; letter-spacing: .06em; }
+.bh-inline { display: flex; gap: 8px; margin-top: 8px; }
+.bh-inline input { padding: 10px; background: var(--zwart); border: 1px solid var(--rand); color: var(--ivoor); letter-spacing: .25em; width: 140px; }
+.bh-herstel { display: grid; grid-template-columns: repeat(2, max-content); gap: 8px 14px; margin: 12px 0 16px; }
+.bh-log { max-height: 420px; overflow: auto; }
+.bh-log p { display: grid; grid-template-columns: 130px 200px 1fr auto; gap: 12px; margin: 0; padding: 7px 0; border-top: 1px solid rgba(184,134,11,.1); font-size: 12.5px; }
+.bh-log span, .bh-log small { color: var(--dim); }
+.bh-log b { color: var(--ivoor); font-weight: 500; }
+.bh-log em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .bh-vandaag, .bh-account, .bh-charts { grid-template-columns: minmax(0, 1fr); }
+  .bh-kaart { grid-template-columns: minmax(0, 1fr); }
+  .bh-log p { grid-template-columns: 1fr; gap: 0; }
+  .bh-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bh-kpi b { font-size: 1.35rem; }
+  .bh-kaart-regel { grid-template-columns: 1fr auto; }
+  .bh-kaart-regel span:nth-child(2) { grid-column: 1 / -1; order: 3; }
+  .bh-tagregel { grid-template-columns: 1fr; }
+  .bh-main { padding-top: 22px; }
+  .bh-head h2 { font-size: 1.6rem; }
+  /* op de telefoon: knoppen en velden groot genoeg voor een duim */
+  .bh-btn { padding: 12px 16px; }
+  .bh-sm { padding: 10px 12px; }
+  .bh-select, .bh-tt, .bh-search { font-size: 16px; }
+}
+@media print { .bh-side, .bh-head, #acLog, .bh-btn { display: none !important; } }

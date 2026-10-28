@@ -205,8 +205,28 @@
     $('sumRest').textContent = code ? '€0,00' : euro(o.price - o.deposit);
     const btn = $('xpPay');
     btn.disabled = !state.slot;
+    zetBalk(o);
     btn.textContent = !state.slot ? 'Kies eerst een moment' : code ? 'Boek met cadeaubon' : `Reserveer en betaal ${euro(o.deposit)}`;
   }
+
+  /* telefoon: na het kiezen van een moment een balk onderin naar de laatste stap */
+  const balk = document.createElement('div');
+  balk.className = 'xp-balk';
+  balk.innerHTML = `<div><b id="xpBalkWanneer"></b><small id="xpBalkPrijs"></small></div><button type="button" class="btn btn-gold" id="xpBalkKnop">Verder</button>`;
+  document.body.append(balk);
+  let samenvattingInBeeld = false;
+  function zetBalk(o) {
+    if (!o) return;
+    $('xpBalkWanneer').textContent = state.slot ? $('sumWhen').textContent : '';
+    $('xpBalkPrijs').textContent = `${label(state.people)} · ${euro(o.price)}`;
+    document.body.classList.toggle('xp-balk-aan', Boolean(state.slot) && !samenvattingInBeeld);
+  }
+  new IntersectionObserver(([e]) => { samenvattingInBeeld = e.isIntersecting; if (state.data) zetBalk(option(state.people)); }).observe(document.querySelector('.xp-summary'));
+  $('xpBalkKnop').addEventListener('click', () => {
+    const leeg = ['xpName', 'xpPhone', 'xpEmail'].map($).find(i => !i.value.trim());
+    (leeg || document.querySelector('.xp-summary')).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (leeg) setTimeout(() => leeg.focus({ preventScroll: true }), 450);
+  });
 
   $('xpDays').addEventListener('click', e => {
     const b = e.target.closest('.xp-day');

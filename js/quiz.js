@@ -719,7 +719,7 @@
       }));
     } catch (e) { /* privémodus */ }
 
-    showScreen('results');
+    showScreen('results'); if (window.EliandiMeet) window.EliandiMeet.eens('geurwijzer-klaar');
   }
 
   /* ─────────────────── Het aanbod (eenmalig of De Geurreis) ───────────────────
@@ -869,7 +869,7 @@
   }
 
   /* ─────────────────── Events ─────────────────── */
-  $('btnStart').addEventListener('click', () => { state.qIndex = 0; renderQuestion(); });
+  $('btnStart').addEventListener('click', () => { state.qIndex = 0; renderQuestion(); if (window.EliandiMeet) window.EliandiMeet.eens('geurwijzer'); });
   $('btnBack').addEventListener('click', back);
   $('btnNext').addEventListener('click', next);
   $('btnOrderSet').addEventListener('click', startCheckout);

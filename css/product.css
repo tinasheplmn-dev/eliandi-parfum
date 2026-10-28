@@ -164,3 +164,17 @@
 .pd-recent-row a.has-foto { display: grid; grid-template-columns: 44px auto; align-items: center; gap: 12px; padding: 6px 16px 6px 6px; }
 .pd-recent-row a.has-foto img { width: 44px; height: 44px; object-fit: contain; background: #fbfaf7; }
 .pd-vcard.has-foto { grid-template-rows: auto auto; }
+
+/* ── telefoon: vaste koopbalk ── */
+.pd-balk { display: none; }
+@media (max-width: 760px) {
+  .pd-balk { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; align-items: center; gap: 12px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(16,15,12,.96); border-top: 1px solid rgba(233,199,103,.35); backdrop-filter: blur(10px); transform: translateY(110%); transition: transform .35s var(--ease-lux, ease); }
+  body.pd-balk-aan .pd-balk { transform: none; }
+  .pd-balk-info { display: grid; min-width: 0; flex: 1; }
+  .pd-balk-info b { font: 500 1.2rem var(--serif); color: var(--ivoor); }
+  .pd-balk-info small { font-size: 11px; color: var(--tekst-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-balk .btn { padding: 14px 18px; font-size: 11px; flex: none; }
+  body.pd-balk-aan .cart-fab { bottom: 150px; }
+  body.pd-balk-aan .wa-widget { bottom: 86px; }
+  .productpage .sh-footer { padding-bottom: 90px; }
+}

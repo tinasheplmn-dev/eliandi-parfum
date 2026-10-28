@@ -37,3 +37,18 @@ html[lang="en"] .pd-nl-hint, html[lang="ar"] .pd-nl-hint { display: block; font-
 .xp-nav .taal-keuze { margin-left: auto; }
 @media (max-width: 700px) { .xp-nav .taal-keuze a { padding: 5px 4px; font-size: 9.5px; } }
 html[dir="rtl"] .sh-size, html[dir="rtl"] .pd-size, html[dir="rtl"] .pd-thumb span, html[dir="rtl"] .pd-stage-ml { direction: ltr; }
+
+/* ── telefoon: kopbalk rustig houden ── */
+@media (max-width: 600px) {
+  .qnav .qnav-exit { font-size: 0 !important; letter-spacing: 0 !important; width: 40px; height: 40px; display: grid !important; place-items: center; border: 1px solid rgba(233,199,103,.3) !important; padding: 0 !important; flex: none; }
+  .qnav .qnav-exit::before { content: '←'; font-size: 18px; line-height: 1; color: var(--goud-glans, #e9c767); }
+  html[dir="rtl"] .qnav .qnav-exit::before { content: '→'; }
+  .taal-keuze { margin: 0 8px 0 auto; }
+  .taal-keuze a { padding: 7px 5px; font-size: 10px; }
+  .taal-keuze a[lang="ar"] { padding: 4px 6px 6px; font-size: 12px; }
+  .xp-nav .xp-nav-cta { padding: 10px 13px !important; font-size: 10px !important; letter-spacing: .12em !important; }
+  .xp-nav .xp-brand span { font-size: 11px; }
+}
+@media (max-width: 340px) {
+  .qnav .qnav-wordmark, .xp-nav .xp-brand span { display: none; }
+}

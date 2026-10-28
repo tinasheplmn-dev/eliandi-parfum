@@ -45,7 +45,7 @@
 
 /* ─── Categorieën bovenaan ─── */
 .sh-cats { padding: 0 0 clamp(26px, 4vw, 44px); }
-.sh-cat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.sh-cat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
 .sh-cat {
   position: relative; display: grid; grid-template-rows: 1fr auto; aspect-ratio: 4 / 5; overflow: hidden; text-decoration: none;
   border: 1px solid rgba(184,134,11,.24); background: #121108;
@@ -391,3 +391,17 @@
 .sh-cmp-table thead .sh-mini { width: 110px; height: 110px; padding: 6px; }
 .sh-set-slot .sh-mini { width: 72px; height: 80px; padding: 3px; }
 @media (max-width: 760px) { .sh-set-slot .sh-mini { width: 54px; height: 60px; } }
+
+/* ── telefoon: sneller bij de geuren ── */
+@media (max-width: 600px) {
+  .sh-hero { padding: 34px 0 20px; }
+  .sh-h1 { font-size: clamp(2.1rem, 10vw, 2.8rem); }
+  .sh-lead { display: none; }
+  .sh-count { margin-top: 10px; }
+  .sh-cat-grid { margin: 0 -20px; padding: 0 20px 8px; scroll-padding-left: 20px; }
+  .sh-cat { flex-basis: 40%; }
+  .sh-sort span { display: none; }
+  .sh-sort select { padding-left: 10px; padding-right: 26px; font-size: 13px; }
+  .sh-filter-toggle { padding-left: 12px; padding-right: 12px; }
+  .sh-search input { font-size: 16px; }
+}

@@ -10,6 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/beheer.css">
+  <link rel="manifest" href="beheer.webmanifest">
+  <meta name="theme-color" content="#14130f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Eliandi Beheer">
+  <link rel="apple-touch-icon" href="assets/beheer-icoon-180.png">
 </head>
 <body>
 
@@ -20,6 +27,11 @@
       <h1>Beheer</h1>
       <p>Eliandi Parfum</p>
       <input type="password" id="loginPw" placeholder="Wachtwoord" autocomplete="current-password" required>
+      <label class="bh-login-code" id="loginCodeBox" hidden>
+        <span>Code uit je authenticator-app</span>
+        <input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" maxlength="11">
+        <small>Telefoon kwijt? Vul een van je herstelcodes in.</small>
+      </label>
       <button type="submit" class="bh-btn bh-gold">Inloggen</button>
       <p class="bh-err" id="loginErr"></p>
     </form>
@@ -32,14 +44,17 @@
         <img src="assets/logo-eliandi.png" alt=""><span>Eliandi<br><em>Beheer</em></span>
       </a>
       <nav class="bh-nav" id="nav">
-        <button data-tab="boekingen" class="is-on">Boekingen</button>
-        <button data-tab="bestellingen">Bestellingen</button>
+        <button data-tab="vandaag" class="is-on">Vandaag</button>
+        <button data-tab="bestellingen">Bestellingen <b class="bh-badge" id="badgeOrders" hidden></b></button>
+        <button data-tab="boekingen">Boekingen</button>
         <button data-tab="klanten">Klanten</button>
+        <button data-tab="inzichten">Inzichten</button>
         <button data-tab="producten">Producten</button>
         <button data-tab="kortingen">Kortingen</button>
         <button data-tab="site">Site bewerken</button>
         <button data-tab="instellingen">Agenda &amp; prijzen</button>
         <button data-tab="bedrijf">Bedrijf &amp; facturen</button>
+        <button data-tab="account">Account &amp; beveiliging</button>
       </nav>
       <button class="bh-logout" id="logout">Uitloggen</button>
     </aside>
@@ -52,7 +67,71 @@
       <div class="bh-warn bh-warn-info" id="warnKoppeling" hidden></div>
 
       <!-- Boekingen -->
-      <section class="bh-tab" data-tab="boekingen">
+      <!-- Vandaag -->
+      <section class="bh-tab" data-tab="vandaag">
+        <header class="bh-head"><div><p class="bh-groet" id="vdGroet">Goedemorgen</p><h2 id="vdDatum">Vandaag</h2></div></header>
+        <div class="bh-kpis" id="vdKpis"></div>
+        <div class="bh-vandaag">
+          <div class="bh-paneel"><h3>Te doen <button class="bh-link-btn" data-ga="bestellingen">Alle bestellingen</button></h3><div id="vdTodo"></div></div>
+          <div class="bh-paneel"><h3>Experience vandaag en morgen <button class="bh-link-btn" data-ga="boekingen">Agenda</button></h3><div id="vdBoek"></div></div>
+          <div class="bh-paneel"><h3>Voorraad bijna op <button class="bh-link-btn" data-ga="producten">Producten</button></h3><div id="vdVoorraad"></div></div>
+          <div class="bh-paneel"><h3>Opvolgen</h3><div id="vdOpvolgen"></div></div>
+        </div>
+      </section>
+
+      <!-- Inzichten -->
+      <section class="bh-tab" data-tab="inzichten" hidden>
+        <header class="bh-head"><h2>Inzichten</h2>
+          <div class="bh-filter" id="inPeriode"><button data-d="7">7 dagen</button><button class="is-on" data-d="30">30 dagen</button><button data-d="90">90 dagen</button><button data-d="365">Jaar</button></div>
+        </header>
+        <p class="bh-hint" id="inUitleg">Bezoeken worden zonder cookies geteld: één bezoek per browservenster, geen persoonsgegevens.</p>
+        <div class="bh-kpis" id="inKpis"></div>
+        <div class="bh-charts">
+          <figure class="bh-chart bh-wide-chart"><figcaption>Omzet per dag <small>winkel en Experience, inclusief btw</small></figcaption><div class="bh-bars" id="inOmzet"></div></figure>
+          <figure class="bh-chart bh-wide-chart"><figcaption>Bezoeken per dag</figcaption><div class="bh-bars" id="inBezoek"></div></figure>
+          <figure class="bh-chart"><figcaption>Van bezoek tot betaling <small>hoeveel mensen elke stap halen</small></figcaption><div id="inTrechter"></div></figure>
+          <figure class="bh-chart"><figcaption>Wat er verkocht wordt <small>stuks per soort</small></figcaption><div id="inSoort"></div></figure>
+          <figure class="bh-chart"><figcaption>Bestsellers</figcaption><div id="inBest"></div></figure>
+          <figure class="bh-chart"><figcaption>Meest bekeken geuren</figcaption><div id="inBekeken"></div></figure>
+          <figure class="bh-chart"><figcaption>Waar klanten op zoeken</figcaption><div id="inZoek"></div></figure>
+          <figure class="bh-chart"><figcaption>Gezocht, niets gevonden <small>misschien iets om aan te bieden of als zoekterm toe te voegen</small></figcaption><div id="inLeeg"></div></figure>
+          <figure class="bh-chart"><figcaption>Kortingscodes</figcaption><div id="inKorting"></div></figure>
+        </div>
+      </section>
+
+      <!-- Account en beveiliging -->
+      <section class="bh-tab" data-tab="account" hidden>
+        <header class="bh-head"><h2>Account &amp; beveiliging</h2></header>
+        <div class="bh-account">
+          <div class="bh-paneel">
+            <h3>Tweestapsverificatie</h3>
+            <div id="acTweestap"></div>
+          </div>
+          <div class="bh-paneel">
+            <h3>Wachtwoord wijzigen</h3>
+            <form class="bh-form" id="acWachtwoord">
+              <label>Huidig wachtwoord<input type="password" name="huidig" autocomplete="current-password" required></label>
+              <label>Nieuw wachtwoord <small>minstens 12 tekens; een zin werkt goed</small><input type="password" name="nieuw" autocomplete="new-password" minlength="12" required></label>
+              <label>Nieuw wachtwoord nog een keer<input type="password" name="nogmaals" autocomplete="new-password" minlength="12" required></label>
+              <button class="bh-btn bh-gold" type="submit">Wachtwoord wijzigen</button>
+              <p class="bh-hint">Na het wijzigen ben je op alle andere apparaten uitgelogd.</p>
+            </form>
+          </div>
+          <div class="bh-paneel">
+            <h3>Sessies en back-up</h3>
+            <p class="bh-hint">Telefoon of laptop kwijt, of ingelogd op een computer die niet van jou is? Log overal uit; alleen dit apparaat blijft ingelogd.</p>
+            <button class="bh-btn" id="acOveral">Overal uitloggen</button>
+            <p class="bh-hint" style="margin-top:22px">Elke nacht wordt er automatisch een back-up gemaakt (14 dagen bewaard). Hier download je er nu een.</p>
+            <button class="bh-btn" data-dl="backup">Back-up downloaden</button>
+          </div>
+          <div class="bh-paneel bh-wide-paneel">
+            <h3>Logboek <small>de laatste handelingen in het dashboard</small></h3>
+            <div id="acLog"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bh-tab" data-tab="boekingen" hidden>
         <header class="bh-head">
           <h2>Boekingen</h2>
           <div class="bh-stats" id="bkStats"></div>
@@ -83,7 +162,13 @@
       <!-- Bestellingen -->
       <section class="bh-tab" data-tab="bestellingen" hidden>
         <header class="bh-head"><h2>Bestellingen</h2><div class="bh-stats" id="orStats"></div></header>
-        <div class="bh-filter" id="orFilter"><button class="is-on" data-f="open">Te doen</button><button data-f="alle">Alles</button></div>
+        <div class="bh-toolbar">
+          <div class="bh-filter" id="orFilter"><button class="is-on" data-f="open">Te doen</button><button data-f="alle">Alles</button></div>
+          <input class="bh-search" id="orZoek" type="search" placeholder="Zoek op naam, e-mail, nummer of geur…">
+          <select class="bh-select" id="orStatus"><option value="">Alle statussen</option></select>
+          <select class="bh-select" id="orPeriode"><option value="">Altijd</option><option value="7">Laatste 7 dagen</option><option value="30">Laatste 30 dagen</option><option value="90">Laatste 90 dagen</option></select>
+          <button class="bh-btn bh-sm" data-dl="export-bestellingen">Excel</button>
+        </div>
         <p class="bh-hint">Zet de status om zodra je iets doet. Bij <b>verzonden</b>, <b>klaar om op te halen</b> en <b>geannuleerd</b> krijgt de klant automatisch een mail.</p>
         <div class="bh-list" id="orList"></div>
         <h3 class="bh-sub">Cadeaubonnen</h3>
@@ -94,7 +179,11 @@
       <section class="bh-tab" data-tab="klanten" hidden>
         <header class="bh-head"><h2>Klanten</h2><div class="bh-stats" id="klStats"></div></header>
         <p class="bh-hint">Iedereen die ooit betaald heeft of een Experience boekte, met wat ze samen besteed hebben. Geen aparte administratie: dit komt uit de bestellingen.</p>
-        <input class="bh-search" id="klSearch" placeholder="Zoek op naam of e-mail…">
+        <div class="bh-toolbar">
+          <input class="bh-search" id="klSearch" placeholder="Zoek op naam of e-mail…">
+          <button class="bh-btn bh-sm" data-dl="export-klanten">Excel</button>
+        </div>
+        <p class="bh-hint">Klik op een klant voor alle aankopen en een <b>privénotitie</b> die alleen jij ziet.</p>
         <div class="bh-list" id="klList"></div>
         <h3 class="bh-sub">Wachtlijst Experience</h3>
         <p class="bh-hint">Mensen die geen plek vonden voor hun gezelschap en gebeld willen worden zodra er ruimte is.</p>
@@ -144,8 +233,15 @@
 
         <h3 class="bh-sub">Bestaande collectie</h3>
         <p class="bh-hint">Zoek een parfum om de prijzen of de voorraad per maat (ook parfumolie) aan te passen, zoektermen toe te voegen, het tijdelijk te verbergen, of een review toe te voegen. Voorraad leeg laten = onbeperkt; 0 = uitverkocht. Zoektermen zijn woorden waarop klanten deze geur ook vinden, zoals de geur waar hij op lijkt; ze zijn niet zichtbaar op de site.</p>
-        <input class="bh-search" id="prodSearch" placeholder="Zoek op naam…">
+        <div class="bh-toolbar">
+          <input class="bh-search" id="prodSearch" type="search" placeholder="Zoek op naam of zoekterm…">
+          <label class="bh-check"><input type="checkbox" id="prodMetTags"> Alleen met zoektermen</label>
+          <button class="bh-btn bh-sm" data-dl="export-voorraad">Excel</button>
+        </div>
         <div class="bh-list" id="baseList"></div>
+        <h3 class="bh-sub">Alle zoektermen <small id="tagTel"></small></h3>
+        <p class="bh-hint">Elke geur met zoektermen. Klik op een geur om de termen aan te passen.</p>
+        <div class="bh-tagtabel" id="tagLijst"></div>
       </section>
 
       <!-- Bedrijf & facturen -->
@@ -213,6 +309,7 @@
   </div>
 
   <div class="bh-toast" id="toast"></div>
+  <script src="js/vendor/qrcode.js"></script>
   <script src="js/beheer.js"></script>
   <script src="js/zonder-server.js" defer></script>
 </body>

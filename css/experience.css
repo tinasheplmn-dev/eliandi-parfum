@@ -360,3 +360,16 @@
 .xp-wait .btn { justify-self: start; }
 .xp-wait-done { color: var(--goud-glans); }
 .xp-wait[hidden] { display: none !important; }
+
+/* ── telefoon: vaste balk naar de laatste stap ── */
+.xp-balk { display: none; }
+@media (max-width: 860px) {
+  .xp-balk { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; align-items: center; gap: 12px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(16,15,12,.96); border-top: 1px solid rgba(233,199,103,.35); backdrop-filter: blur(10px); transform: translateY(110%); transition: transform .35s var(--ease-lux, ease); }
+  body.xp-balk-aan .xp-balk { transform: none; }
+  .xp-balk > div { display: grid; flex: 1; min-width: 0; }
+  .xp-balk b { font-size: 13px; color: var(--ivoor); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .xp-balk small { font-size: 11px; color: var(--tekst-dim); }
+  .xp-balk .btn { padding: 13px 20px; font-size: 11px; }
+  body.xp-balk-aan .wa-widget { bottom: 86px; }
+  .xp-form input, .xp-form textarea { font-size: 16px; }
+}

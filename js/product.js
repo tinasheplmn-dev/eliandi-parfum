@@ -27,6 +27,21 @@
   }
   document.querySelectorAll('.pd-size, .pd-thumb').forEach(b => b.addEventListener('click', () => kies(+b.dataset.k)));
 
+  /* telefoon: een balk onderin met prijs en knop, zolang de echte knop niet in beeld is */
+  if ($('pdAdd')) {
+    const balk = document.createElement('div');
+    balk.className = 'pd-balk';
+    balk.innerHTML = `<div class="pd-balk-info"><b id="pdBalkPrijs"></b><small id="pdBalkMaat"></small></div><button type="button" class="btn btn-gold" id="pdBalkKnop">In winkelmand</button>`;
+    document.body.append(balk);
+    const zet = () => { if (k >= 0) { $('pdBalkPrijs').textContent = euro(P.v[k]); $('pdBalkMaat').textContent = `${P.n} · ${LABEL(k)}`; } };
+    zet();
+    new IntersectionObserver(([e]) => {
+      document.body.classList.toggle('pd-balk-aan', !e.isIntersecting && k >= 0);
+    }, { rootMargin: '0px 0px -40px 0px' }).observe(document.querySelector('.pd-buy') || $('pdAdd'));
+    document.addEventListener('click', ev => { if (ev.target.closest('.pd-size, .pd-thumb')) setTimeout(zet, 0); });
+    $('pdBalkKnop').addEventListener('click', () => { $('pdAdd').click(); $('pdBalkKnop').textContent = 'Toegevoegd ✓'; setTimeout(() => { $('pdBalkKnop').textContent = 'In winkelmand'; }, 1800); });
+  }
+
   const add = $('pdAdd');
   if (add) add.addEventListener('click', () => {
     if (k < 0 || !window.EliandiCart) return;

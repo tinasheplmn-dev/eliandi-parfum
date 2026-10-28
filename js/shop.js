@@ -237,11 +237,14 @@
   }
 
   /* ── gebeurtenissen ── */
-  let timer;
+  let timer, meetTimer;
   $('shQuery').addEventListener('input', e => {
     state.q = e.target.value.trim();
     $('shClear').hidden = !state.q;
     clearTimeout(timer); timer = setTimeout(() => { render(true); remember(); }, 160);
+    /* zoekwoord meten zodra iemand even stopt met typen, met of zonder resultaat */
+    clearTimeout(meetTimer);
+    meetTimer = setTimeout(() => { if (state.q.length >= 2 && window.EliandiMeet) window.EliandiMeet.event('zoek', { q: state.q, leeg: !state.all.some(matches) }); }, 1500);
   });
   $('shClear').addEventListener('click', () => { state.q = ''; $('shQuery').value = ''; $('shClear').hidden = true; render(true); remember(); $('shQuery').focus(); });
   $('shSort').addEventListener('change', e => { state.sort = e.target.value; render(true); });
