@@ -3,7 +3,7 @@
    Met een betaalde cadeaubon-code is er niets meer te betalen: de
    boeking staat direct vast. Anders wordt het moment vastgehouden en
    start de aanbetaling; webhook of terugkeer zet hem op 'geboekt'. */
-const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak } = require('./_lib');
+const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak, vreemdeHerkomst } = require('./_lib');
 const { HOLD_SECONDS, getSettings, peopleFrom, priceOf, slotsFor, label, amsKey, slotEnd } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getVoucher, saveVoucher } = require('./_records');
 const agenda = require('./_agenda');
@@ -14,6 +14,7 @@ const dayLabel = slot => new Date(slot.slice(0, 10) + 'T12:00:00Z').toLocaleDate
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
+  if (vreemdeHerkomst(req)) return send(res, 403, { error: 'Geen toegang.' });
   if (await teVaak(req, 'book', 15, 600)) return send(res, 429, { error: 'Te veel pogingen achter elkaar. Probeer het over een paar minuten opnieuw.' });
   const b = await readJson(req);
   const cfg = await getSettings();

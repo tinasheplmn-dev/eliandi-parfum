@@ -299,3 +299,30 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 - Bij de overstap naar www.eliandiparfum.com: de `rel="canonical"` in de statische pagina's (index, shop, experience, quiz) nog omzetten naar het nieuwe domein, en het domein aanmelden bij Google Search Console met `/sitemap.xml`.
 
 **Privacy**: `privacy.html`, gelinkt in de voettekst en bij het afrekenen.
+
+## Video's, factuurlogo en extra beveiliging (oktober 2026, ronde 3)
+
+**Video's**
+- Opslag: Vercel Blob-store `eliandi-media` (openbaar, regio Parijs), gekoppeld aan het project; sleutel `BLOB_READ_WRITE_TOKEN` staat in Vercel. Video's zijn te groot voor Upstash.
+- De browser uploadt rechtstreeks naar Blob (`js/video-upload.js`, met de gebundelde `js/vendor/blob-upload.js` uit `@vercel/blob` 2.8.2). De server (`videoToken` in `api/admin.js`) geeft een sleutel uit die een uur geldig is, voor één bestand, alleen MP4/MOV/WebM en maximaal 200 MB. Van een beeld uit het begin wordt een poster gemaakt (via `mediaUpload`).
+- **Bij een geur**: dashboard > Producten > Video toevoegen. Opgeslagen in `cms:product-videos`; op de productpagina een extra miniatuur "Video", plus `VideoObject` in de gestructureerde gegevens.
+- **Op de site**: in de bewerkmodus op een foto klikken > Video plaatsen. De video neemt plek, vorm en data-attributen van de foto over, speelt zonder geluid in een lus en alleen als hij in beeld is. Opgeslagen als `videos` in `cms:content:<pagina>`.
+- Vervangen of weggehaalde video's worden direct uit Blob verwijderd; de nachtelijke taak ruimt video's op die nergens meer staan en ouder zijn dan een dag (`videosOpruimen`).
+- `api/_blob.js` is een gebundelde versie van `@vercel/blob` (geen npm-installatie nodig). Opnieuw bouwen: `esbuild` op `require('@vercel/blob/client').generateClientTokenFromReadWriteToken` en `require('@vercel/blob').{del,list}` met `--platform=node --format=cjs`.
+
+**Wijzigingen in het dashboard live**
+- Productpagina's, `/api/products` en `/api/content` sturen browsers altijd naar de nieuwste versie (`Cache-Control: max-age=0, must-revalidate`); alleen Vercel bewaart ze 15 tot 30 seconden (`Vercel-CDN-Cache-Control`). Een wijziging staat dus binnen ongeveer een minuut overal.
+- Getest van dashboard naar site: prijs, zoekterm, verbergen (ook uit sitemap), voorraad 0, review, sitetekst, productvideo en sitevideo.
+- De nachtelijke back-up nam de sitepagina's niet mee (verkeerde sleutelnaam); dat is hersteld, en de productvideo's gaan nu ook mee.
+
+**Factuur en pakbon**: het logo (goud op zwart, `api/_logo-factuur.jpg`) staat linksboven, als JPEG rechtstreeks in de PDF.
+
+**Beveiliging**
+- De site gebruikt geen PHP of WordPress; de Vercel-firewall weigert verzoeken naar typische aanvalspaden (`.php`, `wp-`, `.env`, `.git`, `phpmyadmin` enz.). Regel "Scanners en PHP-aanvallen weren", beheer via `vercel firewall`.
+- Verzoeken vanaf een andere website (Origin van een ander domein) mogen niet bestellen, boeken, een bon kopen, afrekenen of inloggen (`vreemdeHerkomst` in `api/_lib.js`).
+- Limiet per adres ook op de Discovery Set-checkout; het IP-adres komt uit `x-real-ip` (door Vercel gezet, niet te vervalsen).
+- Mail aan Angelo (`MAIL_OWNER`) bij inloggen vanaf een nieuw apparaat of nieuwe plek, en na vijf foute wachtwoorden.
+- Geüploade afbeeldingen moeten echt een JPEG, PNG of WebP zijn (controle op de inhoud, niet alleen de naam).
+- Extra headers: `Cross-Origin-Opener-Policy`, `object-src 'none'`, `upgrade-insecure-requests`, HSTS twee jaar; `/beheer` mag nergens in een frame en wordt nooit gecachet; `/api/` krijgt `noindex`.
+- `/.well-known/security.txt` met het contactadres voor wie een lek vindt.
+- Niet beschikbaar op het gratis Hobby-plan van Vercel: rate limiting in de firewall en de OWASP-regelset (Pro). De site heeft wel eigen limieten per adres op inloggen, bestellen, boeken, bonnen en kortingscodes.

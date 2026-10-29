@@ -417,6 +417,44 @@
     renderBase();
   }
   const fmt = v => v == null ? '' : String(v).replace('.', ',');
+  /* video bij een geur: uploaden, bekijken, weghalen */
+  function videoBlok(n) {
+    const v = (state.products.videos || {})[n];
+    return `<div class="bh-video" data-video-n="${esc(n)}">
+      ${v ? `<a class="bh-video-prev" href="${esc(v.url)}" target="_blank" rel="noopener">${v.poster ? `<img src="${esc(v.poster)}" alt="">` : ''}<i aria-hidden="true"></i></a>` : ''}
+      <p class="bh-meta"><b>Video:</b> ${v ? `staat op de productpagina${v.datum ? ' sinds ' + esc(v.datum.split('-').reverse().join('-')) : ''}` : 'nog geen'}</p>
+      <label class="bh-btn bh-sm bh-upload">${v ? 'Andere video' : 'Video toevoegen'}<input type="file" accept="${window.EliandiVideo ? EliandiVideo.accept : 'video/*'}" data-videoup hidden></label>
+      ${v ? '<button type="button" class="bh-btn bh-sm bh-danger" data-videoweg>Video weghalen</button>' : ''}
+      <span class="bh-voortgang" aria-live="polite"></span>
+    </div>`;
+  }
+  async function videoWissel(blok, bestand) {
+    const n = blok.dataset.videoN, tel = blok.querySelector('.bh-voortgang');
+    try {
+      let video = null;
+      if (bestand) {
+        tel.textContent = 'Uploaden… 0%';
+        blok.classList.add('is-bezig');
+        video = await EliandiVideo.upload(bestand, api, pct => { tel.textContent = `Uploaden… ${pct}%`; });
+      }
+      await api({ action: 'productVideo', n, video });
+      toast(bestand ? 'Video staat op de productpagina' : 'Video weggehaald');
+      state.products = await api({ action: 'productsList' });
+      renderCustom(); renderBase();
+    } catch (x) { toast(x.message, true); tel.textContent = ''; blok.classList.remove('is-bezig'); }
+  }
+  ['customList', 'baseList'].forEach(id => {
+    $(id).addEventListener('change', e => {
+      const inp = e.target.closest('[data-videoup]');
+      if (inp && inp.files[0]) videoWissel(inp.closest('.bh-video'), inp.files[0]);
+    });
+    $(id).addEventListener('click', e => {
+      const weg = e.target.closest('[data-videoweg]');
+      if (!weg) return;
+      e.preventDefault();
+      if (confirm('Deze video van de productpagina halen?')) videoWissel(weg.closest('.bh-video'), null);
+    });
+  });
   function renderCustom() {
     const c = state.products.custom;
     $('customList').innerHTML = c.length ? '<h3 class="bh-sub">Zelf toegevoegd</h3>' + c.map(p => `
@@ -427,6 +465,7 @@
         <div class="bh-card-actions">
           <button class="bh-btn bh-sm" data-edit="${p.id}">Bewerken</button>
           <button class="bh-btn bh-sm bh-danger" data-del="${p.id}">Verwijderen</button></div>
+        ${videoBlok(p.n)}
       </article>`).join('') : '';
   }
   function renderBase() {
@@ -446,6 +485,7 @@
           <label class="bh-check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> Verbergen</label>
           <button class="bh-btn bh-sm bh-gold" type="submit">Opslaan</button>
         </div>
+        ${videoBlok(p.n)}
         <div class="bh-reviews" data-product="${esc(p.n)}">
           <p class="bh-meta"><b>Reviews:</b> ${(state.reviews && state.reviews[p.n] || []).map(r => `<span class="bh-review">${'★'.repeat(r.sterren)} ${esc(r.naam)}: “${esc(r.tekst.slice(0, 60))}${r.tekst.length > 60 ? '…' : ''}” <button type="button" class="bh-x" data-delreview="${r.id}" title="Verwijderen">×</button></span>`).join('') || 'nog geen'}</p>
           <div class="bh-review-add"><input data-rv="naam" placeholder="Naam klant"><select data-rv="sterren"><option>5</option><option>4</option><option>3</option></select><input data-rv="tekst" placeholder="Wat zei de klant?"><button type="button" class="bh-btn bh-sm" data-addreview="${esc(p.n)}">Review toevoegen</button></div>

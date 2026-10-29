@@ -14,6 +14,59 @@ const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_rec
 const { analyze, getCustom, getOverrides, BASE_PRICES } = require('./_catalog');
 
 const PAGES = ['index', 'experience', 'quiz'];
+
+/* ── melding aan Angelo bij inloggen vanaf een nieuw apparaat of bij
+   herhaald raden, zodat hij een inbraak meteen ziet ── */
+function apparaatVan(req) {
+  const ua = String(req.headers['user-agent'] || '');
+  const sys = /iPhone|iPad/.test(ua) ? 'iPhone/iPad' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'onbekend apparaat';
+  const br = /Edg\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'een browser';
+  return `${br} op ${sys}`;
+}
+async function inlogMelding(req, onderwerp, regels) {
+  try {
+    const ip = require('./_lib').clientIp(req).replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.x.x');
+    const land = req.headers['x-vercel-ip-country'] ? ` (${String(req.headers['x-vercel-ip-country']).slice(0, 2)})` : '';
+    const tijd = new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', dateStyle: 'long', timeStyle: 'short' });
+    await require('./_mail').melding(onderwerp, [`${tijd} · ${apparaatVan(req)} · adres ${ip}${land}`, ...regels]);
+  } catch (e) { console.error('inlogmelding', e.message); }
+}
+async function nieuwApparaat(req) {
+  const ip = require('./_lib').clientIp(req).split('.').slice(0, 2).join('.');
+  const k = 'admin:bekend:' + require('crypto').createHash('sha256').update(ip + '|' + apparaatVan(req)).digest('hex').slice(0, 24);
+  if (await store.get(k)) { await store.expire(k, 90 * 86400); return; }
+  await store.set(k, '1', 90 * 86400);
+  await inlogMelding(req, 'Nieuwe inlog op je dashboard', ['Er is ingelogd vanaf een apparaat of plek die we nog niet kenden.', 'Was jij dit? Dan hoef je niets te doen. Was jij het niet, open dan het dashboard, kies Account & beveiliging, wijzig je wachtwoord en druk op Overal uitloggen.']);
+}
+
+/* ── video's: te groot voor de database, dus in Vercel Blob ──
+   De browser uploadt zelf met een sleutel die alleen voor één video-
+   bestand geldt; hier alleen sleutels uitgeven en adressen controleren. */
+const VIDEO_TYPES = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
+const VIDEO_MAX = 200 * 1024 * 1024;
+const blobToken = () => process.env.BLOB_READ_WRITE_TOKEN || '';
+function isVideoUrl(u) {
+  const winkel = (blobToken().split('_')[3] || '').toLowerCase();
+  return Boolean(winkel) && new RegExp(`^https://${winkel}\\.public\\.blob\\.vercel-storage\\.com/video/[A-Za-z0-9._-]{1,120}$`).test(String(u || ''));
+}
+const isPoster = p => /^\/api\/media\?id=[a-f0-9]+$/.test(String(p || ''));
+const videoVan = v => (v && isVideoUrl(v.url) ? { url: v.url, poster: isPoster(v.poster) ? v.poster : '' } : null);
+async function videoWeg(url) {
+  if (!isVideoUrl(url)) return;
+  try { await require('./_blob').del(url, { token: blobToken() }); } catch (e) { console.error('video weg', e.message); }
+}
+/* video's die nergens meer staan (vervangen, of geüpload maar nooit
+   opgeslagen) en ouder zijn dan een dag: weg, dat scheelt opslag */
+async function videosOpruimen() {
+  if (!blobToken()) return 0;
+  const blob = require('./_blob');
+  const [pv, ...paginas] = await store.mgetJson(['cms:product-videos', ...PAGES.map(p => 'cms:content:' + p)]);
+  const inGebruik = new Set([...Object.values(pv || {}), ...paginas.flatMap(c => Object.values((c && c.videos) || {}))].map(v => v && v.url));
+  const { blobs } = await blob.list({ prefix: 'video/', token: blobToken(), limit: 1000 });
+  const weg = blobs.filter(b => !inGebruik.has(b.url) && Date.now() - new Date(b.uploadedAt).getTime() > 86400000).map(b => b.url);
+  if (weg.length) await blob.del(weg, { token: blobToken() });
+  return weg.length;
+}
 const TIME = /^([01]\d|2[0-3]):(00|30)$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -66,6 +119,7 @@ const actions = {
     if (!(await bev.wachtwoordKlopt(req, b.password))) {
       const n = await loginMislukt(req);
       await bev.logboek(req, 'inloggen mislukt', 'onjuist wachtwoord');
+      if (n === 5) await inlogMelding(req, 'Iemand probeert in te loggen op je dashboard', ['Er is vijf keer een verkeerd wachtwoord ingevoerd.', 'Was jij dit niet? Dan hoef je niets te doen: na tien pogingen gaat het dashboard een kwartier op slot voor dat adres. Staat tweestapsverificatie nog uit, zet die dan aan onder Account & beveiliging.']);
       return [401, { error: n >= 7 ? `Onjuist wachtwoord. Nog ${10 - n} ${10 - n === 1 ? 'poging' : 'pogingen'}.` : 'Onjuist wachtwoord.' }];
     }
     /* tweestapsverificatie aan: eerst de code uit de app */
@@ -81,6 +135,7 @@ const actions = {
     }
     await loginGelukt(req);
     await bev.logboek(req, 'ingelogd');
+    await nieuwApparaat(req);
     return [200, { token: await bev.maakToken(req), persistent: store.persistent }];
   },
 
@@ -365,12 +420,12 @@ const actions = {
 
   /* ── producten ── */
   async productsList() {
-    const [custom, overrides] = await Promise.all([getCustom(), getOverrides()]);
+    const [custom, overrides, videos] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {})]);
     const base = Object.entries(BASE_PRICES).map(([n, v]) => {
       const o = overrides[n] || {};
       return { n, v: o.v || v, hidden: Boolean(o.hidden), stock: o.stock || null, tags: o.tags || '' };
     });
-    return [200, { base, custom }];
+    return [200, { base, custom, videos }];
   },
   async productOverride(req, b) {
     const n = clean(b.n, 120);
@@ -427,13 +482,58 @@ const actions = {
       if (v === null) delete c.images[k];
       else if (/^\/api\/media\?id=[a-f0-9]+$/.test(v)) c.images[k] = v;
     });
+    /* een foto kan ook een video worden; de oude video gaat dan weg */
+    const oud = [];
+    Object.entries(b.videos || {}).forEach(([k, v]) => {
+      if (!/^i[a-z0-9]{1,12}$/.test(k)) return;
+      c.videos = c.videos || {};
+      const was = c.videos[k];
+      if (v === null) delete c.videos[k];
+      else if (videoVan(v)) c.videos[k] = videoVan(v);
+      else return;
+      if (was && (!c.videos[k] || c.videos[k].url !== was.url)) oud.push(was.url);
+    });
     await store.setJson(key, c);
+    for (const u of oud) await videoWeg(u);
     return [200, { ok: true }];
+  },
+  async videoToken(req, b) {
+    if (!blobToken()) return [503, { error: 'De opslag voor video\'s is nog niet ingesteld.' }];
+    const ext = VIDEO_TYPES[b.type];
+    if (!ext) return [400, { error: 'Kies een video in MP4, MOV of WebM.' }];
+    const size = Number(b.size);
+    if (!(size > 0) || size > VIDEO_MAX) return [400, { error: 'Deze video is groter dan 200 MB. Kort hem in of exporteer hem in een lagere kwaliteit.' }];
+    const pathname = `video/${new Date().toISOString().slice(0, 7)}-${newId(4)}.${ext}`;
+    const token = await require('./_blob').generateClientTokenFromReadWriteToken({
+      token: blobToken(), pathname, allowedContentTypes: [b.type], maximumSizeInBytes: VIDEO_MAX,
+      validUntil: Date.now() + 3600 * 1000, addRandomSuffix: true,
+    });
+    return [200, { token, pathname }];
+  },
+  async productVideo(req, b) {
+    const n = clean(b.n, 120);
+    if (!BASE_PRICES[n] && !(await getCustom()).some(p => p.n === n)) return [404, { error: 'Product niet gevonden.' }];
+    const videos = await store.getJson('cms:product-videos', {});
+    const was = videos[n];
+    if (b.video === null) delete videos[n];
+    else {
+      const v = videoVan(b.video);
+      if (!v) return [400, { error: 'Deze video kon niet worden opgeslagen. Upload hem opnieuw.' }];
+      videos[n] = { ...v, datum: new Date().toISOString().slice(0, 10) };
+    }
+    await store.setJson('cms:product-videos', videos);
+    if (was && (!videos[n] || videos[n].url !== was.url)) await videoWeg(was.url);
+    return [200, { ok: true, video: videos[n] || null }];
   },
   async mediaUpload(req, b) {
     const data = String(b.dataUrl || '');
     if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data)) return [400, { error: 'Geen geldige afbeelding.' }];
     if (data.length > 950000) return [400, { error: 'Afbeelding is te groot.' }];
+    /* de inhoud moet echt een plaatje zijn, niet alleen zo heten */
+    const kop = Buffer.from(data.slice(data.indexOf(',') + 1, data.indexOf(',') + 25), 'base64');
+    const echt = (kop[0] === 0xff && kop[1] === 0xd8 && kop[2] === 0xff) || kop.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+      || (kop.slice(0, 4).toString() === 'RIFF' && kop.slice(8, 12).toString() === 'WEBP');
+    if (!echt) return [400, { error: 'Geen geldige afbeelding.' }];
     const id = newId(8);
     await store.set('media:' + id, data);
     return [200, { url: '/api/media?id=' + id }];
@@ -565,7 +665,7 @@ async function exportBestand(soort) {
 
 /* ── back-up: alles wat niet in de code staat ── */
 async function backup() {
-  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:reviews', 'cms:klant-notities', 'cms:settings', 'cms:content-index', 'cms:content-experience', 'cms:content-quiz'];
+  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:product-videos', 'cms:reviews', 'cms:klant-notities', 'cms:settings', ...PAGES.map(p => 'cms:content:' + p)];
   const waarden = await store.mgetJson(sleutels);
   const [orders, bookings, vouchers, wachtlijst] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), list('idx:vouchers', 'voucher:'), list('idx:wachtlijst', 'wachtlijst:')]);
   const cms = {}; sleutels.forEach((k, i) => { if (waarden[i] != null) cms[k] = waarden[i]; });
@@ -588,7 +688,9 @@ async function dagelijks() {
   }
   /* dagelijkse back-up, 14 dagen bewaard */
   try { await store.set('backup:' + dag(nu), JSON.stringify(await backup()), 14 * 86400); } catch (e) { console.error('backup', e.message); }
-  return { herinneringen: verstuurd };
+  let videosOpgeruimd = 0;
+  try { videosOpgeruimd = await videosOpruimen(); } catch (e) { console.error('video opruimen', e.message); }
+  return { herinneringen: verstuurd, videosOpgeruimd };
 }
 
 const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
@@ -598,7 +700,7 @@ const ACTIE_NAAM = {
   kortingSave: 'kortingscode opgeslagen', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
   reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
   bookingCancel: 'boeking geannuleerd', bookingAdd: 'boeking toegevoegd', bookingDone: 'boeking afgerond', recordDelete: 'verwijderd',
-  slotToggle: 'agenda aangepast', contentSave: 'tekst op de site aangepast', mediaUpload: 'afbeelding geüpload', wachtlijstDelete: 'wachtlijst afgehandeld',
+  slotToggle: 'agenda aangepast', contentSave: 'tekst op de site aangepast', mediaUpload: 'afbeelding geüpload', productVideo: 'productvideo aangepast', wachtlijstDelete: 'wachtlijst afgehandeld',
   wachtwoordWijzigen: 'wachtwoord gewijzigd', overalUitloggen: 'overal uitgelogd', tweestapBevestig: 'tweestapsverificatie aangezet', tweestapUit: 'tweestapsverificatie uitgezet',
 };
 
@@ -645,6 +747,7 @@ module.exports = async (req, res) => {
     return send(res, 405, { error: 'Method not allowed' });
   }
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
+  if (require('./_lib').vreemdeHerkomst(req)) return send(res, 403, { error: 'Geen toegang.' });
   const b = await readJson(req);
   const fn = actions[b.action];
   if (!fn) return send(res, 400, { error: 'Onbekende actie.' });

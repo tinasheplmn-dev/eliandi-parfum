@@ -44,12 +44,64 @@
   const images = editableImages();
   images.forEach(i => { i.img.dataset.cmsOrig = i.src; });
 
+  /* Een foto die Angelo door een video heeft vervangen. De video neemt de
+     plek en vorm van de foto over; hij speelt zonder geluid in een lus, en
+     alleen als hij in beeld is (scheelt data). Wie minder beweging wil
+     krijgt een stilstaand beeld met knoppen. */
+  const rustig = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function zetVideo(i, v) {
+    if (!v) {
+      if (i.video) {
+        i.video.replaceWith(i.img); i.video = null;
+        if (document.documentElement.classList.contains('cms-editing')) koppel(i);
+      }
+      return;
+    }
+    if (i.video && i.video.dataset.url === v.url) return;
+    const cs = getComputedStyle(i.img);
+    const el = document.createElement('video');
+    el.className = i.img.className + ' cms-video';
+    /* data-attributen meenemen, zodat scripts de video vinden zoals de foto */
+    Object.entries(i.img.dataset).forEach(([k, w]) => { if (!/^cms/.test(k)) el.dataset[k] = w; });
+    el.dataset.url = v.url;
+    el.muted = true; el.loop = true; el.playsInline = true; el.preload = 'metadata';
+    el.setAttribute('muted', ''); el.setAttribute('playsinline', '');
+    el.setAttribute('aria-label', i.img.alt || 'Video');
+    if (v.poster) el.poster = v.poster;
+    const st = el.style;
+    st.objectFit = cs.objectFit === 'fill' ? 'cover' : cs.objectFit;
+    st.objectPosition = cs.objectPosition; st.filter = cs.filter; st.borderRadius = cs.borderRadius;
+    if (cs.position === 'absolute' || cs.position === 'fixed') {
+      st.position = cs.position; st.inset = '0'; st.width = '100%'; st.height = '100%';
+    } else {
+      st.display = 'block'; st.width = '100%';
+      st.aspectRatio = cs.aspectRatio && cs.aspectRatio !== 'auto' ? cs.aspectRatio
+        : (i.img.naturalWidth ? `${i.img.naturalWidth} / ${i.img.naturalHeight}` : '4 / 5');
+    }
+    el.src = v.url;
+    if (rustig) el.controls = true;
+    else if ('IntersectionObserver' in window) {
+      new IntersectionObserver(([e]) => { if (e.isIntersecting) el.play().catch(() => {}); else el.pause(); }, { threshold: 0.2 }).observe(el);
+    }
+    (i.video || i.img).replaceWith(el);
+    i.video = el;
+    if (document.documentElement.classList.contains('cms-editing')) koppel(i);
+  }
+
   function apply(c) {
     if (!c) return;
     texts.forEach(t => { if (c.texts && c.texts[t.key]) t.el.innerHTML = c.texts[t.key]; });
     images.forEach(i => {
       const v = c.images && c.images[i.key];
       if (v) { i.img.src = v; i.img.removeAttribute('srcset'); }
+      const vid = c.videos && c.videos[i.key];
+      if (vid || i.video) {
+        /* pas vervangen als de foto zijn maten kent */
+        const cs = getComputedStyle(i.img);
+        const maatBekend = i.img.complete || cs.position === 'absolute' || (cs.aspectRatio && cs.aspectRatio !== 'auto');
+        if (vid && !maatBekend && !i.video) i.img.addEventListener('load', () => zetVideo(i, vid), { once: true });
+        else zetVideo(i, vid || null);
+      }
     });
   }
 
@@ -64,7 +116,12 @@
   const token = (() => { try { return localStorage.getItem('eliandi_admin_token'); } catch (e) { return null; } })();
   if (!/[?&]bewerken\b/.test(location.search) || !token) return;
 
-  const changes = { texts: {}, images: {} };
+  const changes = { texts: {}, images: {}, videos: {} };
+  const aantal = () => Object.keys(changes.texts).length + Object.keys(changes.images).length + Object.keys(changes.videos).length;
+  /* de uploadhulp voor video's laden we alleen in de bewerkmodus */
+  const vu = document.createElement('script');
+  vu.src = '/js/video-upload.js';
+  document.head.append(vu);
   document.documentElement.classList.add('cms-editing');
   document.getElementById('intro')?.remove();
   document.querySelectorAll('[data-reveal]').forEach(e => e.classList.add('in-view'));
@@ -75,6 +132,11 @@
     .cms-editing [data-cms-text]:hover,.cms-editing [data-cms-text]:focus{outline:1px solid #e9c767;background:rgba(212,167,60,.06)}
     .cms-editing [data-cms-img]{outline:2px dashed rgba(212,167,60,.5);outline-offset:-2px;cursor:pointer}
     .cms-editing [data-cms-img]:hover{outline-color:#e9c767;filter:brightness(1.08)}
+    .cms-menu{position:fixed;z-index:10000;display:flex;flex-direction:column;min-width:210px;background:#17150f;border:1px solid #d4a73c;box-shadow:0 18px 50px rgba(0,0,0,.6);font:500 13px Montserrat,sans-serif}
+    .cms-menu button{all:unset;cursor:pointer;padding:12px 16px;color:#f2ecdf;border-bottom:1px solid rgba(212,167,60,.18)}
+    .cms-menu button:last-child{border-bottom:0}.cms-menu button:hover,.cms-menu button:focus{background:rgba(212,167,60,.12);color:#e9c767}
+    .cms-laden{position:fixed;inset:0;z-index:10001;display:grid;place-items:center;background:rgba(10,10,10,.72);color:#f2ecdf;font:500 15px Montserrat,sans-serif;text-align:center}
+    .cms-laden b{display:block;margin-top:8px;color:#e9c767;font-size:28px;font-variant-numeric:tabular-nums}
     .cms-editing .cms-dirty{outline-color:#4fc38a!important}
     .cms-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:14px;
       background:#17150f;border:1px solid #d4a73c;padding:12px 14px 12px 20px;box-shadow:0 18px 50px rgba(0,0,0,.6);font:500 13px Montserrat,sans-serif;color:#f2ecdf;max-width:calc(100vw - 24px);flex-wrap:wrap}
@@ -93,14 +155,62 @@
   });
   document.addEventListener('click', e => { if (e.target.closest('a')) e.preventDefault(); }, true);
 
-  images.forEach(i => {
-    i.img.dataset.cmsImg = '';
-    i.img.addEventListener('click', e => { e.preventDefault(); pickImage(i); });
-  });
+  function koppel(i) {
+    const el = i.video || i.img;
+    if (el.dataset.cmsImg != null) return;
+    el.dataset.cmsImg = '';
+    el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); menu(i, e); });
+  }
+  images.forEach(koppel);
+
+  /* klik op een foto of video: kiezen wat er moet gebeuren */
+  function menu(i, e) {
+    document.querySelector('.cms-menu')?.remove();
+    const m = document.createElement('div');
+    m.className = 'cms-menu';
+    const knop = (tekst, doe) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = tekst; b.onclick = () => { m.remove(); doe(); }; m.append(b); };
+    knop('Andere foto kiezen', () => pickImage(i));
+    knop(i.video ? 'Andere video kiezen' : 'Video plaatsen', () => pickVideo(i));
+    if (i.video) knop('Video weghalen, foto terug', () => {
+      zetVideo(i, null); changes.videos[i.key] = null; i.img.classList.add('cms-dirty'); update();
+    });
+    knop('Annuleren', () => {});
+    document.body.append(m);
+    const r = m.getBoundingClientRect();
+    m.style.left = Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8)) + 'px';
+    m.style.top = Math.max(8, Math.min(e.clientY, innerHeight - r.height - 8)) + 'px';
+    m.querySelector('button').focus();
+    setTimeout(() => document.addEventListener('click', function weg(x) { if (!m.contains(x.target)) { m.remove(); document.removeEventListener('click', weg, true); } }, true), 0);
+  }
+
+  function pickVideo(i) {
+    if (!window.EliandiVideo) return alert('Even geduld, de uploadhulp wordt nog geladen. Probeer het zo opnieuw.');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = EliandiVideo.accept;
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const laden = document.createElement('div');
+      laden.className = 'cms-laden';
+      laden.innerHTML = 'Video uploaden, laat dit venster open<b>0%</b>';
+      document.body.append(laden);
+      try {
+        const v = await EliandiVideo.upload(file, api, pct => { laden.querySelector('b').textContent = pct + '%'; });
+        zetVideo(i, v);
+        i.video.classList.add('cms-dirty');
+        changes.videos[i.key] = v;
+        delete changes.images[i.key];
+        update();
+      } catch (x) { alert(x.message); }
+      laden.remove();
+    };
+    input.click();
+  }
 
   const bar = document.createElement('div');
   bar.className = 'cms-bar';
-  bar.innerHTML = `<span><b>Bewerkmodus</b> &middot; klik op een tekst of foto &middot; <span class="cms-count">geen wijzigingen</span></span>
+  bar.innerHTML = `<span><b>Bewerkmodus</b> &middot; klik op een tekst, foto of video &middot; <span class="cms-count">geen wijzigingen</span></span>
     <button class="cms-undo" type="button">Origineel terug</button>
     <button class="cms-save" type="button">Opslaan</button>
     <button class="cms-quit" type="button">Stoppen</button>`;
@@ -109,7 +219,7 @@
   let active = null;
 
   function update() {
-    const n = Object.keys(changes.texts).length + Object.keys(changes.images).length;
+    const n = aantal();
     bar.querySelector('.cms-count').textContent = n ? `${n} wijziging${n > 1 ? 'en' : ''} niet opgeslagen` : 'geen wijzigingen';
   }
   undo.addEventListener('click', () => {
@@ -141,6 +251,7 @@
       try {
         const dataUrl = await shrink(file);
         const { url } = await api({ action: 'mediaUpload', dataUrl });
+        if (i.video) { zetVideo(i, null); changes.videos[i.key] = null; }
         i.img.src = url;
         i.img.removeAttribute('srcset');
         i.img.classList.add('cms-dirty');
@@ -175,7 +286,7 @@
     btn.textContent = 'Bezig…';
     try {
       await api({ action: 'contentSave', page: PAGE, ...changes });
-      changes.texts = {}; changes.images = {};
+      changes.texts = {}; changes.images = {}; changes.videos = {};
       document.querySelectorAll('.cms-dirty').forEach(el => el.classList.remove('cms-dirty'));
       try { localStorage.removeItem(CACHE); } catch (x) { /* privémodus */ }
       bar.querySelector('.cms-count').textContent = 'opgeslagen ✓';
@@ -185,11 +296,11 @@
     btn.textContent = 'Opslaan';
   });
   bar.querySelector('.cms-quit').addEventListener('click', () => {
-    const n = Object.keys(changes.texts).length + Object.keys(changes.images).length;
+    const n = aantal();
     if (n && !confirm('Er zijn wijzigingen die nog niet zijn opgeslagen. Toch stoppen?')) return;
     location.href = location.pathname;
   });
   window.addEventListener('beforeunload', e => {
-    if (Object.keys(changes.texts).length + Object.keys(changes.images).length) e.preventDefault();
+    if (aantal()) e.preventDefault();
   });
 })();

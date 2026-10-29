@@ -27,6 +27,12 @@ module.exports = async (req, res) => {
     res.end(JSON.stringify({ error: 'Method not allowed' }));
     return;
   }
+  const { vreemdeHerkomst, teVaak } = require('./_lib');
+  if (vreemdeHerkomst(req) || await teVaak(req, 'checkout', 15, 600)) {
+    res.statusCode = 429;
+    res.end(JSON.stringify({ error: 'Te veel pogingen achter elkaar. Probeer het over een paar minuten opnieuw.' }));
+    return;
+  }
 
   let body = req.body;
   if (!body || typeof body !== 'object') {

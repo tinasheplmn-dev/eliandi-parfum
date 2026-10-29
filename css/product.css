@@ -178,3 +178,15 @@
   body.pd-balk-aan .wa-widget { bottom: 86px; }
   .productpage .sh-footer { padding-bottom: 90px; }
 }
+
+/* ── video van Angelo bij de geur ── */
+.pd-thumbs.has-video { grid-template-columns: repeat(4, 1fr); }
+.pd-thumbs.has-olie.has-video { grid-template-columns: repeat(5, 1fr); }
+.pd-thumb-video { background: #141414; }
+.pd-thumb-video img { opacity: .75; }
+.pd-play { position: relative; z-index: 1; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--goud-glans); background: rgba(20,20,20,.55); margin-bottom: 14px; }
+.pd-play::after { content: ''; position: absolute; left: 14px; top: 11px; border-left: 13px solid var(--goud-glans); border-top: 8px solid transparent; border-bottom: 8px solid transparent; }
+[dir="rtl"] .pd-play::after { left: 12px; }
+.pd-thumb-video span { z-index: 1; color: var(--ivoor); }
+.pd-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0c0c0c; z-index: 1; }
+.pd-stage.is-video .pd-stage-ml { display: none; }

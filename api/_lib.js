@@ -172,7 +172,16 @@ function isAdmin(req) {
 }
 /* Rem op raden: na tien foute pogingen per adres is het een kwartier dicht. */
 function clientIp(req) {
-  return String(req.headers['x-forwarded-for'] || req.socket && req.socket.remoteAddress || '?').split(',')[0].trim();
+  /* x-real-ip zet Vercel zelf; een bezoeker kan dat niet vervalsen */
+  return String(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.socket && req.socket.remoteAddress || '?').split(',')[0].trim();
+}
+/* Een formulier of script op een andere website mag hier niets in gang
+   zetten (bestellen, boeken, inloggen). Browsers sturen dan een Origin
+   van die andere site mee; servers (Mollie, de cron) sturen er geen. */
+function vreemdeHerkomst(req) {
+  const o = req.headers.origin;
+  if (!o) return false;
+  try { return new URL(o).host !== String(req.headers['x-forwarded-host'] || req.headers.host || ''); } catch (e) { return true; }
 }
 /* Eenvoudige limiet per IP-adres, bijvoorbeeld tegen het raden van
    kortingscodes of cadeaubonnen en het volspammen van formulieren.
@@ -291,5 +300,5 @@ async function getPayment(id) {
 module.exports = {
   send, readRaw, readJson, siteUrl, clean, isEmail, isPhone, store, createPayment, getPayment,
   newId, makeToken, isAdmin, checkPassword, sanitizeHtml,
-  loginGeblokkeerd, loginMislukt, loginGelukt, clientIp, teVaak,
+  loginGeblokkeerd, loginMislukt, loginGelukt, clientIp, teVaak, vreemdeHerkomst,
 };

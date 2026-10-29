@@ -283,3 +283,13 @@ button.bh-regel { cursor: pointer; } button.bh-regel:hover b { color: var(--glan
   .bh-select, .bh-tt, .bh-search { font-size: 16px; }
 }
 @media print { .bh-side, .bh-head, #acLog, .bh-btn { display: none !important; } }
+
+/* ── video bij een geur ── */
+.bh-video { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid rgba(212,167,60,.12); }
+.bh-video .bh-meta { margin: 0; flex: 1 1 200px; }
+.bh-upload { cursor: pointer; }
+.bh-video.is-bezig .bh-upload, .bh-video.is-bezig [data-videoweg] { opacity: .45; pointer-events: none; }
+.bh-voortgang { font-size: 12px; color: var(--goud, #d4a73c); font-variant-numeric: tabular-nums; }
+.bh-video-prev { position: relative; display: block; width: 72px; aspect-ratio: 1; background: #111; border: 1px solid rgba(212,167,60,.35); overflow: hidden; }
+.bh-video-prev img { width: 100%; height: 100%; object-fit: cover; opacity: .8; }
+.bh-video-prev i { position: absolute; left: 50%; top: 50%; transform: translate(-35%, -50%); border-left: 14px solid #e9c767; border-top: 9px solid transparent; border-bottom: 9px solid transparent; }

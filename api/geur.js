@@ -146,7 +146,7 @@ function verwant(p, alle) {
 }
 
 async function lijst() {
-  const [custom, overrides] = await Promise.all([getCustom(), getOverrides()]);
+  const [custom, overrides, videos] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}).catch(() => ({}))]);
   const uit = catalog().filter(p => !(overrides[p.n] && overrides[p.n].hidden)).map(p => {
     const o = overrides[p.n];
     if (!o) return p;
@@ -156,7 +156,8 @@ async function lijst() {
   });
   const namen = new Set(uit.map(p => p.n));
   (custom || []).forEach(p => { if (!namen.has(p.n)) uit.push({ ...p, custom: true }); });
-  return uit;
+  /* een video die Angelo bij de geur heeft gezet (dashboard > Producten) */
+  return uit.map(p => (videos && videos[p.n] ? { ...p, video: videos[p.n] } : p));
 }
 
 /* maten: plek 0-2 extrait, 3-4 parfumolie */
@@ -218,6 +219,10 @@ function pagina(p, alle, site, reviews, olie, lang) {
       availability: op(i) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock', itemCondition: 'https://schema.org/NewCondition',
       seller: { '@type': 'Organization', name: 'Eliandi Parfum' }, shippingDetails: [verzending('NL'), verzending('BE')],
     } : null)).filter(Boolean) } : {}),
+    ...(p.video && p.video.poster ? { subjectOf: {
+      '@type': 'VideoObject', name: `${p.n} | Eliandi Parfum`, description: ldOmschrijving,
+      thumbnailUrl: site + p.video.poster, contentUrl: p.video.url, uploadDate: p.video.datum || undefined,
+    } } : {}),
     ...(rv.length ? {
       aggregateRating: { '@type': 'AggregateRating', ratingValue: gem.toFixed(1), reviewCount: rv.length, bestRating: 5, worstRating: 1 },
       review: rv.slice(0, 10).map(r => ({ '@type': 'Review', author: { '@type': 'Person', name: r.naam }, reviewBody: r.tekst, reviewRating: { '@type': 'Rating', ratingValue: Number(r.sterren || 5), bestRating: 5 } })),
@@ -281,9 +286,10 @@ function pagina(p, alle, site, reviews, olie, lang) {
           ${gekozen >= 0 && fotoVan(gekozen) ? `<img src="/${esc(fotoVan(gekozen))}" alt="${esc(p.n)}, ${label(gekozen)}">` : bottle(tint, 'groot')}
           <span class="pd-stage-ml" id="pdStageMl">${gekozen >= 0 ? label(gekozen) : ''}</span>
         </div>
-        <div class="pd-thumbs${heeftExtrait ? ' has-olie' : ''}" role="list">
+        <div class="pd-thumbs${heeftExtrait ? ' has-olie' : ''}${p.video ? ' has-video' : ''}" role="list">
           ${MATEN.map((ml, i) => (i >= 3 && !heeftExtrait) || (i === 4) ? '' : `<button type="button" class="pd-thumb${i === gekozen || (i === 3 && gekozen === 4) ? ' is-on' : ''}" data-k="${i}" ${v[i] || (i === 3 && v[4]) ? '' : 'disabled'} role="listitem" aria-label="${i >= 3 ? 'Parfumolie' : ml + ' ml'}">
             ${fotoVan(i) ? `<img src="/${esc(fotoVan(i).replace(/\.webp$/, '-600.webp'))}" alt="" loading="lazy">` : bottle(tint, 'klein' + i)}<span>${i >= 3 ? 'Olie' : ml + ' ml'}</span></button>`).join('')}
+          ${p.video ? `<button type="button" class="pd-thumb pd-thumb-video" id="pdVideoKnop" role="listitem" aria-label="Video bekijken">${p.video.poster ? `<img src="${esc(p.video.poster)}" alt="" loading="lazy">` : ''}<i class="pd-play" aria-hidden="true"></i><span>Video</span></button>` : ''}
         </div>
         <p class="pd-gallery-note">Elke flacon wordt in de winkel gevuld en met de hand afgewerkt. De verpakking verschilt per geur.</p>
       </div>
@@ -401,7 +407,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
     <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9 3 3.3 8.6 3.3 15.5c0 2.4.7 4.7 2 6.7L3.5 29l7-1.8a12.9 12.9 0 0 0 5.5 1.2c7 0 12.7-5.6 12.7-12.5S23 3 16 3zm0 22.8c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-4.2 1.1 1.1-4-.2-.4a10.1 10.1 0 0 1-1.6-5.4C5.6 9.9 10.3 5.3 16 5.3s10.4 4.6 10.4 10.2S21.7 25.8 16 25.8zm5.7-7.6c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-.9-2.3c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1-1.1 2.5s1.1 2.9 1.3 3.1c.2.2 2.2 3.4 5.4 4.7 2 .9 2.8 1 3.8.8.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"/></svg>
   </a>
 
-  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, g: p.g, v: v, slug: slug(p.n), fotos: MATEN.map((ml, i) => fotoVan(i)) }).replace(/</g, '\\u003c')};</script>
+  <script>window.PRODUCT = ${JSON.stringify({ n: p.n, g: p.g, v: v, slug: slug(p.n), fotos: MATEN.map((ml, i) => fotoVan(i)), video: p.video ? { url: p.video.url, poster: p.video.poster } : null }).replace(/</g, '\\u003c')};</script>
   <script src="/js/cart.js"></script>
   <script src="/js/product.js"></script>
   <script src="/js/zonder-server.js" defer></script>
@@ -489,7 +495,9 @@ module.exports = async (req, res) => {
       return;
     }
     res.statusCode = 200;
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
+    /* kort, zodat een wijziging in het dashboard binnen een minuut of twee live staat */
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.setHeader('Vercel-CDN-Cache-Control', 'max-age=30, stale-while-revalidate=60');
     res.setHeader('Content-Language', lang);
     res.end(pagina(p, alle, site, (reviews || {})[p.n], olie, lang));
   } catch (e) {

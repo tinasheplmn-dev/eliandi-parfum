@@ -19,13 +19,30 @@
     if ($('pdPrice')) $('pdPrice').textContent = euro(P.v[i]);
     if ($('pdStageMl')) $('pdStageMl').textContent = LABEL(i);
     const stage = $('pdStage');
+    if (stage) { stage.querySelector('video')?.remove(); stage.classList.remove('is-video'); $('pdVideoKnop')?.classList.remove('is-on'); }
     if (stage && P.fotos[i]) {
       let img = stage.querySelector('img');
       if (!img) { img = document.createElement('img'); stage.prepend(img); stage.querySelector('svg')?.remove(); }
       img.src = '/' + P.fotos[i]; img.alt = `${P.n}, ${LABEL(i)}`;
     }
   }
-  document.querySelectorAll('.pd-size, .pd-thumb').forEach(b => b.addEventListener('click', () => kies(+b.dataset.k)));
+  document.querySelectorAll('.pd-size, .pd-thumb[data-k]').forEach(b => b.addEventListener('click', () => kies(+b.dataset.k)));
+
+  /* de video van Angelo: speelt in het grote vak, met geluid en knoppen */
+  if (P.video && $('pdVideoKnop')) {
+    $('pdVideoKnop').addEventListener('click', () => {
+      const stage = $('pdStage');
+      if (stage.querySelector('video')) return;
+      const v = document.createElement('video');
+      v.src = P.video.url; v.controls = true; v.playsInline = true; v.autoplay = true;
+      v.setAttribute('playsinline', '');
+      if (P.video.poster) v.poster = P.video.poster;
+      v.setAttribute('aria-label', `Video van ${P.n}`);
+      stage.prepend(v); stage.classList.add('is-video');
+      document.querySelectorAll('.pd-thumb').forEach(b => b.classList.toggle('is-on', b.id === 'pdVideoKnop'));
+      if ($('pdStageMl')) $('pdStageMl').textContent = 'Video';
+    });
+  }
 
   /* telefoon: een balk onderin met prijs en knop, zolang de echte knop niet in beeld is */
   if ($('pdAdd')) {

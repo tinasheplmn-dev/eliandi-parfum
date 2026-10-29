@@ -177,14 +177,14 @@
 
   /* ── Het Ritueel: actieve stap ↔ foto ── */
   const steps = [...document.querySelectorAll('.step')];
-  const stepImgs = [...document.querySelectorAll('[data-step-img]')];
   if (steps.length) {
     const stepIO = new IntersectionObserver(entries => {
       for (const e of entries) {
         if (!e.isIntersecting) continue;
         const idx = e.target.dataset.step;
         steps.forEach(s => s.classList.toggle('is-active', s === e.target));
-        stepImgs.forEach(im => im.classList.toggle('is-active', im.dataset.stepImg === idx));
+        /* telkens opnieuw opzoeken: een foto kan door een video vervangen zijn */
+        document.querySelectorAll('[data-step-img]').forEach(im => im.classList.toggle('is-active', im.dataset.stepImg === idx));
       }
     }, { rootMargin: '-40% 0px -40% 0px' });
     steps.forEach(s => stepIO.observe(s));

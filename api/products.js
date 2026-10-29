@@ -9,7 +9,8 @@ const { getCustom, getOverrides } = require('./_catalog');
    maand de zoekwoorden en bekeken geuren. */
 const MEET = new Set(['bezoek', 'product', 'winkelmand', 'afrekenen', 'zoek', 'geurwijzer', 'geurwijzer-klaar']);
 async function meten(req, res) {
-  const { store, readJson, teVaak } = require('./_lib');
+  const { store, readJson, teVaak, vreemdeHerkomst } = require('./_lib');
+  if (vreemdeHerkomst(req)) return send(res, 200, {});
   if (/bot|crawl|spider|slurp|preview|headless|lighthouse|monitor/i.test(req.headers['user-agent'] || '')) return send(res, 200, {});
   if (await teVaak(req, 'meet', 300, 600)) return send(res, 200, {});
   const b = await readJson(req).catch(() => ({}));
@@ -51,7 +52,9 @@ module.exports = async (req, res) => {
     getCustom(), getOverrides(), require('./_mollie').abonnementMogelijk(),
     require('./_factuur').getBedrijf(), require('./_lib').store.getJson('cms:reviews', {}),
   ]);
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=20, stale-while-revalidate=120');
+  /* browsers vragen altijd opnieuw; alleen Vercel bewaart het antwoord heel even */
+  res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+  res.setHeader('Vercel-CDN-Cache-Control', 'max-age=15, stale-while-revalidate=45');
   const { oliePrijs } = require('./_catalog');
   send(res, 200, {
     custom, overrides, abonnement, gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,

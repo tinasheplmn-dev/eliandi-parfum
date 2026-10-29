@@ -49,11 +49,31 @@ const excl = (cents, pct) => Math.round(cents / (1 + pct / 100));
 const euro = c => '€' + (c / 100).toFixed(2).replace('.', ',');
 const datum = ts => new Date(ts).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Amsterdam' });
 
+/* het logo van Eliandi (goud op zwart), als JPEG rechtstreeks in de PDF */
+let LOGO = null;
+function logo() {
+  if (LOGO === null) {
+    try { LOGO = require('fs').readFileSync(require('path').join(__dirname, '_logo-factuur.jpg')); } catch (e) { LOGO = false; }
+  }
+  return LOGO;
+}
+/* breedte en hoogte uit de JPEG-kop (SOF-marker) */
+function jpegMaat(b) {
+  for (let i = 2; i < b.length - 9;) {
+    if (b[i] !== 0xff) return null;
+    const m = b[i + 1], len = b.readUInt16BE(i + 2);
+    if (m >= 0xc0 && m <= 0xc3) return { h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) };
+    i += 2 + len;
+  }
+  return null;
+}
+
 /* ── een minimale PDF-schrijver ──
-   Helvetica (WinAnsi), tekst, lijnen en gevulde vlakken; meer hebben
-   we niet nodig. Coördinaten: A4 is 595 bij 842 punten, oorsprong linksonder. */
+   Helvetica (WinAnsi), tekst, lijnen, gevulde vlakken en het logo; meer
+   hebben we niet nodig. Coördinaten: A4 is 595 bij 842 punten, oorsprong linksonder. */
 function pdfMaken(tekenen) {
   const ops = [];
+  let beeld = null;
   const latin = s => String(s).replace(/€/g, '\x80').replace(/[^\x00-\xff]/g, '?');
   const esc = s => latin(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
   const breedte = (s, size) => latin(s).length * size * 0.52;
@@ -67,6 +87,13 @@ function pdfMaken(tekenen) {
     lijn(x1, y1, x2, y2, grijs = .78) { ops.push(`${grijs} G 0.6 w ${x1} ${y1} m ${x2} ${y2} l S`); },
     vlak(x, y, w, h, grijs = .94) { ops.push(`${grijs} g ${x} ${y} ${w} ${h} re f`); },
     kader(x, y, w, h, grijs = .78) { ops.push(`${grijs} G 0.6 w ${x} ${y} ${w} ${h} re S`); },
+    /* logo met de bovenkant op y; valt terug op de naam in letters */
+    logo(x, y, maat, kleur) {
+      const b = logo(), m = b && jpegMaat(b);
+      if (!m) { api.tekst(x, y - 26, 26, 'ELIANDI', { bold: true, kleur }); api.tekst(x, y - 50, 13, 'P A R F U M', { kleur }); return; }
+      beeld = { data: b, ...m };
+      ops.push(`q ${maat} 0 0 ${(maat * m.h / m.w).toFixed(2)} ${x} ${(y - maat * m.h / m.w).toFixed(2)} cm /Im1 Do Q`);
+    },
   };
   tekenen(api);
   const inhoud = Buffer.from(ops.join('\n'), 'latin1');
@@ -75,8 +102,9 @@ function pdfMaken(tekenen) {
     '<< /Type /Pages /Kids [5 0 R] /Count 1 >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>${beeld ? ' /XObject << /Im1 7 0 R >>' : ''} >> /Contents 6 0 R >>`,
     null, // inhoud
+    ...(beeld ? [{ kop: `<< /Type /XObject /Subtype /Image /Width ${beeld.w} /Height ${beeld.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${beeld.data.length} >>`, data: beeld.data }] : []),
   ];
   const delen = [Buffer.from('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n', 'latin1')];
   const offsets = [];
@@ -85,6 +113,7 @@ function pdfMaken(tekenen) {
     offsets.push(pos);
     let buf;
     if (o === null) buf = Buffer.concat([Buffer.from(`${i + 1} 0 obj\n<< /Length ${inhoud.length} >>\nstream\n`, 'latin1'), inhoud, Buffer.from('\nendstream\nendobj\n', 'latin1')]);
+    else if (o.data) buf = Buffer.concat([Buffer.from(`${i + 1} 0 obj\n${o.kop}\nstream\n`, 'latin1'), o.data, Buffer.from('\nendstream\nendobj\n', 'latin1')]);
     else buf = Buffer.from(`${i + 1} 0 obj\n${o}\nendobj\n`, 'latin1');
     delen.push(buf); pos += buf.length;
   });
@@ -118,8 +147,7 @@ function factuurPdf(o, bedrijf) {
 
   return pdfMaken(p => {
     /* kop */
-    p.tekst(40, 788, 26, 'ELIANDI', { bold: true, kleur: GOUD });
-    p.tekst(40, 764, 13, 'P A R F U M', { kleur: GOUD });
+    p.logo(40, 818, 84, GOUD);
     p.tekst(555, 790, 16, 'FACTUUR', { align: 'right', kleur: '0.35 0.35 0.35' });
     p.tekst(555, 772, 10, datum(o.factuur.datum), { align: 'right', kleur: '0.45 0.45 0.45' });
     p.tekst(555, 758, 10, '#' + o.factuur.nummer, { align: 'right', kleur: '0.45 0.45 0.45' });
@@ -203,8 +231,7 @@ async function maakFactuur(o) {
 function pakbonPdf(o, bedrijf) {
   const GOUD = '0.72 0.53 0.06';
   return pdfMaken(p => {
-    p.tekst(40, 788, 26, 'ELIANDI', { bold: true, kleur: GOUD });
-    p.tekst(40, 764, 13, 'P A R F U M', { kleur: GOUD });
+    p.logo(40, 818, 84, GOUD);
     p.tekst(555, 790, 16, 'PAKBON', { align: 'right', kleur: '0.35 0.35 0.35' });
     p.tekst(555, 772, 10, 'Bestelling #' + o.id.toUpperCase(), { align: 'right', kleur: '0.45 0.45 0.45' });
     p.tekst(555, 758, 10, datum(o.created), { align: 'right', kleur: '0.45 0.45 0.45' });

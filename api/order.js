@@ -5,7 +5,7 @@
    gratis verzending vanaf een drempel worden hier beslist.
    Bezorgen of ophalen in de winkel.
    Env: SHIPPING_PRICE_CENTS (standaard 495 = €4,95). */
-const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak } = require('./_lib');
+const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak, vreemdeHerkomst } = require('./_lib');
 const { priceTable, getOverrides, OLIE, oliePrijs } = require('./_catalog');
 const { saveOrder } = require('./_records');
 const { getBedrijf } = require('./_factuur');
@@ -16,6 +16,7 @@ const DISCOVERY_FALLBACK_CENTS = 4995; // gelijk aan api/checkout.js
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
+  if (vreemdeHerkomst(req)) return send(res, 403, { error: 'Geen toegang.' });
   if (await teVaak(req, 'order', 15, 600)) return send(res, 429, { error: 'Te veel pogingen achter elkaar. Probeer het over een paar minuten opnieuw.' });
   const b = await readJson(req);
 
