@@ -70,7 +70,10 @@
   /* recent bekeken: deze geur vooraan, de vorige als rij onderaan */
   let recent = [];
   try { recent = JSON.parse(localStorage.getItem('eliandi_recent') || '[]'); } catch (e) { /* privémodus */ }
-  const vorige = recent.filter(r => r.n !== P.n).slice(0, 8);
+  /* oude bewaarde fotonamen (van voor 30 oktober) omzetten naar de juiste foto */
+  const vorige = recent.filter(r => r.n !== P.n).slice(0, 8).map(r => (
+    r.f && /producten\/(dames|heren|unisex)-(30|50|100)-600\.webp$/.test(r.f)
+      ? { ...r, f: /^(dames|heren|unisex)$/.test(r.g) ? `assets/producten/${r.g}-50ml-600.webp` : '' } : r));
   /* foto van 50 ml (anders de eerste) voor de rij recent bekeken */
   const klein = f => (f ? f.replace(/\.webp$/, '-600.webp') : '');
   try { localStorage.setItem('eliandi_recent', JSON.stringify([{ n: P.n, s: P.slug, g: P.g, f: klein(P.fotos[1] || P.fotos[0] || '') }, ...vorige].slice(0, 12))); } catch (e) { /* privémodus */ }

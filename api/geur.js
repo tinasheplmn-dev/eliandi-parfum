@@ -6,7 +6,7 @@
    gewoon een volledige pagina.
 
    Foto's: api/_fotos.json koppelt doelgroep en maat aan een bestand,
-   bijvoorbeeld { "dames": { "30": "assets/producten/dames-30.jpg" } }.
+   bijvoorbeeld { "dames": { "30": "assets/producten/dames-30ml.webp", "6": "assets/producten/olie-6ml.webp" } }.
    Staat er niets, dan tekent de pagina een flacon in de kleur van de
    sterkste geurfamilie. */
 const fs = require('fs');
@@ -182,7 +182,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
   const rv = reviews || [];
   const gem = rv.length ? rv.reduce((a, r) => a + Number(r.sterren || 5), 0) / rv.length : 0;
   const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
-  const fotoVan = i => (FOTOS[p.g] && FOTOS[p.g][i >= 3 ? 'olie' : String(MATEN[i])]) || '';
+  const fotoVan = i => (FOTOS[p.g] && FOTOS[p.g][String(MATEN[i])]) || '';
   const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
   const story = (TEKSTEN[p.n] || []).filter(t => t !== p.i);
   const noten = [['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
@@ -434,7 +434,7 @@ function feed(alle, site, olie) {
     const v = (p.v || []).slice(0, 3);
     if (!v.some(Boolean)) return;
     const prijzen = [...v, olie[6], olie[13]];
-    const foto = i => { const f = FOTOS[p.g] && FOTOS[p.g][i >= 3 ? 'olie' : String(MATEN[i])]; return f ? `${site}/${f.replace(/\.webp$/, '.jpg')}` : `${site}/assets/parfumeur-mengt-geur-pipet.jpg`; };
+    const foto = i => { const f = FOTOS[p.g] && FOTOS[p.g][String(MATEN[i])]; return f ? `${site}/${f.replace(/\.webp$/, '.jpg')}` : `${site}/assets/parfumeur-mengt-geur-pipet.jpg`; };
     const tekst = (p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi uit 's-Hertogenbosch.`).slice(0, 4900);
     MATEN.forEach((ml, i) => {
       if (!prijzen[i]) return;

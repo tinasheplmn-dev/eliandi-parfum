@@ -51,7 +51,7 @@
   const bewaar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* privémodus */ } };
   const uitverkocht = (p, k) => Boolean(p.stock && p.stock[k] === 0);
   /* productfoto per doelgroep en maat (api/_fotos.json), kleine versie voor de kaart */
-  const fotoVan = (p, k) => { const f = state.fotos[p.g]; const pad = f && f[k >= 3 ? 'olie' : String(ML[k])]; return pad ? '/' + pad.replace(/\.webp$/, '-600.webp') : ''; };
+  const fotoVan = (p, k) => { const f = state.fotos[p.g]; const pad = f && f[String(ML[k])]; return pad ? '/' + pad.replace(/\.webp$/, '-600.webp') : ''; };
   const leverbaar = (p, k) => Boolean((p.v || [])[k]) && !uitverkocht(p, k);
   const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
   const review = p => { const r = state.reviews[p.n] || []; return r.length ? { n: r.length, avg: r.reduce((a, x) => a + Number(x.sterren || 5), 0) / r.length } : null; };

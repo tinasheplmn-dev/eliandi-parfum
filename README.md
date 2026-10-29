@@ -86,7 +86,7 @@ ornament-fallback). De volledige promptset voor het genereren staat in
 
 - Shop staat op `shop.html`: categorie-overzicht bovenaan, zoeken, filteren op doelgroep, karakter, geurfamilie en prijs, bestellen via de winkelmand.
 - Elke geur heeft een eigen pagina op `/geur/<slug>` (`api/geur.js`, op de server opgebouwd uit `js/catalog.js`, `api/_teksten.json` en de dashboard-aanpassingen): maat kiezen, karakter (intensiteit, houdbaarheid, zoetheid, warmte), seizoen en moment, geurpiramide, garantie, verwante geuren.
-- Productfoto's: zet ze in `assets/producten/` en koppel ze in `api/_fotos.json`, bijvoorbeeld `{"dames":{"30":"assets/producten/dames-30.jpg","50":"...","100":"..."}}`. Zolang er geen foto is, tekent de pagina een flacon in de kleur van de sterkste geurfamilie.
+- Productfoto's: zet ze in `assets/producten/` en koppel ze in `api/_fotos.json`, bijvoorbeeld `{"dames":{"30":"assets/producten/dames-30ml.webp",...,"6":"assets/producten/olie-6ml.webp","13":"assets/producten/olie-13ml.webp"}}` (sleutels zijn de maten in ml; olie is per maat, voor alle doelgroepen gelijk). Bestanden onder `assets/` worden een jaar gecachet: geef een vervangen foto daarom altijd een nieuwe bestandsnaam. Zolang er geen foto is, tekent de pagina een flacon in de kleur van de sterkste geurfamilie.
 - Discovery Set-prijs (€49,95) is een aanname; door eigenaar te bevestigen.
 - Reviews zijn echte Google-reviews, aangeleverd door de eigenaar.
 - Foto's Discovery Set zijn telefoonfoto's; nette productfoto op zwart maakt

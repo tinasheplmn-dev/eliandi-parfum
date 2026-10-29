@@ -1,5 +1,5 @@
 {
-  "dames":  { "30": "assets/producten/dames-30.webp",  "50": "assets/producten/dames-50.webp",  "100": "assets/producten/dames-100.webp",  "olie": "assets/producten/olie-goud.webp" },
-  "heren":  { "30": "assets/producten/heren-30.webp",  "50": "assets/producten/heren-50.webp",  "100": "assets/producten/heren-100.webp",  "olie": "assets/producten/olie-zwart.webp" },
-  "unisex": { "30": "assets/producten/unisex-30.webp", "50": "assets/producten/unisex-50.webp", "100": "assets/producten/unisex-100.webp", "olie": "assets/producten/olie-zwart.webp" }
+  "dames":  { "30": "assets/producten/dames-30ml.webp",  "50": "assets/producten/dames-50ml.webp",  "100": "assets/producten/dames-100ml.webp",  "6": "assets/producten/olie-6ml.webp", "13": "assets/producten/olie-13ml.webp" },
+  "heren":  { "30": "assets/producten/heren-30ml.webp",  "50": "assets/producten/heren-50ml.webp",  "100": "assets/producten/heren-100ml.webp",  "6": "assets/producten/olie-6ml.webp", "13": "assets/producten/olie-13ml.webp" },
+  "unisex": { "30": "assets/producten/unisex-30ml.webp", "50": "assets/producten/unisex-50ml.webp", "100": "assets/producten/unisex-100ml.webp", "6": "assets/producten/olie-6ml.webp", "13": "assets/producten/olie-13ml.webp" }
 }
