@@ -288,7 +288,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
         </div>
         <div class="pd-thumbs${heeftExtrait ? ' has-olie' : ''}${p.video ? ' has-video' : ''}" role="list">
           ${MATEN.map((ml, i) => (i >= 3 && !heeftExtrait) || (i === 4) ? '' : `<button type="button" class="pd-thumb${i === gekozen || (i === 3 && gekozen === 4) ? ' is-on' : ''}" data-k="${i}" ${v[i] || (i === 3 && v[4]) ? '' : 'disabled'} role="listitem" aria-label="${i >= 3 ? 'Parfumolie' : ml + ' ml'}">
-            ${fotoVan(i) ? `<img src="/${esc(fotoVan(i).replace(/\.webp$/, '-600.webp'))}" alt="" loading="lazy">` : bottle(tint, 'klein' + i)}<span>${i >= 3 ? 'Olie' : ml + ' ml'}</span></button>`).join('')}
+            ${fotoVan(i === 3 && gekozen === 4 ? 4 : i) ? `<img src="/${esc(fotoVan(i === 3 && gekozen === 4 ? 4 : i).replace(/\.webp$/, '-600.webp'))}" alt="" loading="lazy">` : bottle(tint, 'klein' + i)}<span>${i >= 3 ? 'Olie' : ml + ' ml'}</span></button>`).join('')}
           ${p.video ? `<button type="button" class="pd-thumb pd-thumb-video" id="pdVideoKnop" role="listitem" aria-label="Video bekijken">${p.video.poster ? `<img src="${esc(p.video.poster)}" alt="" loading="lazy">` : ''}<i class="pd-play" aria-hidden="true"></i><span>Video</span></button>` : ''}
         </div>
         <p class="pd-gallery-note">Elke flacon wordt in de winkel gevuld en met de hand afgewerkt. De verpakking verschilt per geur.</p>

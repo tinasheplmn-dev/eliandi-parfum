@@ -16,6 +16,9 @@
     k = i;
     document.querySelectorAll('.pd-size').forEach(b => { const on = +b.dataset.k === i; b.classList.toggle('is-on', on); b.setAttribute('aria-checked', on); });
     document.querySelectorAll('.pd-thumb').forEach(b => b.classList.toggle('is-on', +b.dataset.k === i || (+b.dataset.k === 3 && i === 4)));
+    /* de olie-miniatuur toont de gekozen maat: 6 ml zwarte dop, 13 ml gouden dop */
+    const olieMini = document.querySelector('.pd-thumb[data-k="3"] img');
+    if (olieMini && i >= 3 && P.fotos[i]) olieMini.src = '/' + P.fotos[i].replace(/\.webp$/, '-600.webp');
     if ($('pdPrice')) $('pdPrice').textContent = euro(P.v[i]);
     if ($('pdStageMl')) $('pdStageMl').textContent = LABEL(i);
     const stage = $('pdStage');
