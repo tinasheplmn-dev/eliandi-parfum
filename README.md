@@ -326,3 +326,7 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 - Extra headers: `Cross-Origin-Opener-Policy`, `object-src 'none'`, `upgrade-insecure-requests`, HSTS twee jaar; `/beheer` mag nergens in een frame en wordt nooit gecachet; `/api/` krijgt `noindex`.
 - `/.well-known/security.txt` met het contactadres voor wie een lek vindt.
 - Niet beschikbaar op het gratis Hobby-plan van Vercel: rate limiting in de firewall en de OWASP-regelset (Pro). De site heeft wel eigen limieten per adres op inloggen, bestellen, boeken, bonnen en kortingscodes.
+
+**Foto's uploaden in de bewerkmodus (29 oktober 2026)**
+- Tot de update van 29 oktober blokkeerde de Content-Security-Policy `blob:`-afbeeldingen, terwijl de bewerkmodus elke foto zo inleest om hem te verkleinen. Daardoor gaf elke upload "Dit bestand kan niet als afbeelding worden gelezen". `img-src` staat nu `blob:` toe.
+- iPhone-foto's (HEIC) kan Chrome op Windows niet lezen. Die worden dan in de browser omgezet naar JPEG met `js/vendor/heic-to.js` (heic-to 1.6.6, CSP-versie, LGPL-3.0, alleen geladen bij een HEIC-bestand; vraagt `worker-src 'self' blob:`).

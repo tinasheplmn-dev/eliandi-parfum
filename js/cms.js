@@ -244,10 +244,14 @@
   function pickImage(i) {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = 'image/*,.heic,.heif';
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) return;
+      const laden = document.createElement('div');
+      laden.className = 'cms-laden';
+      laden.innerHTML = 'Foto verwerken<b>…</b>';
+      document.body.append(laden);
       try {
         const dataUrl = await shrink(file);
         const { url } = await api({ action: 'mediaUpload', dataUrl });
@@ -258,14 +262,16 @@
         changes.images[i.key] = url;
         update();
       } catch (e) { alert(e.message); }
+      laden.remove();
     };
     input.click();
   }
 
   /* verkleinen in de browser: max 1600 px, JPEG */
-  function shrink(file) {
+  function teken(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      const src = URL.createObjectURL(file);
       img.onload = () => {
         const s = Math.min(1, 1600 / Math.max(img.width, img.height));
         const c = document.createElement('canvas');
@@ -273,12 +279,32 @@
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         let q = .84, out = c.toDataURL('image/jpeg', q);
         while (out.length > 900000 && q > .4) { q -= .1; out = c.toDataURL('image/jpeg', q); }
-        URL.revokeObjectURL(img.src);
+        URL.revokeObjectURL(src);
         resolve(out);
       };
-      img.onerror = () => reject(new Error('Dit bestand kan niet als afbeelding worden gelezen.'));
-      img.src = URL.createObjectURL(file);
+      img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('onleesbaar')); };
+      img.src = src;
     });
+  }
+  /* iPhone-foto's (HEIC) kan Chrome op Windows niet lezen: dan eerst
+     omzetten naar JPEG, met een omzetter die alleen dan wordt geladen */
+  let heic = null;
+  const laadHeic = () => heic || (heic = new Promise((ok, fout) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/heic-to.js';
+    s.onload = () => ok(window.EliandiHeic);
+    s.onerror = () => { heic = null; fout(new Error('De iPhone-foto kon niet worden omgezet. Controleer je internetverbinding en probeer het opnieuw.')); };
+    document.head.append(s);
+  }));
+  async function shrink(file) {
+    try { return await teken(file); } catch (e) { /* hieronder verder */ }
+    const kop = await file.slice(4, 12).text().catch(() => '');
+    if (/\.hei[cf]$/i.test(file.name) || /hei[cf]/i.test(file.type) || /^ftyp(hei|hev|mif1|msf1)/.test(kop)) {
+      const H = await laadHeic();
+      const jpg = await H.heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
+      return teken(jpg);
+    }
+    throw new Error('Dit bestand kan niet als foto worden gelezen. Kies een foto in JPG, PNG, WebP of HEIC (iPhone).');
   }
 
   bar.querySelector('.cms-save').addEventListener('click', async e => {
