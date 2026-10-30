@@ -462,12 +462,15 @@
     try {
       let video = null;
       if (bestand) {
-        tel.textContent = 'Uploaden… 0%';
+        tel.textContent = 'Voorbereiden…';
         blok.classList.add('is-bezig');
         video = await EliandiVideo.upload(bestand, api, pct => { tel.textContent = `Uploaden… ${pct}%`; });
       }
+      const waarschuwing = video && video.waarschuwing;
+      if (video) delete video.waarschuwing;
       await api({ action: 'productVideo', n, video });
       toast(bestand ? 'Video staat op de productpagina' : 'Video weggehaald');
+      if (waarschuwing) alert(waarschuwing);
       state.products = await api({ action: 'productsList' });
       renderCustom(); renderBase();
     } catch (x) { toast(x.message, true); tel.textContent = ''; blok.classList.remove('is-bezig'); }

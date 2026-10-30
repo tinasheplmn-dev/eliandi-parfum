@@ -60,16 +60,24 @@
     const type = Object.values(TYPES).includes(file.type) ? file.type : TYPES[String(ext).toLowerCase()];
     if (!type) throw new Error('Kies een video in MP4, MOV of WebM.');
     if (file.size > MAX) throw new Error('Deze video is groter dan 200 MB. Kort hem in of exporteer hem in een lagere kwaliteit.');
-    const [B, beeld] = await Promise.all([laad(), poster(file)]);
-    const { token, pathname } = await api({ action: 'videoToken', type, size: file.size });
+    /* de voorvertoning maken we tijdens het uploaden, niet ervoor: anders
+       staat de teller tot een kwartier lang stil op 0% */
+    const beeldKlaar = poster(file);
+    const [B, { token, pathname }] = await Promise.all([laad(), api({ action: 'videoToken', type, size: file.size })]);
+    if (voortgang) voortgang(0);
     const r = await B.put(pathname, file, {
       access: 'public', token, contentType: type,
       multipart: file.size > 8 * 1024 * 1024,
-      onUploadProgress: p => { if (voortgang) voortgang(Math.round(p.percentage)); },
+      onUploadProgress: p => { if (voortgang) voortgang(Math.min(99, Math.round(p.percentage))); },
     });
+    if (voortgang) voortgang(100);
+    const beeld = await beeldKlaar;
     let posterUrl = '';
     if (beeld) { try { posterUrl = (await api({ action: 'mediaUpload', dataUrl: beeld })).url; } catch (e) { /* zonder poster */ } }
-    return { url: r.url, poster: posterUrl };
+    /* lukt zelfs een stilstaand beeld niet, dan kan deze browser de video
+       niet afspelen; meestal is hij dan in HEVC opgenomen */
+    const waarschuwing = beeld ? '' : 'De video staat erop, maar deze browser kan hem niet afspelen. Meestal komt dat doordat hij is opgenomen als "video met hoge efficiëntie" (HEVC). Kijk op de site of hij speelt. Speelt hij niet, zet dan in de camera-instellingen van je telefoon "video\'s met hoge efficiëntie" uit, of bewaar de video als MP4, en upload hem opnieuw.';
+    return { url: r.url, poster: posterUrl, waarschuwing };
   }
 
   window.EliandiVideo = { upload, accept: 'video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm' };

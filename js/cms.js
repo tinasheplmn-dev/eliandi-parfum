@@ -46,8 +46,7 @@
 
   /* Een foto die Angelo door een video heeft vervangen. De video neemt de
      plek en vorm van de foto over; hij speelt zonder geluid in een lus, en
-     alleen als hij in beeld is (scheelt data). Wie minder beweging wil
-     krijgt een stilstaand beeld met knoppen. */
+     alleen als hij in beeld is (scheelt data). */
   const rustig = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function zetVideo(i, v) {
     if (!v) {
@@ -79,10 +78,15 @@
         : (i.img.naturalWidth ? `${i.img.naturalWidth} / ${i.img.naturalHeight}` : '4 / 5');
     }
     el.src = v.url;
+    /* Wie minder beweging wil, krijgt er knoppen bij om te pauzeren. Weigert
+       de browser automatisch afspelen (bijvoorbeeld in energiebesparing),
+       dan verschijnen de knoppen ook, zodat het nooit een stilstaand beeld
+       zonder uitleg is. */
     if (rustig) el.controls = true;
-    else if ('IntersectionObserver' in window) {
-      new IntersectionObserver(([e]) => { if (e.isIntersecting) el.play().catch(() => {}); else el.pause(); }, { threshold: 0.2 }).observe(el);
-    }
+    const speel = () => el.play().catch(() => { el.controls = true; });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(([e]) => { if (e.isIntersecting) speel(); else el.pause(); }, { threshold: 0.2 }).observe(el);
+    } else speel();
     (i.video || i.img).replaceWith(el);
     i.video = el;
     if (document.documentElement.classList.contains('cms-editing')) koppel(i);
@@ -193,15 +197,16 @@
       if (!file) return;
       const laden = document.createElement('div');
       laden.className = 'cms-laden';
-      laden.innerHTML = 'Video uploaden, laat dit venster open<b>0%</b>';
+      laden.innerHTML = 'Video uploaden, laat dit venster open<b>…</b>';
       document.body.append(laden);
       try {
-        const v = await EliandiVideo.upload(file, api, pct => { laden.querySelector('b').textContent = pct + '%'; });
+        const { waarschuwing, ...v } = await EliandiVideo.upload(file, api, pct => { laden.querySelector('b').textContent = pct + '%'; });
         zetVideo(i, v);
         i.video.classList.add('cms-dirty');
         changes.videos[i.key] = v;
         delete changes.images[i.key];
         update();
+        if (waarschuwing) alert(waarschuwing);
       } catch (x) { alert(x.message); }
       laden.remove();
     };
@@ -268,23 +273,43 @@
   }
 
   /* verkleinen in de browser: max 1600 px, JPEG */
-  function teken(file) {
+  const MAAT = 1600;
+  function naarJpeg(bron, w, h) {
+    const s = Math.min(1, MAAT / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * s); c.height = Math.round(h * s);
+    c.getContext('2d').drawImage(bron, 0, 0, c.width, c.height);
+    let q = .84, out = c.toDataURL('image/jpeg', q);
+    while (out.length > 900000 && q > .4) { q -= .1; out = c.toDataURL('image/jpeg', q); }
+    if (!out.startsWith('data:image/jpeg')) throw new Error('onleesbaar');
+    return out;
+  }
+  /* Eerst direct verkleind inlezen: een telefoonfoto van 50 of 200
+     megapixel past op volle grootte vaak niet in het geheugen van de
+     browser. Lukt dat niet, dan de gewone manier via een plaatje. */
+  async function bitmap(file) {
+    if (!window.createImageBitmap) throw new Error('onleesbaar');
+    let bm = await createImageBitmap(file, { resizeWidth: MAAT, resizeQuality: 'high', imageOrientation: 'from-image' });
+    if (bm.height > MAAT) { bm.close(); bm = await createImageBitmap(file, { resizeHeight: MAAT, resizeQuality: 'high', imageOrientation: 'from-image' }); }
+    try { return naarJpeg(bm, bm.width, bm.height); } finally { bm.close(); }
+  }
+  function plaatje(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const src = URL.createObjectURL(file);
       img.onload = () => {
-        const s = Math.min(1, 1600 / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        let q = .84, out = c.toDataURL('image/jpeg', q);
-        while (out.length > 900000 && q > .4) { q -= .1; out = c.toDataURL('image/jpeg', q); }
+        try { resolve(naarJpeg(img, img.naturalWidth, img.naturalHeight)); } catch (e) { reject(e); }
         URL.revokeObjectURL(src);
-        resolve(out);
       };
       img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('onleesbaar')); };
       img.src = src;
     });
+  }
+  /* kleine bestanden gewoon inlezen (verkleind inlezen zou een kleine foto
+     juist opblazen), grote eerst verkleind */
+  async function teken(file) {
+    const [eerst, dan] = file.size > 6 * 1048576 ? [bitmap, plaatje] : [plaatje, bitmap];
+    try { return await eerst(file); } catch (e) { return dan(file); }
   }
   /* iPhone-foto's (HEIC) kan Chrome op Windows niet lezen: dan eerst
      omzetten naar JPEG, met een omzetter die alleen dan wordt geladen */
@@ -304,7 +329,9 @@
       const jpg = await H.heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
       return teken(jpg);
     }
-    throw new Error('Dit bestand kan niet als foto worden gelezen. Kies een foto in JPG, PNG, WebP of HEIC (iPhone).');
+    /* technische gegevens erbij, zodat we kunnen zien wat er misging */
+    const mb = (file.size / 1048576).toFixed(1);
+    throw new Error(`Deze foto kon niet worden ingelezen (${file.name || 'zonder naam'}, ${file.type || 'onbekend type'}, ${mb} MB, kenmerk ${kop.replace(/[^\x20-\x7e]/g, '.') || '-'}). Probeer het vanaf een laptop, of maak een schermafbeelding van de foto en upload die.`);
   }
 
   bar.querySelector('.cms-save').addEventListener('click', async e => {
