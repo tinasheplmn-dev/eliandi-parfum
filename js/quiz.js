@@ -511,23 +511,15 @@
     leer:     ['#6e4a3a', '#241511'],
   };
 
-  /* Flacon-mockup per geurkarakter (assets/quiz/mockup-fles-*.jpg).
-     Ontbreekt het beeld, dan valt de kaart terug op het getekende
-     flacon-silhouet. Later schuiven hier echte productfoto's in. */
-  const MOCK_GROUP = {
-    amber: 'amber', vanille: 'amber', gourmand: 'amber', kruidig: 'amber',
-    bloemig: 'bloemig', poederig: 'bloemig', fruitig: 'bloemig', musk: 'bloemig',
-    fris: 'fris',
-    oud: 'donker', hout: 'donker', leer: 'donker',
-  };
-  function bottleVisual(p) {
-    const dims = Object.entries(p.d || {}).sort((a, b) => b[1] - a[1]);
-    const grp = (dims[0] && MOCK_GROUP[dims[0][0]]) || 'amber';
+  /* De echte productfoto van 50 ml (dezelfde als in de shop): per doelgroep
+     een eigen flacon, zie api/_fotos.json. Ontbreekt het beeld, of heeft
+     een zelf toegevoegde geur geen doelgroep, dan valt de kaart terug op
+     het getekende flacon-silhouet. */
+  function bottleVisual(p, groot) {
+    if (!['dames', 'heren', 'unisex'].includes(p.g)) return bottleSVG(p);
     return `
-      <img class="qr-mock" src="assets/quiz/mockup-fles-${grp}.webp" alt=""
-           decoding="async"
-           onerror="this.parentElement.classList.add('no-mock');this.remove()">
-      ${bottleSVG(p)}`;
+      <img class="qr-mock" src="assets/producten/${p.g}-50ml${groot ? '' : '-600'}.webp" alt="${String(p.n).replace(/"/g, '&quot;')}, 50 ml"
+           decoding="async" onerror="this.remove()">${bottleSVG(p)}`;
   }
 
   let gradSeq = 0;
@@ -675,7 +667,7 @@
         card.innerHTML = `
           <span class="qr-badge">Jouw signatuur &middot; ${r.pct}% match</span>
           <div class="qr-hero">
-            <div class="qr-hero-visual">${bottleVisual(p)}</div>
+            <div class="qr-hero-visual">${bottleVisual(p, true)}</div>
             <div class="qr-hero-body">
               <h3 class="qr-name">${p.n}</h3>
               <p class="qr-meta">${meta}</p>

@@ -508,15 +508,15 @@
 .qopt-visit .qopt-media img { filter: saturate(.8) brightness(.68); }
 .qopt-visit .qopt-body strong { color: var(--goud-licht); }
 
-/* flacon-mockup in resultaatkaarten (valt terug op het silhouet) */
+/* productfoto in resultaatkaarten; het silhouet verschijnt alleen als
+   de foto ontbreekt of niet laadt */
 .qr-hero-visual .qr-mock, .qr-side-visual .qr-mock {
   display: block;
   width: 100%;
   height: auto;
   border: 1px solid rgba(184,134,11,.3);
 }
-.qr-hero-visual svg, .qr-side-visual svg { display: none; }
-.qr-hero-visual.no-mock svg, .qr-side-visual.no-mock svg { display: block; }
+.qr-mock + svg { display: none; }
 .qopt-media img {
   position: absolute;
   inset: 0;
