@@ -330,3 +330,11 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 **Foto's uploaden in de bewerkmodus (29 oktober 2026)**
 - Tot de update van 29 oktober blokkeerde de Content-Security-Policy `blob:`-afbeeldingen, terwijl de bewerkmodus elke foto zo inleest om hem te verkleinen. Daardoor gaf elke upload "Dit bestand kan niet als afbeelding worden gelezen". `img-src` staat nu `blob:` toe.
 - iPhone-foto's (HEIC) kan Chrome op Windows niet lezen. Die worden dan in de browser omgezet naar JPEG met `js/vendor/heic-to.js` (heic-to 1.6.6, CSP-versie, LGPL-3.0, alleen geladen bij een HEIC-bestand; vraagt `worker-src 'self' blob:`).
+
+## Facturen, creditnota's en administratie (30 oktober 2026)
+
+- **Factuurnummers**: één doorlopende reeks voor bestellingen en Experience-aanbetalingen (`factuur:teller`). In het dashboard (Bedrijf & facturen) stelt Angelo het **volgende factuurnummer** in. Dat kan alleen omhoog, zodat er nooit een nummer dubbel voorkomt. Intern blijft `factuurStart` bestaan; volgend nummer = `factuurStart` + aantal uitgegeven facturen.
+- **Experience**: bij een betaalde aanbetaling (niet bij een cadeaubon) maakt `setBookingStatus` een factuur voor de aanbetaling (`booking.factuur`). Die gaat als PDF mee in de bevestigingsmail. Het restant rekent Angelo in de winkel af met zijn eigen bon.
+- **Cadeaubonnen** krijgen bewust geen factuur: de btw valt bij inwisselen, niet bij verkoop.
+- **Creditnota's**: knop *Creditnota* bij elke bestelling of boeking met factuur. Eigen reeks CN000001 (`creditnota:teller`). Een deelbedrag mag, tot het gefactureerde totaal. De klant krijgt de creditnota per mail. Het geld zelf betaalt Angelo terug in Mollie.
+- **Bewaren**: een bestelling of boeking met factuur is niet te verwijderen (zeven jaar bewaarplicht). Op de 1e van de maand (met nieuwe pogingen op de 2e en 3e) mailt de dagelijkse taak de administratie van de vorige maand naar `MAIL_OWNER`: Excel plus elke factuur en creditnota als PDF (max. 150 per mail). Dezelfde Excel is per maand te downloaden onder Bestellingen.

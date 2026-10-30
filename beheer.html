@@ -169,6 +169,11 @@
           <select class="bh-select" id="orPeriode"><option value="">Altijd</option><option value="7">Laatste 7 dagen</option><option value="30">Laatste 30 dagen</option><option value="90">Laatste 90 dagen</option></select>
           <button class="bh-btn bh-sm" data-dl="export-bestellingen">Excel</button>
         </div>
+        <div class="bh-toolbar bh-admin-maand">
+          <label class="bh-hint">Administratie van <input class="bh-select" id="orMaand" type="month"></label>
+          <button class="bh-btn bh-sm" id="orMaandKnop" data-dl="administratie">Facturen en creditnota's (Excel)</button>
+        </div>
+        <p class="bh-hint">Op de eerste van elke maand krijg je deze administratie van de vorige maand ook per mail, met elke factuur en creditnota als PDF. Bewaar die mails zeven jaar. Heb je iets terugbetaald in Mollie? Klik dan bij de bestelling op <b>Creditnota</b>.</p>
         <p class="bh-hint">Zet de status om zodra je iets doet. Bij <b>verzonden</b>, <b>klaar om op te halen</b> en <b>geannuleerd</b> krijgt de klant automatisch een mail.</p>
         <div class="bh-list" id="orList"></div>
         <h3 class="bh-sub">Cadeaubonnen</h3>
@@ -247,7 +252,7 @@
       <!-- Bedrijf & facturen -->
       <section class="bh-tab" data-tab="bedrijf" hidden>
         <header class="bh-head"><h2>Bedrijf &amp; facturen</h2></header>
-        <p class="bh-hint">Deze gegevens komen onderaan elke factuur. De factuur gaat automatisch als PDF mee in de bevestigingsmail en is per bestelling te downloaden.</p>
+        <p class="bh-hint">Deze gegevens komen onderaan elke factuur. De factuur gaat automatisch als PDF mee in de bevestigingsmail en is per bestelling te downloaden. Het <b>volgende factuurnummer</b> kun je alleen verhogen, nooit verlagen: zo komt geen nummer dubbel voor. Creditnota's hebben een eigen reeks (CN000001, CN000002, …).</p>
         <form class="bh-form bh-grid" id="bedrijfForm">
           <label>Bedrijfsnaam<input name="naam"></label>
           <label>Telefoon<input name="tel"></label>
@@ -260,7 +265,7 @@
           <label>IBAN (optioneel)<input name="iban"></label>
           <label>Btw-percentage<input name="btwPct" inputmode="numeric"></label>
           <label>Factuurreeks: voorvoegsel<input name="factuurPrefix" placeholder="IN"></label>
-          <label>Factuurreeks: eerste nummer<input name="factuurStart" inputmode="numeric"></label>
+          <label>Volgend factuurnummer<input name="factuurVolgend" inputmode="numeric" placeholder="1000"></label>
           <label>Gratis verzending vanaf (€, 0 = nooit)<input name="gratisVanaf" inputmode="decimal"></label>
           <p class="bh-wide bh-hint bh-hint-kop"><b>Parfumolie</b> wordt bij elke geur met een prijs aangeboden, tegen deze vaste prijzen. Voorraad per geur stel je in bij Producten.</p>
           <label>Parfumolie aanbieden<select name="olie"><option value="ja">Ja</option><option value="nee">Nee</option></select></label>

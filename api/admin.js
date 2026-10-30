@@ -7,7 +7,7 @@ const { send, readJson, clean, store, newId, sanitizeHtml, isEmail, loginGeblokk
 const bev = require('./_beveiliging');
 const { maakXlsx } = require('./_xlsx');
 const { getOrder, setOrderStatus, ORDER_STATUSSEN } = require('./_records');
-const { getBedrijf, saveBedrijf, factuurPdf, pakbonPdf } = require('./_factuur');
+const { getBedrijf, saveBedrijf, factuurPdf, pakbonPdf, boekingAlsFactuur, bedragen, maakCreditnota, creditnotaPdf, aantalFacturen } = require('./_factuur');
 const korting = require('./_korting');
 const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
@@ -169,7 +169,7 @@ const actions = {
   },
   async downloadLink(req, b) {
     const soort = clean(b.soort, 30), id = clean(b.id || '-', 40);
-    if (!/^(factuur|pakbon|export-bestellingen|export-klanten|export-voorraad|backup)$/.test(soort)) return [400, { error: 'Onbekende download.' }];
+    if (!/^(factuur|factuur-boeking|creditnota|pakbon|export-bestellingen|export-klanten|export-voorraad|administratie|backup)$/.test(soort)) return [400, { error: 'Onbekende download.' }];
     return [200, { url: await bev.downloadLink(req, soort, id) }];
   },
 
@@ -233,13 +233,17 @@ const actions = {
     const soort = b.soort === 'order' ? 'order' : b.soort === 'voucher' ? 'voucher' : 'booking';
     const id = clean(b.id, 30);
     if (!id) return [400, { error: 'Welke wil je weghalen?' }];
+    const BEWAREN = 'Hier hoort een factuur bij. Die moet je zeven jaar bewaren, dus deze blijft staan. Is er terugbetaald? Maak dan een creditnota.';
     if (soort === 'booking') {
       const bk = await getBooking(id);
       if (!bk) return [404, { error: 'Niet gevonden.' }];
+      if (bk.factuur) return [400, { error: BEWAREN }];
       if (bk.status === 'geboekt') await setBookingStatus(id, 'geannuleerd');
       await store.del('booking:' + id);
       await store.srem('idx:bookings', id);
     } else if (soort === 'order') {
+      const o = await getOrder(id);
+      if (o && o.factuur) return [400, { error: BEWAREN }];
       await store.del('order:' + id);
       await store.srem('idx:orders', id);
     } else {
@@ -369,7 +373,12 @@ const actions = {
   },
 
   /* ── bedrijfsgegevens (facturen, gratis verzending) ── */
-  async bedrijfGet() { return [200, { bedrijf: await getBedrijf() }]; },
+  async bedrijfGet() {
+    const bedrijf = await getBedrijf();
+    /* Angelo ziet het volgende nummer, niet het interne startnummer */
+    bedrijf.factuurVolgend = (parseInt(bedrijf.factuurStart, 10) || 1) + await aantalFacturen();
+    return [200, { bedrijf }];
+  },
   async bedrijfSave(req, b) {
     const cur = await getBedrijf();
     const d = b.bedrijf || {};
@@ -380,14 +389,46 @@ const actions = {
       tel: txt('tel', 30), email: txt('email', 120), kvk: txt('kvk', 20), btwNummer: txt('btwNummer', 24), iban: txt('iban', 34),
       btwPct: Math.max(0, Math.min(30, parseInt(d.btwPct, 10) || cur.btwPct)),
       factuurPrefix: clean(d.factuurPrefix !== undefined ? d.factuurPrefix : cur.factuurPrefix, 6).toUpperCase() || 'IN',
-      factuurStart: Math.max(1, parseInt(d.factuurStart, 10) || cur.factuurStart),
+      factuurStart: cur.factuurStart,
       gratisVanaf: d.gratisVanaf !== undefined ? Math.max(0, Math.round(parseFloat(String(d.gratisVanaf).replace(',', '.')) * 100) || 0) : cur.gratisVanaf,
       olie: d.olie !== undefined ? Boolean(d.olie) && d.olie !== 'nee' : cur.olie,
       olie6: d.olie6 !== undefined ? Math.max(0, Math.round(parseFloat(String(d.olie6).replace(',', '.')) * 100) || 0) : cur.olie6,
       olie13: d.olie13 !== undefined ? Math.max(0, Math.round(parseFloat(String(d.olie13).replace(',', '.')) * 100) || 0) : cur.olie13,
     };
+    /* volgend factuurnummer: alleen omhoog, anders kan een nummer dubbel voorkomen */
+    if (d.factuurVolgend !== undefined && String(d.factuurVolgend).trim() !== '') {
+      const uitgegeven = await aantalFacturen();
+      const nu = (parseInt(cur.factuurStart, 10) || 1) + uitgegeven;
+      const wil = parseInt(String(d.factuurVolgend).replace(/^\D+/, ''), 10);
+      if (!wil || wil < 1) return [400, { error: 'Vul bij volgend factuurnummer alleen het getal in, bijvoorbeeld 1250.' }];
+      if (wil < nu) return [400, { error: `Het volgende factuurnummer kan niet lager dan ${nu}: lagere nummers zijn al gebruikt of kunnen dubbel voorkomen.` }];
+      out.factuurStart = wil - uitgegeven;
+    }
     await saveBedrijf(out);
     return [200, { ok: true }];
+  },
+
+  /* ── creditnota na een terugbetaling in Mollie ──
+     Het geld zelf stort Angelo terug in Mollie; hier komt het papier bij:
+     een creditnota met eigen nummer, naar de klant gemaild. */
+  async creditnota(req, b) {
+    const soort = b.soort === 'booking' ? 'booking' : 'order';
+    const id = clean(b.id, 30);
+    const rec = soort === 'order' ? await getOrder(id) : await getBooking(id);
+    if (!rec) return [404, { error: 'Niet gevonden.' }];
+    if (!rec.factuur) return [400, { error: 'Hier hoort geen factuur bij, dus ook geen creditnota.' }];
+    const doc = soort === 'order' ? rec : boekingAlsFactuur(rec);
+    const al = (rec.creditnotas || []).reduce((t, c) => t + c.cents, 0);
+    const open = doc.total - al;
+    const cents = b.bedrag === undefined || b.bedrag === '' ? open : Math.round(parseFloat(String(b.bedrag).replace(',', '.')) * 100);
+    if (!cents || cents <= 0) return [400, { error: 'Vul het terugbetaalde bedrag in.' }];
+    if (cents > open) return [400, { error: `Je kunt hooguit ${(open / 100).toFixed(2).replace('.', ',')} euro crediteren; de rest is al terugbetaald.` }];
+    const cn = await maakCreditnota(rec, cents, clean(b.reden, 120));
+    if (soort === 'order') await require('./_records').saveOrder(rec); else await saveBooking(rec);
+    const mail = require('./_mail');
+    const pdf = creditnotaPdf({ ...doc, creditnotas: rec.creditnotas }, cn, await getBedrijf());
+    const gemaild = rec.email ? await mail.creditnotaVerstuurd(doc, cn, { filename: `creditnota-${cn.nummer}.pdf`, content: pdf.toString('base64') }) : false;
+    return [200, { ok: true, nummer: cn.nummer, gemaild }];
   },
 
   /* ── reviews per geur ── */
@@ -672,6 +713,74 @@ async function backup() {
   return { gemaakt: new Date().toISOString(), orders, bookings, vouchers, wachtlijst, cms };
 }
 
+/* ── administratie per maand: alle facturen en creditnota's ──
+   Voor de boekhouder en om zeven jaar te bewaren. Maand 1-12. */
+async function administratie(jaar, maand, metPdf = false) {
+  const sleutel = `${jaar}-${String(maand).padStart(2, '0')}`;
+  const inMaand = ts => dag(ts).slice(0, 7) === sleutel;
+  const [orders, bookings, bedrijf] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), getBedrijf()]);
+  const pct = Number(bedrijf.btwPct) || 21;
+  const docs = [
+    ...orders.filter(o => o.factuur).map(o => ({ doc: o, soort: 'order' })),
+    ...bookings.filter(b => b.factuur).map(b => ({ doc: boekingAlsFactuur(b), soort: 'booking' })),
+  ];
+  const rijen = [], pdfs = [];
+  docs.forEach(({ doc, soort }) => {
+    const wat = soort === 'booking' ? 'Experience (aanbetaling)' : (doc.items || []).map(i => `${i.qty}x ${i.name}`).join('; ');
+    if (inMaand(doc.factuur.datum)) {
+      const g = bedragen(doc.total, pct);
+      rijen.push([new Date(doc.factuur.datum), doc.factuur.nummer, 'Factuur', '', String(doc.id).toUpperCase(), doc.name, doc.email, wat, g.excl / 100, g.btw / 100, g.incl / 100]);
+      if (metPdf) pdfs.push({ filename: `factuur-${doc.factuur.nummer}.pdf`, maak: () => factuurPdf(doc, bedrijf) });
+    }
+    (doc.creditnotas || []).filter(c => inMaand(c.datum)).forEach(c => {
+      const g = bedragen(c.cents, pct);
+      rijen.push([new Date(c.datum), c.nummer, 'Creditnota', doc.factuur.nummer, String(doc.id).toUpperCase(), doc.name, doc.email, c.reden || 'Terugbetaling', -g.excl / 100, -g.btw / 100, -g.incl / 100]);
+      if (metPdf) pdfs.push({ filename: `creditnota-${c.nummer}.pdf`, maak: () => creditnotaPdf(doc, c, bedrijf) });
+    });
+  });
+  rijen.sort((a, b) => a[0] - b[0] || String(a[1]).localeCompare(String(b[1])));
+  const som = k => Math.round(rijen.reduce((t, r) => t + r[k] * 100, 0)) / 100;
+  const xlsx = maakXlsx([{
+    naam: 'Facturen en creditnota\'s', geld: [8, 9, 10],
+    kolommen: ['Datum', 'Nummer', 'Soort', 'Hoort bij factuur', 'Referentie', 'Klant', 'E-mail', 'Omschrijving', 'Excl. btw', `Btw ${pct}%`, 'Incl. btw'],
+    rijen: rijen.length ? [...rijen, ['', '', 'Totaal', '', '', '', '', '', som(8), som(9), som(10)]] : [],
+  }]);
+  return { naam: `eliandi-administratie-${sleutel}.xlsx`, xlsx, aantal: rijen.length, totaal: rijen.length ? som(10) : 0, pdfs, sleutel };
+}
+
+/* Op de eerste van de maand: de administratie van de vorige maand per
+   mail naar Angelo, met elke factuur en creditnota als PDF. Zo staat
+   alles ook buiten de site bewaard. Eén keer per maand; lukt het op de
+   eerste niet, dan probeert de dagelijkse taak het de twee dagen erna opnieuw. */
+async function maandmail(nu) {
+  if (Number(dag(nu).slice(8, 10)) > 3) return false;
+  const naar = process.env.MAIL_OWNER || process.env.MAIL_BCC;
+  if (!naar) return false;
+  const [j, m] = dag(nu).split('-').map(Number);
+  const jaar = m === 1 ? j - 1 : j, maand = m === 1 ? 12 : m - 1;
+  const sleutel = `${jaar}-${String(maand).padStart(2, '0')}`;
+  if (!(await store.setNx('once:maandmail:' + sleutel, String(Date.now()), 40 * 86400))) return false;
+  const x = await administratie(jaar, maand, true);
+  const MAX = 150; // ruim onder de grens van een mailbijlage
+  const mee = x.pdfs.slice(0, MAX);
+  const mail = require('./_mail');
+  const naam = new Date(Date.UTC(jaar, maand - 1, 15)).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+  const ok = await mail.verstuur({
+    to: naar,
+    subject: `Administratie ${naam}: ${x.aantal} ${x.aantal === 1 ? 'document' : 'facturen en creditnota\'s'}`,
+    html: `<p>Hoi Angelo,</p><p>Hierbij de administratie van ${naam} uit de webshop: een Excel-overzicht met alle facturen en creditnota's, en elk document als PDF. Totaal (incl. btw): <b>${mail.euro(Math.round(x.totaal * 100))}</b>.</p>`
+      + (x.pdfs.length > MAX ? `<p>Het waren er ${x.pdfs.length}; de eerste ${MAX} zitten in deze mail. De rest download je per bestelling in het dashboard.</p>` : '')
+      + `<p>Bewaar deze mail bij je administratie, of stuur hem door naar je boekhouder. Facturen moet je zeven jaar bewaren.</p>`,
+    text: `Administratie ${naam}: ${x.aantal} documenten. Excel en PDF's in de bijlage. Bewaar deze mail zeven jaar.`,
+    attachments: [
+      { filename: x.naam, content: x.xlsx.toString('base64') },
+      ...mee.map(p => ({ filename: p.filename, content: p.maak().toString('base64') })),
+    ],
+  });
+  if (!ok) await store.del('once:maandmail:' + sleutel); // mislukt: morgen opnieuw
+  return ok;
+}
+
 async function dagelijks() {
   /* herinnering bij een winkelmand die na een dag nog niet betaald is */
   const mail = require('./_mail');
@@ -690,12 +799,14 @@ async function dagelijks() {
   try { await store.set('backup:' + dag(nu), JSON.stringify(await backup()), 14 * 86400); } catch (e) { console.error('backup', e.message); }
   let videosOpgeruimd = 0;
   try { videosOpgeruimd = await videosOpruimen(); } catch (e) { console.error('video opruimen', e.message); }
-  return { herinneringen: verstuurd, videosOpgeruimd };
+  let administratieGemaild = false;
+  try { administratieGemaild = await maandmail(nu); } catch (e) { console.error('maandmail', e.message); }
+  return { herinneringen: verstuurd, videosOpgeruimd, administratieGemaild };
 }
 
 const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
 const ACTIE_NAAM = {
-  orderStatus: 'status bestelling', orderNote: 'notitie bestelling', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
+  orderStatus: 'status bestelling', orderNote: 'notitie bestelling', creditnota: 'creditnota gemaakt', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
   productOverride: 'product aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
   kortingSave: 'kortingscode opgeslagen', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
   reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
@@ -733,6 +844,26 @@ module.exports = async (req, res) => {
           const bedrijf = await getBedrijf();
           return soort === 'factuur' ? lever('application/pdf', `factuur-${o.factuur.nummer}.pdf`, factuurPdf(o, bedrijf))
             : lever('application/pdf', `pakbon-${o.id.toUpperCase()}.pdf`, pakbonPdf(o, bedrijf));
+        }
+        if (soort === 'factuur-boeking') {
+          const bk = await getBooking(clean(id, 30));
+          if (!bk || !bk.factuur) return send(res, 404, { error: 'Niet gevonden.' });
+          return lever('application/pdf', `factuur-${bk.factuur.nummer}.pdf`, factuurPdf(boekingAlsFactuur(bk), await getBedrijf()));
+        }
+        if (soort === 'creditnota') {
+          /* id: order:<id>:<CN-nummer> of booking:<id>:<CN-nummer> */
+          const [wat, rid, nr] = String(id).split(':');
+          const rec = wat === 'booking' ? await getBooking(clean(rid, 30)) : await getOrder(clean(rid, 30));
+          const cn = rec && (rec.creditnotas || []).find(c => c.nummer === nr);
+          if (!cn) return send(res, 404, { error: 'Niet gevonden.' });
+          return lever('application/pdf', `creditnota-${cn.nummer}.pdf`, creditnotaPdf(wat === 'booking' ? boekingAlsFactuur(rec) : rec, cn, await getBedrijf()));
+        }
+        if (soort === 'administratie') {
+          const m = /^(\d{4})-(\d{2})$/.exec(id);
+          if (!m) return send(res, 400, { error: 'Kies een maand.' });
+          const x = await administratie(Number(m[1]), Number(m[2]));
+          await bev.logboek(req, 'administratie gedownload', id);
+          return lever('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', x.naam, x.xlsx);
         }
         if (soort === 'backup') {
           await bev.logboek(req, 'back-up gedownload');

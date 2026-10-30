@@ -50,9 +50,24 @@ async function setBookingStatus(id, status, extra = {}) {
     }
   }
 
+  /* factuur voor de aanbetaling (niet bij een cadeaubon: die is al betaald
+     toen de bon werd gekocht, en zonder aanbetaling is er niets te factureren) */
+  let factuurBijlage = null;
+  if (status === 'geboekt' && b.paid > 0 && !b.voucher) {
+    try {
+      const f = require('./_factuur');
+      if (!b.factuur && await eenmalig('factuur-boeking:' + id)) {
+        const doc = f.boekingAlsFactuur(b);
+        b.factuur = (await f.maakFactuur(doc)).factuur;
+        await saveBooking(b);
+      }
+      if (b.factuur) factuurBijlage = { filename: `factuur-${b.factuur.nummer}.pdf`, content: f.factuurPdf(f.boekingAlsFactuur(b), await f.getBedrijf()).toString('base64') };
+    } catch (e) { console.error('factuur boeking', e.message); }
+  }
+
   /* bevestiging naar de klant, één keer per boeking per gebeurtenis */
   if (status === 'geboekt' && await eenmalig('mail-geboekt:' + id)) {
-    await mail.boekingBevestigd(b);
+    await mail.boekingBevestigd(b, factuurBijlage);
     await mail.melding(`Nieuwe boeking: ${b.name}, ${mail.datum(b.slot)} om ${b.slot.slice(11)}`, [
       `${b.name} &middot; ${b.phone} &middot; ${b.email}`,
       `${mail.gezelschap(b)} &middot; ${b.minutes || 30} minuten &middot; aanbetaald ${mail.euro(b.paid)} van ${mail.euro(b.price)}`,

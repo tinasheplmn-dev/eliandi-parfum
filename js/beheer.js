@@ -108,6 +108,35 @@
     box.hidden = false;
   }
 
+  /* ── creditnota's: bij een bestelling of boeking met factuur ── */
+  const terug = r => (r.creditnotas || []).reduce((t, c) => t + c.cents, 0);
+  const creditLinks = (soort, r) => (r.creditnotas || []).map(c => `<button class="bh-link" data-dl="creditnota" data-id="${soort}:${r.id}:${esc(c.nummer)}">Creditnota ${esc(c.nummer)}</button>`).join('');
+  const creditKnop = (soort, r, totaal) => r.factuur && totaal - terug(r) > 0
+    ? `<button class="bh-btn bh-sm" data-credit="${soort}" data-id="${r.id}" data-open="${totaal - terug(r)}">Creditnota</button>` : '';
+  document.addEventListener('click', async e => {
+    const k = e.target.closest('[data-credit]'); if (!k) return;
+    const open = Number(k.dataset.open);
+    if (!confirm('Heb je het geld al terugbetaald in Mollie? Een creditnota maakt alleen het papier: hij krijgt een eigen nummer en gaat per mail naar de klant.')) return;
+    const bedrag = prompt('Hoeveel heb je terugbetaald (incl. btw)? Laat staan voor het hele bedrag.', fmt(open / 100));
+    if (bedrag === null) return;
+    const reden = prompt('Reden (komt op de creditnota, mag leeg)', '') || '';
+    try {
+      const r = await api({ action: 'creditnota', soort: k.dataset.credit, id: k.dataset.id, bedrag, reden });
+      toast(`Creditnota ${r.nummer} gemaakt${r.gemaild ? ' en naar de klant gemaild' : ''}`);
+      await loadOverview();
+    } catch (x) { toast(x.message, true); }
+  });
+
+  /* administratie per maand: standaard de vorige maand */
+  (() => {
+    const m = $('orMaand'); if (!m) return;
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+    const zet = () => { $('orMaandKnop').dataset.id = m.value || '-'; };
+    m.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    m.max = new Date().toISOString().slice(0, 7);
+    m.addEventListener('input', zet); zet();
+  })();
+
   function renderBookings() {
     const today = new Date().toISOString().slice(0, 10);
     const live = state.bookings.filter(b => b.status === 'geboekt');
@@ -120,7 +149,7 @@
       : state.bookings.slice().reverse();
     $('bkList').innerHTML = rows.length ? rows.map(b => `
       <article class="bh-card${b.done ? ' is-done' : ''}">
-        <div class="bh-card-when"><b>${when(b.slot)}</b><span class="bh-pill">${gezelschap(b)} · ${b.minutes || 30} min</span></div>
+        <div class="bh-card-when"><b>${when(b.slot)}</b><span class="bh-pill">${gezelschap(b)} · ${b.minutes || 30} min</span>${b.factuur ? `<button class="bh-link" data-dl="factuur-boeking" data-id="${b.id}">Factuur ${esc(b.factuur.nummer)}</button>` : ''}${creditLinks('booking', b)}</div>
         <div class="bh-card-main">
           <p class="bh-name">${esc(b.name)}</p>
           <p class="bh-contact">${b.phone ? `<a href="tel:${esc(b.phone)}">${esc(b.phone)}</a>` : ''}${b.phone && b.email ? ' · ' : ''}${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>` : ''}</p>
@@ -130,12 +159,12 @@
         </div>
         <div class="bh-card-side">
           <span class="bh-status bh-s-${b.status.replace(/\s/g, '-')}">${b.done ? 'afgerond' : b.status}</span>
-          <p class="bh-money">${b.voucher ? 'Cadeaubon ' + esc(b.voucher) : `${euro(b.paid)} betaald<br>${euro(b.price - b.paid)} in de winkel`}</p>
+          <p class="bh-money">${b.voucher ? 'Cadeaubon ' + esc(b.voucher) : `${euro(b.paid)} betaald<br>${euro(b.price - b.paid)} in de winkel`}</p>${terug(b) ? `<p class="bh-src">${euro(terug(b))} terugbetaald</p>` : ''}
           <p class="bh-src">${b.source === 'handmatig' ? 'Zelf ingepland' : 'Via de website'}${b.mock ? ' · test' : ''}</p>
           <div class="bh-card-actions">
             ${b.status === 'geboekt' ? `<button class="bh-btn bh-sm" data-done="${b.id}">${b.done ? 'Heropenen' : 'Afgerond'}</button>
             <button class="bh-btn bh-sm bh-danger" data-cancel="${b.id}">Annuleren</button>` : ''}
-            <button class="bh-btn bh-sm bh-weg" data-del="${b.id}" title="Definitief uit het overzicht halen">Verwijderen</button>
+            ${creditKnop('booking', b, b.paid)}${b.factuur ? '' : `<button class="bh-btn bh-sm bh-weg" data-del="${b.id}" title="Definitief uit het overzicht halen">Verwijderen</button>`}
           </div>
         </div>
       </article>`).join('') : '<p class="bh-empty">Nog geen boekingen.</p>';
@@ -216,7 +245,7 @@
     const statussen = (state.statussen || []).filter(x => x !== 'betaald');
     $('orList').innerHTML = lijst.length ? lijst.map(o => `
       <article class="bh-card" data-order="${o.id}">
-        <div class="bh-card-when"><b>${date(o.created)}</b><span class="bh-pill">${o.delivery === 'ophalen' ? 'Ophalen' : 'Verzenden'}</span>${o.factuur ? `<button class="bh-link" data-dl="factuur" data-id="${o.id}">Factuur ${esc(o.factuur.nummer)}</button>` : ''}${o.status !== 'wacht op betaling' ? `<button class="bh-link" data-dl="pakbon" data-id="${o.id}">Pakbon</button>` : ''}</div>
+        <div class="bh-card-when"><b>${date(o.created)}</b><span class="bh-pill">${o.delivery === 'ophalen' ? 'Ophalen' : 'Verzenden'}</span>${o.factuur ? `<button class="bh-link" data-dl="factuur" data-id="${o.id}">Factuur ${esc(o.factuur.nummer)}</button>` : ''}${creditLinks('order', o)}${o.status !== 'wacht op betaling' ? `<button class="bh-link" data-dl="pakbon" data-id="${o.id}">Pakbon</button>` : ''}</div>
         <div class="bh-card-main">
           <p class="bh-name">${esc(o.name)} <small class="bh-ref">#${esc(o.id.toUpperCase())}</small></p>
           <p class="bh-contact">${o.phone ? `<a href="tel:${esc(o.phone)}">${esc(o.phone)}</a> · ` : ''}<a href="mailto:${esc(o.email)}">${esc(o.email)}</a></p>
@@ -229,13 +258,13 @@
         </div>
         <div class="bh-card-side">
           <span class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${o.status}</span>
-          <p class="bh-money">${euro(o.total)}</p>${o.mock ? '<p class="bh-src">test</p>' : ''}
+          <p class="bh-money">${euro(o.total)}</p>${terug(o) ? `<p class="bh-src">${euro(terug(o))} terugbetaald</p>` : ''}${o.mock ? '<p class="bh-src">test</p>' : ''}
           ${o.status !== 'wacht op betaling' ? `<div class="bh-card-actions bh-statusrow">
             <select class="bh-select" data-status="${o.id}">${statussen.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select>
             ${o.delivery === 'verzenden' ? `<input class="bh-tt" data-tt="${o.id}" placeholder="track & trace (optioneel)" value="${esc(o.trackTrace || '')}">` : ''}
             <button class="bh-btn bh-sm bh-gold" data-setstatus="${o.id}">Status opslaan</button>
           </div>` : ''}
-          <div class="bh-card-actions"><button class="bh-btn bh-sm bh-weg" data-delorder="${o.id}" title="Definitief uit het overzicht halen">Verwijderen</button></div>
+          <div class="bh-card-actions">${creditKnop('order', o, o.total)}${o.factuur ? '' : `<button class="bh-btn bh-sm bh-weg" data-delorder="${o.id}" title="Definitief uit het overzicht halen">Verwijderen</button>`}</div>
         </div>
       </article>`).join('') : `<p class="bh-empty">${zq || zs || zp ? 'Geen bestellingen gevonden met deze filters.' : orFilter === 'open' ? 'Niets te doen. Alles is afgehandeld.' : 'Nog geen bestellingen.'}</p>`;
     $('vcList').innerHTML = state.vouchers.length ? state.vouchers.map(v => `
@@ -397,7 +426,7 @@
   async function loadBedrijf() {
     const { bedrijf } = await api({ action: 'bedrijfGet' });
     const f = $('bedrijfForm').elements;
-    ['naam', 'tel', 'straat', 'postcode', 'plaats', 'email', 'kvk', 'btwNummer', 'iban', 'btwPct', 'factuurPrefix', 'factuurStart'].forEach(k => { f[k].value = bedrijf[k] == null ? '' : bedrijf[k]; });
+    ['naam', 'tel', 'straat', 'postcode', 'plaats', 'email', 'kvk', 'btwNummer', 'iban', 'btwPct', 'factuurPrefix', 'factuurVolgend'].forEach(k => { f[k].value = bedrijf[k] == null ? '' : bedrijf[k]; });
     f.gratisVanaf.value = fmt((bedrijf.gratisVanaf || 0) / 100);
     f.olie.value = bedrijf.olie === false ? 'nee' : 'ja';
     f.olie6.value = fmt((bedrijf.olie6 || 0) / 100);
@@ -406,7 +435,7 @@
   $('bedrijfForm').addEventListener('submit', async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
-    try { await api({ action: 'bedrijfSave', bedrijf: d }); toast('Opgeslagen'); } catch (x) { toast(x.message, true); }
+    try { await api({ action: 'bedrijfSave', bedrijf: d }); toast('Opgeslagen'); await loadBedrijf(); } catch (x) { toast(x.message, true); }
   });
 
   /* ── producten ── */

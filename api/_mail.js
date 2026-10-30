@@ -22,7 +22,7 @@ const BCC = () => process.env.MAIL_BCC || '';
 const REPLY = () => process.env.MAIL_REPLY_TO || process.env.MAIL_OWNER || '';
 const enabled = () => Boolean(KEY());
 
-const SITE = () => (process.env.SITE_URL || 'https://eliandi-parfum.vercel.app').replace(/\/$/, '');
+const SITE = () => (process.env.SITE_URL || 'https://www.eliandiparfum.com').replace(/\/$/, '');
 const WINKEL = 'Vughterstraat 70, 5211 GK \'s-Hertogenbosch';
 const TEL = '06 87 08 02 56';
 
@@ -117,7 +117,7 @@ function icsBestand(b) {
 }
 
 /* ── De mails zelf ── */
-async function boekingBevestigd(b) {
+async function boekingBevestigd(b, factuur) {
   const n = personen(b);
   const samen = n > 1;
   const minuten = b.minutes || 30 * n;
@@ -141,12 +141,31 @@ async function boekingBevestigd(b) {
       kicker: samen ? `The Eliandi Experience voor ${gezelschap(b).toLowerCase()}` : 'The Eliandi Experience geboekt',
       kop: 'Tot snel.',
       regels,
-      naschrift: `Komt het toch niet uit? Bel of app Angelo, dan zoeken we samen een ander moment. In de bijlage zit een afspraak die je in je eigen agenda kunt zetten.`,
+      naschrift: `Komt het toch niet uit? Bel of app Angelo, dan zoeken we samen een ander moment. In de bijlage zit een afspraak die je in je eigen agenda kunt zetten${factuur ? ', en de factuur van je aanbetaling' : ''}.`,
     }),
     text: `Je Eliandi Experience staat vast op ${datum(b.slot)} om ${b.slot.slice(11)}, ${WINKEL}.\n`
       + (b.voucher ? `Betaald met cadeaubon ${b.voucher}.` : `Aanbetaald: ${euro(b.paid)}.${rest ? ` Restant in de winkel: ${euro(rest)}.` : ''}`)
       + `\nVragen? Bel of app Angelo op ${TEL}.`,
-    attachments: [icsBestand(b)],
+    attachments: [icsBestand(b), ...(factuur ? [factuur] : [])],
+  });
+}
+
+/* Creditnota na een terugbetaling, met de PDF als bijlage. */
+async function creditnotaVerstuurd(o, cn, bijlage) {
+  const wat = o.soort === 'experience' ? 'je aanbetaling voor The Eliandi Experience' : `je bestelling ${String(o.id).toUpperCase()}`;
+  return verstuur({
+    to: o.email,
+    subject: `Terugbetaling van ${euro(cn.cents)} voor ${o.soort === 'experience' ? 'je Experience' : 'je bestelling'}`,
+    html: omslag({
+      kicker: 'Terugbetaling',
+      kop: 'Je geld komt terug.',
+      regels: [
+        `We hebben <strong style="color:#f4efe4">${euro(cn.cents)}</strong> terugbetaald voor ${esc(wat)}. Het staat binnen een paar werkdagen op je rekening, via dezelfde betaalmethode als waarmee je betaalde.`,
+        `In de bijlage zit de creditnota (${esc(cn.nummer)}) bij factuur ${esc(o.factuur.nummer)}. Bewaar hem bij je factuur.`,
+      ],
+    }),
+    text: `We hebben ${euro(cn.cents)} terugbetaald voor ${wat}. In de bijlage zit creditnota ${cn.nummer} bij factuur ${o.factuur.nummer}.\nVragen? Bel of app Angelo op ${TEL}.`,
+    attachments: [bijlage],
   });
 }
 
@@ -287,6 +306,6 @@ async function melding(onderwerp, regels) {
 }
 
 module.exports = {
-  enabled, verstuur, boekingBevestigd, boekingGeannuleerd,
+  enabled, verstuur, boekingBevestigd, boekingGeannuleerd, creditnotaVerstuurd,
   bestellingBetaald, bestellingStatus, bonBetaald, winkelmandHerinnering, melding, datum, euro, gezelschap, personen,
 };
