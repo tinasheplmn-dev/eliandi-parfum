@@ -26,7 +26,7 @@
     oud: 'Oud', hout: 'Hout', amber: 'Amber', vanille: 'Vanille', gourmand: 'Gourmand', bloemig: 'Bloemig',
     fris: 'Citrus & fris', kruidig: 'Kruidig', musk: 'Musk', fruitig: 'Fruitig', poederig: 'Poederig', leer: 'Leer & rook',
   };
-  const NIEUW = new Set(['smoked amber', 'le cheminee', 'emeraude eliandi', 'rubis eliandi', 'mona lisa', 'qahwa', 'true powerfull', 'power of true']);
+  const NIEUW = new Set(['marley & lina exclusif', 'dark honey extrait', 'sacred ember extrait', 'citrus skyline', 'amber inferno extrait', 'radiant sandal elixir', 'spices storm extrait', 'eliansi intense', 'radiant sandal elixir .w']);
 
   /* de geurfamilies zoals Angelo ze in de sheet noemt -> onze twaalf filters */
   const FAM_MAP = [
@@ -70,7 +70,7 @@
       const dims = p.d || {};
       const top = Object.entries(dims).sort((a, b) => b[1] - a[1]).map(([k]) => k);
       const tint = TINT[top[0]] || '#8a6a2a';
-      const tekst = strip([p.n, p.tags || '', (p.f || []).join(' '), (p.t || []).join(' '), (p.h || []).join(' '), (p.b || []).join(' '), p.i || '', p.g,
+      const tekst = strip([p.n, p.tags || '', (p.f || []).join(' '), (p.k || []).join(' '), (p.t || []).join(' '), (p.h || []).join(' '), (p.b || []).join(' '), p.i || '', p.g,
         top.map(k => FAMILIE_NAAM[k]).join(' ')].join(' '));
       const karakter = new Set();
       if ((p.w || 0) >= 1) karakter.add('warm'); if ((p.w || 0) <= -1) karakter.add('fris');
@@ -131,7 +131,7 @@
     const sel = leverbaar(p, 1) ? 1 : ML.findIndex((_, k) => leverbaar(p, k));
     const alleOp = heeftPrijs && sel < 0;
     const foto = fotoVan(p, sel >= 0 ? sel : 1);
-    const noten = [['Top', p.t], ['Hart', p.h], ['Basis', p.b]].filter(([, l]) => l && l.length);
+    const noten = [['Hoofdnoot', p.k], ['Top', p.t], ['Hart', p.h], ['Basis', p.b]].filter(([, l]) => l && l.length);
     const rv = review(p);
     const inCmp = state.cmp.includes(p.n), inSet = state.set.includes(p.n);
     return `<article class="sh-card${alleOp ? ' is-soldout' : ''}" data-n="${esc(p.n)}">
@@ -325,7 +325,7 @@
     const namen = state.all.filter(p => opNaam(p) || opTerm(p)).sort((a, b) => (opNaam(b) - opNaam(a)) || (strip(a.n).startsWith(q) === strip(b.n).startsWith(q) ? 0 : strip(a.n).startsWith(q) ? -1 : 1)).slice(0, 6);
     const term = p => { const t = String(p.tags || '').split(/\s*,\s*/).find(x => strip(x).includes(q)); return t || ''; };
     const woorden = new Map();
-    state.all.forEach(p => [...(p.t || []), ...(p.h || []), ...(p.b || []), ...(p.f || [])].forEach(w => { if (strip(w).includes(q)) woorden.set(strip(w), w); }));
+    state.all.forEach(p => [...(p.k || []), ...(p.t || []), ...(p.h || []), ...(p.b || []), ...(p.f || [])].forEach(w => { if (strip(w).includes(q)) woorden.set(strip(w), w); }));
     const termen = [...woorden.values()].slice(0, 4);
     if (!namen.length && !termen.length) { sug.hidden = true; return; }
     sug.innerHTML = namen.map(p => `<li><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}"><i></i><b>${esc(p.n)}</b><small>${opTerm(p) ? 'Zoekterm: ' + esc(term(p)) : esc(p._top.slice(0, 2).join(' · ')) + (p.p ? ' · vanaf ' + euro(p.p) : '')}</small></a></li>`).join('')
@@ -393,7 +393,7 @@
         ${rij('Voor wie', p => esc(p.g))}
         ${rij('Geurfamilie', p => esc(p._top.join(', ')) || '–')}
         ${['Intensiteit', 'Houdbaarheid', 'Zoetheid', 'Warmte'].map((k, i) => `<tr><th>${k}</th>${ks.map(x => `<td>${dots(x[k])}</td>`).join('')}</tr>`).join('')}
-        ${rij('Topnoten', p => esc((p.t || []).join(', ')) || '–')}
+        ${rij('Topnoten', p => esc(((p.t && p.t.length ? p.t : p.k) || []).join(', ')) || '–')}
         ${rij('Hartnoten', p => esc((p.h || []).join(', ')) || '–')}
         ${rij('Basisnoten', p => esc((p.b || []).join(', ')) || '–')}
         ${rij('Seizoen', seizoen)}

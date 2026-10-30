@@ -185,7 +185,8 @@ function pagina(p, alle, site, reviews, olie, lang) {
   const fotoVan = i => (FOTOS[p.g] && FOTOS[p.g][String(MATEN[i])]) || '';
   const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
   const story = (TEKSTEN[p.n] || []).filter(t => t !== p.i);
-  const noten = [['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
+  /* een geur van één molecuul (Ambroxan) heeft geen piramide maar een hoofdnoot */
+  const noten = [['Hoofdnoot', 'Van begin tot eind', p.k], ['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
   const basisUrl = `${site}/geur/${slug(p.n)}`;
   const url = lang === 'nl' ? basisUrl : `${basisUrl}?lang=${lang}`;
   const titel = `${p.n} | Extrait de parfum | Eliandi Parfum`;
@@ -468,8 +469,10 @@ module.exports = async (req, res) => {
   const u = new URL(req.url, 'http://x');
   const wanted = (u.searchParams.get('slug') || '').toLowerCase();
   const lang = ['en', 'ar'].includes(u.searchParams.get('lang')) ? u.searchParams.get('lang') : 'nl';
-  const site = (process.env.SITE_URL || `https://${req.headers['x-forwarded-host'] || req.headers.host || 'eliandi-parfum.vercel.app'}`).replace(/\/$/, '')
-    .replace(/^https:\/\/(localhost|127\.0\.0\.1)/, 'http://$1');
+  /* canoniek adres is eliandiparfum.com (zonder www), ook als de pagina via
+     www of vercel.app is opgevraagd; lokaal blijft het de eigen host */
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
+  const site = (process.env.SITE_URL || (/^(localhost|127\.0\.0\.1)(:|$)/.test(host) ? `http://${host}` : 'https://eliandiparfum.com')).replace(/\/$/, '');
   if (u.searchParams.get('robots')) {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=3600');

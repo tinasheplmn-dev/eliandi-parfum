@@ -10,7 +10,7 @@
    - DISCOVERY_PRICE_CENTS     eenmalige set in centen (standaard 4995 = €49,95)
    - SUBSCRIPTION_PRICE_CENTS  De Geurreis per kwartaal in centen (standaard 3995 = €39,95, incl. verzending)
    - SHIPPING_PRICE_CENTS      verzendkosten eenmalige set (standaard 495 = €4,95; 0 = gratis)
-   - SITE_URL               bijv. https://eliandi-parfum.vercel.app (standaard: afgeleid van request)
+   - SITE_URL               bijv. https://eliandiparfum.com (standaard: afgeleid van request)
 
    Zonder STRIPE_SECRET_KEY draait de functie in mockmodus: hij
    stuurt de bezoeker direct naar de bedankpagina met ?mock=1,

@@ -87,19 +87,78 @@ async function mgetGetallen(keys) {
   return uit;
 }
 
-/* klanten: afgeleid uit bestellingen en boekingen, geen aparte administratie */
-function klanten(orders, bookings) {
+/* klanten: afgeleid uit bestellingen en boekingen, aangevuld met de
+   klanten uit de oude webshop (eenmalig geïmporteerd, cms:klanten-oud) */
+function klanten(orders, bookings, oud = []) {
   const map = {};
+  const nieuw = (k, naam, tel) => map[k] || (map[k] = { email: k, naam: naam || '', tel: tel || '', bestellingen: 0, boekingen: 0, besteed: 0, laatst: 0 });
   const voeg = (email, naam, tel, bedrag, ts, soort) => {
     const k = String(email || '').toLowerCase().trim();
     if (!k) return;
-    const c = map[k] || (map[k] = { email: k, naam: naam || '', tel: tel || '', bestellingen: 0, boekingen: 0, besteed: 0, laatst: 0 });
+    const c = nieuw(k, naam, tel);
     if (naam) c.naam = naam; if (tel) c.tel = tel;
     c[soort] += 1; c.besteed += bedrag || 0; c.laatst = Math.max(c.laatst, ts || 0);
   };
   orders.filter(o => o.status !== 'wacht op betaling' && o.status !== 'geannuleerd').forEach(o => voeg(o.email, o.name, o.phone, o.total, o.created, 'bestellingen'));
   bookings.filter(b => b.status === 'geboekt').forEach(b => voeg(b.email, b.name, b.phone, b.paid || 0, b.created, 'boekingen'));
+  oud.forEach(o => {
+    const c = nieuw(o.email, o.naam);
+    c.oud = { besteed: o.besteed, sinds: o.sinds };
+    c.laatst = Math.max(c.laatst, o.laatst || o.sinds || 0);
+  });
   return Object.values(map).sort((a, b) => b.laatst - a.laatst);
+}
+
+/* ── klantenexport van de oude PrestaShop-webshop (CSV met ;) ──
+   Dubbele adressen (gastbestellingen) worden één klant met het totaal;
+   testaccounts en spamregistraties gaan er niet in. */
+function csvRijen(tekst) {
+  const rijen = []; let rij = [], veld = '', q = false;
+  const s = String(tekst || '').replace(/^﻿/, '');
+  const scheider = (s.split('\n')[0].match(/;/g) || []).length >= (s.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) { if (c === '"' && s[i + 1] === '"') { veld += '"'; i++; } else if (c === '"') q = false; else veld += c; continue; }
+    if (c === '"') q = true;
+    else if (c === scheider) { rij.push(veld); veld = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && s[i + 1] === '\n') i++; rij.push(veld); rijen.push(rij); rij = []; veld = ''; }
+    else veld += c;
+  }
+  if (veld || rij.length) { rij.push(veld); rijen.push(rij); }
+  return rijen.filter(r => r.some(v => v.trim()));
+}
+const ONECHT = [/@psgdpr\.com$/, /^pub@prestashop\.com$/, /@mailinator\.com$/, /@example\.(com|org|net)$/, /^mail\d{5,}@protonmail\.com$/];
+function oudeKlanten(tekst) {
+  const [kop, ...rijen] = csvRijen(tekst);
+  if (!kop) return { fout: 'Leeg bestand.' };
+  const kol = naam => kop.findIndex(k => k.trim().toLowerCase() === naam);
+  const K = { voor: kol('voornaam'), achter: kol('achternaam'), mail: kol('e-mailadres'), verkopen: kol('verkopen'), aan: kol('ingeschakeld'), reg: kol('registratie'), bezoek: kol('laatste bezoek') };
+  if (K.mail < 0 || K.voor < 0) return { fout: 'Dit lijkt geen klantenexport uit de oude webshop: de kolommen Voornaam en E-mailadres ontbreken.' };
+  const hoofd = w => {
+    if (w && w.length > 3 && w === w.toUpperCase()) w = w.toLowerCase().replace(/(^|[-\s])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()); // "ADELA-MARIANA" -> "Adela-Mariana"
+    return w && w === w.toLowerCase() ? w[0].toUpperCase() + w.slice(1) : w;
+  };
+  const naamVan = (v, a) => {
+    v = v.replace(/\s+/g, ' ').trim(); a = a.replace(/\s+/g, ' ').trim();
+    const delen = a.split(' ');
+    if (a === a.toLowerCase()) delen[delen.length - 1] = hoofd(delen[delen.length - 1]); // "van hoek" -> "van Hoek"
+    return [hoofd(v), delen.join(' ')].filter(Boolean).join(' ');
+  };
+  const centen = v => Math.round(parseFloat(String(v || '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) * 100) || 0;
+  const tijd = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?/); return m && m[1] !== '0000' ? Date.UTC(+m[1], +m[2] - 1, +m[3], (m[4] ? +m[4] : 12) - 1, +m[5] || 0) : 0; }; // Nederlandse tijd, ±1 uur
+  const map = {}; let overgeslagen = 0, samengevoegd = 0;
+  rijen.forEach(r => {
+    const email = String(r[K.mail] || '').trim().toLowerCase();
+    if (!isEmail(email) || ONECHT.some(re => re.test(email)) || (K.aan >= 0 && r[K.aan] === '0')) { overgeslagen++; return; }
+    const sinds = tijd(r[K.reg]), laatst = Math.max(tijd(r[K.bezoek]), sinds);
+    const c = map[email];
+    if (c) samengevoegd++;
+    const k = map[email] = c || { email, naam: '', besteed: 0, sinds, laatst };
+    if (!c || laatst >= k.laatst) k.naam = naamVan(r[K.voor] || '', K.achter >= 0 ? r[K.achter] || '' : '') || k.naam;
+    k.besteed += K.verkopen >= 0 ? centen(r[K.verkopen]) : 0;
+    k.sinds = Math.min(k.sinds || sinds, sinds || k.sinds); k.laatst = Math.max(k.laatst, laatst);
+  });
+  return { klanten: Object.values(map), overgeslagen, samengevoegd };
 }
 
 /* wat staat er aan: agenda en betaalprovider */
@@ -169,7 +228,7 @@ const actions = {
   },
   async downloadLink(req, b) {
     const soort = clean(b.soort, 30), id = clean(b.id || '-', 40);
-    if (!/^(factuur|factuur-boeking|creditnota|pakbon|export-bestellingen|export-klanten|export-voorraad|administratie|backup)$/.test(soort)) return [400, { error: 'Onbekende download.' }];
+    if (!/^(factuur|factuur-boeking|creditnota|pakbon|export-bestellingen|export-klanten|export-geurwijzer|export-voorraad|administratie|backup)$/.test(soort)) return [400, { error: 'Onbekende download.' }];
     return [200, { url: await bev.downloadLink(req, soort, id) }];
   },
 
@@ -193,7 +252,26 @@ const actions = {
     const wl = await list('idx:wachtlijst', 'wachtlijst:');
     let n = 0;
     for (const w of wl) if (String(w.email).toLowerCase() === email) { await store.del('wachtlijst:' + w.id); await store.srem('idx:wachtlijst', w.id); n++; }
+    for (const g of await list('idx:geurwijzer', 'geurwijzer:')) if (g.email === email) { await store.del('geurwijzer:' + g.id); await store.srem('idx:geurwijzer', g.id); n++; }
+    const oud = await store.getJson('cms:klanten-oud', null);
+    if (oud && oud.klanten.some(k => k.email === email)) { oud.klanten = oud.klanten.filter(k => k.email !== email); await store.setJson('cms:klanten-oud', oud); n++; }
     return [200, { ok: true, gewist: n }];
+  },
+
+  /* klantenbestand van de oude webshop: opnieuw importeren vervangt het vorige */
+  async klantenImport(req, b) {
+    const r = oudeKlanten(String(b.csv || '').slice(0, 2e6));
+    if (r.fout) return [400, { error: r.fout }];
+    if (!r.klanten.length) return [400, { error: 'Geen klanten gevonden in dit bestand.' }];
+    await store.setJson('cms:klanten-oud', { geimporteerd: Date.now(), bestand: clean(b.bestand, 120), klanten: r.klanten });
+    return [200, { ok: true, aantal: r.klanten.length, samengevoegd: r.samengevoegd, overgeslagen: r.overgeslagen }];
+  },
+
+  /* geurwijzer: inzending wissen (op verzoek, of als hij afgehandeld is) */
+  async geurwijzerDelete(req, b) {
+    const id = clean(b.id, 20);
+    await store.del('geurwijzer:' + id); await store.srem('idx:geurwijzer', id);
+    return [200, { ok: true }];
   },
 
   /* ── inzichten ── */
@@ -212,13 +290,15 @@ const actions = {
     orders.sort((a, b) => b.created - a.created);
     vouchers.sort((a, b) => b.created - a.created);
     const wachtlijst = (await list('idx:wachtlijst', 'wachtlijst:')).sort((a, b) => b.created - a.created);
-    const [notities, overrides] = await Promise.all([store.getJson('cms:klant-notities', {}), getOverrides()]);
+    const geurwijzer = (await list('idx:geurwijzer', 'geurwijzer:')).sort((a, b) => b.created - a.created).slice(0, 1000);
+    const [notities, overrides, oud] = await Promise.all([store.getJson('cms:klant-notities', {}), getOverrides(), store.getJson('cms:klanten-oud', null)]);
     /* voorraad die bijna op is: 2 of minder (0 = uitverkocht) */
     const MATEN = ['30 ml', '50 ml', '100 ml', 'olie 6 ml', 'olie 13 ml'];
     const voorraadLaag = [];
     Object.entries(overrides).forEach(([n, o]) => (o.stock || []).forEach((x, i) => { if (x !== null && x !== undefined && x <= 2) voorraadLaag.push({ n, maat: MATEN[i], over: x }); }));
     voorraadLaag.sort((a, b) => a.over - b.over);
-    return [200, { bookings, orders, vouchers, wachtlijst, klanten: klanten(orders, bookings), notities, voorraadLaag, tweestap: Boolean(await bev.tweestap()), statussen: ORDER_STATUSSEN, persistent: store.persistent, koppelingen: koppelingen() }];
+    return [200, { bookings, orders, vouchers, wachtlijst, geurwijzer, klanten: klanten(orders, bookings, oud ? oud.klanten : []), notities, voorraadLaag,
+      klantenImport: oud ? { geimporteerd: oud.geimporteerd, bestand: oud.bestand, aantal: oud.klanten.length } : null, tweestap: Boolean(await bev.tweestap()), statussen: ORDER_STATUSSEN, persistent: store.persistent, koppelingen: koppelingen() }];
   },
 
   async bookingCancel(req, b) {
@@ -683,11 +763,21 @@ async function exportBestand(soort) {
     }]) };
   }
   if (soort === 'export-klanten') {
-    const [orders, bookings, notities] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), store.getJson('cms:klant-notities', {})]);
+    const [orders, bookings, notities, oud] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), store.getJson('cms:klant-notities', {}), store.getJson('cms:klanten-oud', null)]);
     return { naam: `eliandi-klanten-${dag(nu)}.xlsx`, data: maakXlsx([{
-      naam: 'Klanten', geld: [5],
-      kolommen: ['Naam', 'E-mail', 'Telefoon', 'Bestellingen', 'Experiences', 'Totaal besteed', 'Laatste aankoop', 'Privénotitie'],
-      rijen: klanten(orders, bookings).map(k => [k.naam, k.email, k.tel, k.bestellingen, k.boekingen, k.besteed / 100, k.laatst ? new Date(k.laatst) : '', (notities[k.email] || {}).notitie || '']),
+      naam: 'Klanten', geld: [5, 6],
+      kolommen: ['Naam', 'E-mail', 'Telefoon', 'Bestellingen', 'Experiences', 'Besteed nieuwe site', 'Besteed oude webshop', 'Klant sinds', 'Laatst actief', 'Privénotitie'],
+      rijen: klanten(orders, bookings, oud ? oud.klanten : []).map(k => [k.naam, k.email, k.tel, k.bestellingen, k.boekingen, k.besteed / 100, k.oud ? k.oud.besteed / 100 : 0,
+        k.oud && k.oud.sinds ? new Date(k.oud.sinds) : '', k.laatst ? new Date(k.laatst) : '', (notities[k.email] || {}).notitie || '']),
+    }]) };
+  }
+  if (soort === 'export-geurwijzer') {
+    const g = (await list('idx:geurwijzer', 'geurwijzer:')).sort((a, b) => b.created - a.created);
+    return { naam: `eliandi-geurwijzer-${dag(nu)}.xlsx`, data: maakXlsx([{
+      naam: 'Geurwijzer',
+      kolommen: ['Datum', 'Naam', 'E-mail', 'Telefoon', 'Nieuws mag', 'Top 5', 'Profiel', 'Antwoorden'],
+      rijen: g.map(x => [new Date(x.created), x.name, x.email, x.phone, x.nieuws ? 'ja' : 'nee', x.top5.join(', '), x.profiel.join(', '),
+        x.antwoorden.map(a => `${a.q}: ${a.a.join(', ')}`).join(' | ')]),
     }]) };
   }
   if (soort === 'export-voorraad') {
@@ -706,11 +796,11 @@ async function exportBestand(soort) {
 
 /* ── back-up: alles wat niet in de code staat ── */
 async function backup() {
-  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:product-videos', 'cms:reviews', 'cms:klant-notities', 'cms:settings', ...PAGES.map(p => 'cms:content:' + p)];
+  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:product-videos', 'cms:reviews', 'cms:klant-notities', 'cms:klanten-oud', 'cms:settings', ...PAGES.map(p => 'cms:content:' + p)];
   const waarden = await store.mgetJson(sleutels);
-  const [orders, bookings, vouchers, wachtlijst] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), list('idx:vouchers', 'voucher:'), list('idx:wachtlijst', 'wachtlijst:')]);
+  const [orders, bookings, vouchers, wachtlijst, geurwijzer] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), list('idx:vouchers', 'voucher:'), list('idx:wachtlijst', 'wachtlijst:'), list('idx:geurwijzer', 'geurwijzer:')]);
   const cms = {}; sleutels.forEach((k, i) => { if (waarden[i] != null) cms[k] = waarden[i]; });
-  return { gemaakt: new Date().toISOString(), orders, bookings, vouchers, wachtlijst, cms };
+  return { gemaakt: new Date().toISOString(), orders, bookings, vouchers, wachtlijst, geurwijzer, cms };
 }
 
 /* ── administratie per maand: alle facturen en creditnota's ──
@@ -811,7 +901,7 @@ const ACTIE_NAAM = {
   kortingSave: 'kortingscode opgeslagen', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
   reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
   bookingCancel: 'boeking geannuleerd', bookingAdd: 'boeking toegevoegd', bookingDone: 'boeking afgerond', recordDelete: 'verwijderd',
-  slotToggle: 'agenda aangepast', contentSave: 'tekst op de site aangepast', mediaUpload: 'afbeelding geüpload', productVideo: 'productvideo aangepast', wachtlijstDelete: 'wachtlijst afgehandeld',
+  slotToggle: 'agenda aangepast', contentSave: 'tekst op de site aangepast', mediaUpload: 'afbeelding geüpload', productVideo: 'productvideo aangepast', wachtlijstDelete: 'wachtlijst afgehandeld', klantenImport: 'klanten oude webshop geïmporteerd', geurwijzerDelete: 'geurwijzer-inzending gewist',
   wachtwoordWijzigen: 'wachtwoord gewijzigd', overalUitloggen: 'overal uitgelogd', tweestapBevestig: 'tweestapsverificatie aangezet', tweestapUit: 'tweestapsverificatie uitgezet',
 };
 

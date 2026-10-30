@@ -483,6 +483,13 @@
       log.push(payload);
       localStorage.setItem('eliandi_leads', JSON.stringify(log.slice(-50)));
     } catch (e) { /* privémodus */ }
+    /* naar het dashboard van Angelo (tabblad Geurwijzer) */
+    fetch('/api/products?geurwijzer=1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, zin: profileSentence(state.results.u), lang: document.documentElement.lang || 'nl' }),
+      keepalive: true,
+    }).catch(() => {});
     if (LEAD_WEBHOOK) {
       fetch(LEAD_WEBHOOK, {
         method: 'POST',
@@ -567,7 +574,7 @@
 
   function pyramidHTML(p) {
     const rows = [
-      ['Topnoten', p.t], ['Hartnoten', p.h], ['Basisnoten', p.b],
+      ['Hoofdnoot', p.k], ['Topnoten', p.t], ['Hartnoten', p.h], ['Basisnoten', p.b],
     ].filter(r => r[1] && r[1].length);
     if (!rows.length) return '';
     return `<div class="qr-pyramid">` + rows.map(([lbl, notes]) => `

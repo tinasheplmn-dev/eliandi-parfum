@@ -41,14 +41,17 @@ def norm(s):
     return unicodedata.normalize("NFKC", str(s)).replace("\r", "\n")
 
 # ── notenparser ──
-SECTION = re.compile(r"(topnoten|hartnoten|basisnoten)\s*:?\s*", re.I)
+# Koppen komen in meervoud en enkelvoud voor ("Topnoten", "Hartnoot"); een
+# geur met maar één molecuul heeft "Hoofdnoot" of "Belangrijkste noten".
+SECTION = re.compile(r"(top|hart|basis)(?:no(?:ten|ot)\b|$)\s*:?\s*|(hoofdno(?:ten|ot)|belangrijkste noten|geuraccenten)\s*:?\s*", re.I)
 STOP = re.compile(r"^(geurfamilie|geurprofiel|voor\b|voor:)", re.I)
 
 def parse_notes(desc):
     """Vind top/hart/basisnoten-blokken; noten per regel of kommagescheiden."""
-    out = {"top": [], "heart": [], "base": []}
-    keymap = {"topnoten": "top", "hartnoten": "heart", "basisnoten": "base"}
-    lines = [l.strip() for l in desc.split("\n")]
+    out = {"top": [], "heart": [], "base": [], "key": []}
+    keymap = {"top": "top", "hart": "heart", "basis": "base"}
+    # ">Topnoten: ..." kan ook midden in een alinea beginnen
+    lines = [l.strip() for l in re.sub(r"\s*>\s*(?=(?:top|hart|basis)no)", "\n", desc, flags=re.I).split("\n")]
     cur = None
     for l in lines:
         if not l:
@@ -56,7 +59,7 @@ def parse_notes(desc):
         l = re.sub(r"^[>\*\-–•\s]+", "", l)
         m = SECTION.match(l)
         if m:
-            cur = keymap[m.group(1).lower()]
+            cur = keymap[m.group(1).lower()] if m.group(1) else "key"
             rest = l[m.end():].strip()
             if rest:
                 out[cur] += split_notes(rest)
@@ -77,6 +80,15 @@ def schoon(x):
     """Markdown-restjes uit de sheet (sterretjes, hekjes) weghalen."""
     x = re.sub(r"[*#_`]+", "", x).strip(" .>-–:")
     return "" if re.search(r"geurfamilie|geurprofiel|^voor$", x, re.I) else x.strip()
+
+def uniek(noten):
+    """Elke noot één keer per laag, in de volgorde van de sheet; geen
+    afkapping, want de piramide moet volledig zijn."""
+    gezien, uit = set(), []
+    for n in noten:
+        if n.lower() not in gezien:
+            gezien.add(n.lower()); uit.append(n[:1].upper() + n[1:])
+    return uit[:12]
 
 def split_notes(s):
     parts = re.split(r"[,•/]| en ", s)
@@ -106,7 +118,7 @@ def parse_gender(desc):
         return "heren"
     return "unisex"
 
-STOPLINE = re.compile(r"^(geurprofiel|topnoten|hartnoten|basisnoten|geurfamilie|voor\s*:)", re.I)
+STOPLINE = re.compile(r"^(geurprofiel|topno(?:ten|ot)|hartno(?:ten|ot)|basisno(?:ten|ot)|hoofdno(?:ten|ot)|belangrijkste noten|geurfamilie|voor\s*:)", re.I)
 
 def parse_story(name, desc):
     """De lopende alinea's van de omschrijving, zonder titel en zonder de
@@ -187,6 +199,35 @@ SOFT_WORDS = [r"subtiel", r"zacht", r"huidgeur", r"delicaat", r"fluweel"]
 NIGHT_WORDS = [r"avond", r"nacht", r"gelegenhe", r"gala", r"feest"]
 DAY_WORDS = [r"dagelijks", r"werk\b", r"kantoor", r"elke dag", r"allemansvriend"]
 
+# Geuren waarvan de sheet alleen een losse lijst geuraccenten geeft: de
+# indeling in top/hart/basis komt uit Angelo's eigen beschrijving ("opent
+# met ...", "in het hart ...", "de basis ...").
+PIRAMIDE_UIT_TEKST = {
+    "Dark Honey Extrait": {"top": ["Honing", "Kaneel"],
+                           "heart": ["Agarhout (oud)", "Patchouli", "Bloemige nuances"],
+                           "base": ["Amber", "Madagascar-vanille", "Leer"]},
+    "Smoky": {"top": ["Zwarte kers", "Saffraan"],
+              "heart": ["Chinese osmanthus-absolue", "Fruitige akkoorden", "Nagarmotha"],
+              "base": ["Gerookt hout"]},
+}
+
+# Correcties op wat de trefwoorden afleiden, op aanwijzing van Angelo.
+CORRECTIES = {
+    # warm oriëntaals, roos en gourmand; de ozonische opening is een bijrol
+    "The Magic of Eliandi": {
+        "f": ["Oriëntaals", "Roos & bloemig", "Gourmand", "Amberachtig"],
+        "i": "Een warme, oriëntaalse rozengeur met een romige gourmand kern: roos, vanille en karamel op een sensuele basis van patchouli, muskus en ambergris.",
+        "zonder": ["fris"], "w": 3,
+        "verhaal": [
+            "The Magic of Eliandi opent met moerbei, oranjebloesem en ozonische noten: een verfijnde, licht fruitige opening voor wat daarna komt.",
+            "In het hart versmelten roos, vanille en karamel tot een warm, bloemig en verleidelijk akkoord met een romige zoetheid.",
+            "De basis van patchouli, muskus en ambergris geeft de geur diepte, warmte en een sensueel, langdurig karakter.",
+            "Warm, oriëntaals, rozig en gourmand – een elegante geur die luxe en onderscheid uitstraalt.",
+            "The Magic of Eliandi is onze bestseller, geliefd om zijn verfijnde karakter en luxueuze geurbeleving.",
+        ],
+    },
+}
+
 def count_hits(text, patterns):
     return sum(len(re.findall(p, text)) for p in patterns)
 
@@ -221,6 +262,12 @@ for cells in ws.iter_rows(min_row=2):
     low = desc.lower()
 
     notes = parse_notes(desc)
+    notes["key"] = list(dict.fromkeys(notes["key"]))
+    if name in PIRAMIDE_UIT_TEKST:
+        notes.update(PIRAMIDE_UIT_TEKST[name]); notes["key"] = []
+    elif notes["key"] and not notes["top"] and (notes["heart"] or notes["base"]):
+        # "Hoofdnoot: Damascusroos" boven hart- en basisnoten is de opening
+        notes["top"], notes["key"] = notes["key"], []
     fams = parse_family(desc)
     gender = parse_gender(desc)
     if blok_gender in ("heren", "dames"):
@@ -258,9 +305,10 @@ for cells in ws.iter_rows(min_row=2):
         "n": name,
         "g": gender,                       # dames | heren | unisex
         "f": fams,                          # geurfamilies
-        "t": notes["top"][:6],
-        "h": notes["heart"][:6],
-        "b": notes["base"][:6],
+        "t": uniek(notes["top"]),
+        "h": uniek(notes["heart"]),
+        "b": uniek(notes["base"]),
+        **({"k": notes["key"][:6]} if notes["key"] else {}),  # hoofdnoot (geur zonder piramide)
         "i": intro,
         "p": min(prices) if prices else None,  # vanaf-prijs
         "v": [money(p30), money(p50), money(p100)],  # prijs 30 / 50 / 100 ml (null = niet leverbaar)
@@ -270,6 +318,14 @@ for cells in ws.iter_rows(min_row=2):
         "x": max(-2, min(4, intensity)),    # intensiteit
         "o": max(-2, min(3, night)),        # avond (+) vs dag (-)
     })
+    c = CORRECTIES.get(name)
+    if c:
+        p = products[-1]
+        p.update({k: v for k, v in c.items() if k in ("f", "i", "w")})
+        for k in c.get("zonder", []):
+            p["d"].pop(k, None)
+        if "verhaal" in c:
+            stories[name] = c["verhaal"]
 
 print("producten:", len(products), "| rood overgeslagen:", len(rood), rood)
 g = {}

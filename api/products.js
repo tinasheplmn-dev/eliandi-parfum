@@ -36,9 +36,37 @@ async function meten(req, res) {
   return send(res, 200, {});
 }
 
+/* POST /api/products?geurwijzer=1 — iemand vult na de geurwijzer naam en
+   e-mail in: profiel, antwoorden en de vijf geuren komen in het dashboard.
+   Bewaard tot twee jaar, of korter als de klant om wissen vraagt. */
+const TWEE_JAAR = 2 * 365 * 86400;
+async function geurwijzer(req, res) {
+  const { store, readJson, clean, isEmail, newId, teVaak, vreemdeHerkomst } = require('./_lib');
+  if (vreemdeHerkomst(req)) return send(res, 403, { error: 'Geen toegang.' });
+  if (await teVaak(req, 'geurwijzer', 10, 600)) return send(res, 429, { error: 'Te veel pogingen.' });
+  const b = await readJson(req).catch(() => ({}));
+  const lijst = (v, n, len) => (Array.isArray(v) ? v : []).slice(0, n).map(x => clean(x, len)).filter(Boolean);
+  const g = {
+    id: newId(6), created: Date.now(),
+    name: clean(b.name, 80), email: clean(b.email, 120).toLowerCase(), phone: clean(b.phone, 30),
+    nieuws: b.consent === true,
+    top5: lijst(b.top5, 5, 80),
+    profiel: lijst(b.profile, 8, 60),
+    zin: clean(b.zin, 400),
+    antwoorden: (Array.isArray(b.answers) ? b.answers : []).slice(0, 15)
+      .map(a => ({ q: clean(a && a.q, 160), a: lijst(a && a.a, 8, 120) })).filter(a => a.q),
+    taal: ['nl', 'en', 'ar'].includes(b.lang) ? b.lang : 'nl',
+  };
+  if (!g.name || !isEmail(g.email) || !g.top5.length) return send(res, 400, { error: 'Onvolledig.' });
+  await store.setJson('geurwijzer:' + g.id, g);
+  await store.expire('geurwijzer:' + g.id, TWEE_JAAR);
+  await store.sadd('idx:geurwijzer', g.id);
+  return send(res, 200, { ok: true });
+}
+
 module.exports = async (req, res) => {
-  if (req.method === 'POST') return meten(req, res);
   const u = new URL(req.url, 'http://x');
+  if (req.method === 'POST') return u.searchParams.get('geurwijzer') ? geurwijzer(req, res) : meten(req, res);
   if (u.searchParams.get('code')) {
     if (await require('./_lib').teVaak(req, 'code', 20, 600)) return send(res, 429, { error: 'Te veel pogingen. Probeer het over tien minuten opnieuw.' });
     const k = await require('./_korting').bereken(u.searchParams.get('code'), parseInt(u.searchParams.get('sub'), 10) || 0);

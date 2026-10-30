@@ -48,6 +48,7 @@
         <button data-tab="bestellingen">Bestellingen <b class="bh-badge" id="badgeOrders" hidden></b></button>
         <button data-tab="boekingen">Boekingen</button>
         <button data-tab="klanten">Klanten</button>
+        <button data-tab="geurwijzer">Geurwijzer <b class="bh-badge" id="badgeGw" hidden></b></button>
         <button data-tab="inzichten">Inzichten</button>
         <button data-tab="producten">Producten</button>
         <button data-tab="kortingen">Kortingen</button>
@@ -183,16 +184,31 @@
       <!-- Klanten -->
       <section class="bh-tab" data-tab="klanten" hidden>
         <header class="bh-head"><h2>Klanten</h2><div class="bh-stats" id="klStats"></div></header>
-        <p class="bh-hint">Iedereen die ooit betaald heeft of een Experience boekte, met wat ze samen besteed hebben. Geen aparte administratie: dit komt uit de bestellingen.</p>
+        <p class="bh-hint">Iedereen die ooit betaald heeft of een Experience boekte, met wat ze samen besteed hebben. Geen aparte administratie: dit komt uit de bestellingen, plus de klanten uit je oude webshop.</p>
         <div class="bh-toolbar">
           <input class="bh-search" id="klSearch" placeholder="Zoek op naam of e-mail…">
           <button class="bh-btn bh-sm" data-dl="export-klanten">Excel</button>
+          <button class="bh-btn bh-sm" id="klImportKnop" type="button">Klanten oude webshop importeren</button>
+          <input type="file" id="klImportBestand" accept=".csv,text/csv" hidden>
         </div>
+        <p class="bh-hint" id="klImportInfo" hidden></p>
         <p class="bh-hint">Klik op een klant voor alle aankopen en een <b>privénotitie</b> die alleen jij ziet.</p>
         <div class="bh-list" id="klList"></div>
         <h3 class="bh-sub">Wachtlijst Experience</h3>
         <p class="bh-hint">Mensen die geen plek vonden voor hun gezelschap en gebeld willen worden zodra er ruimte is.</p>
         <div class="bh-list" id="wlList"></div>
+      </section>
+
+      <!-- Geurwijzer -->
+      <section class="bh-tab" data-tab="geurwijzer" hidden>
+        <header class="bh-head"><h2>Geurwijzer</h2><div class="bh-stats" id="gwStats"></div></header>
+        <p class="bh-hint">Iedereen die de geurwijzer afmaakte en zijn naam en e-mail achterliet: de vijf geuren die eruit kwamen, het geurprofiel en alle antwoorden. Handig om iemand te bellen, een proefje klaar te zetten of te zien wat bezoekers zoeken.</p>
+        <div class="bh-toolbar">
+          <input class="bh-search" id="gwZoek" type="search" placeholder="Zoek op naam, e-mail of geur…">
+          <button class="bh-btn bh-sm" data-dl="export-geurwijzer">Excel</button>
+        </div>
+        <p class="bh-hint">Iedereen hier gaf toestemming om zijn geurprofiel en af en toe nieuws van je te ontvangen. Vraagt iemand om gewist te worden, klik dan op <b>Wissen</b>.</p>
+        <div class="bh-list" id="gwList"></div>
       </section>
 
       <!-- Kortingen -->

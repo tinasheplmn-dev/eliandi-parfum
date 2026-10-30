@@ -22,7 +22,7 @@ const BCC = () => process.env.MAIL_BCC || '';
 const REPLY = () => process.env.MAIL_REPLY_TO || process.env.MAIL_OWNER || '';
 const enabled = () => Boolean(KEY());
 
-const SITE = () => (process.env.SITE_URL || 'https://www.eliandiparfum.com').replace(/\/$/, '');
+const SITE = () => (process.env.SITE_URL || 'https://eliandiparfum.com').replace(/\/$/, '');
 const WINKEL = 'Vughterstraat 70, 5211 GK \'s-Hertogenbosch';
 const TEL = '06 87 08 02 56';
 

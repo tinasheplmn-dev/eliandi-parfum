@@ -71,6 +71,7 @@
     window.scrollTo(0, 0);
     if (b.dataset.tab === 'instellingen') loadSettings();
     if (b.dataset.tab === 'klanten') renderKlanten();
+    if (b.dataset.tab === 'geurwijzer') { renderGeurwijzer(); gwGezien(); }
     if (b.dataset.tab === 'kortingen') loadKortingen().catch(x => toast(x.message, true));
     if (b.dataset.tab === 'bedrijf') loadBedrijf().catch(x => toast(x.message, true));
   });
@@ -92,6 +93,8 @@
     const sel = $('orStatus');
     if (sel.options.length <= 1) (d.statussen || []).concat(['wacht op betaling']).forEach(st => sel.add(new Option(st, st)));
     if (!$('klList').closest('.bh-tab').hidden) renderKlanten();
+    if (!$('gwList').closest('.bh-tab').hidden) { renderGeurwijzer(); gwGezien(); }
+    gwBadge();
   }
   const naarTab = tab => { const b = document.querySelector(`#nav [data-tab="${tab}"]`); if (b) b.click(); };
 
@@ -327,16 +330,21 @@
     const alle = state.klanten || [];
     const notities = state.notities || {};
     const rows = alle.filter(k => !q || k.naam.toLowerCase().includes(q) || k.email.includes(q) || ((notities[k.email] || {}).notitie || '').toLowerCase().includes(q));
-    $('klStats').innerHTML = `<span><b>${alle.length}</b> klanten</span><span><b>${euro(alle.reduce((s, k) => s + k.besteed, 0))}</b> besteed</span>`;
+    const totaal = k => k.besteed + (k.oud ? k.oud.besteed : 0);
+    $('klStats').innerHTML = `<span><b>${alle.length}</b> klanten</span><span><b>${euro(alle.reduce((s, k) => s + totaal(k), 0))}</b> besteed</span>`;
+    const imp = state.klantenImport;
+    $('klImportInfo').hidden = !imp;
+    if (imp) $('klImportInfo').textContent = `${imp.aantal} klanten uit je oude webshop staan erin (geïmporteerd ${date(imp.geimporteerd)}${imp.bestand ? ` uit ${imp.bestand}` : ''}). Opnieuw importeren vervangt die lijst.`;
     $('klList').innerHTML = rows.length ? rows.map(k => `
       <article class="bh-card bh-klant${open === k.email ? ' is-open' : ''}" data-klant="${esc(k.email)}">
         <div class="bh-card-main">
-          <p class="bh-name">${esc(k.naam || k.email)}${(notities[k.email] || {}).notitie ? ' <span class="bh-pill bh-pill-notitie" title="Heeft een privénotitie">notitie</span>' : ''}${k.bestellingen + k.boekingen > 1 ? ' <span class="bh-pill">vaste klant</span>' : ''}</p>
+          <p class="bh-name">${esc(k.naam || k.email)}${(notities[k.email] || {}).notitie ? ' <span class="bh-pill bh-pill-notitie" title="Heeft een privénotitie">notitie</span>' : ''}${k.bestellingen + k.boekingen > 1 ? ' <span class="bh-pill">vaste klant</span>' : ''}${k.oud ? ' <span class="bh-pill" title="Klant uit je vorige webshop">oude webshop</span>' : ''}</p>
           <p class="bh-contact">${k.tel ? `<a href="tel:${esc(k.tel)}">${esc(k.tel)}</a> · ` : ''}<a href="mailto:${esc(k.email)}">${esc(k.email)}</a></p>
         </div>
         <div class="bh-card-side">
-          <p class="bh-money">${euro(k.besteed)}</p>
-          <p class="bh-src">${k.bestellingen} ${k.bestellingen === 1 ? 'bestelling' : 'bestellingen'}${k.boekingen ? ` · ${k.boekingen} ${k.boekingen === 1 ? 'experience' : 'experiences'}` : ''}</p>
+          <p class="bh-money">${euro(totaal(k))}</p>
+          <p class="bh-src">${k.bestellingen || !k.oud ? `${k.bestellingen} ${k.bestellingen === 1 ? 'bestelling' : 'bestellingen'}` : 'nog niet op de nieuwe site'}${k.boekingen ? ` · ${k.boekingen} ${k.boekingen === 1 ? 'experience' : 'experiences'}` : ''}</p>
+          ${k.oud && k.oud.besteed ? `<p class="bh-src">waarvan ${euro(k.oud.besteed)} in de oude webshop</p>` : ''}
           <p class="bh-src">laatst ${date(k.laatst)}</p>
         </div>
         ${open === k.email ? klantKaart(k, notities[k.email]) : ''}
@@ -364,6 +372,8 @@
         <h4>Aankopen</h4>
         ${best.map(o => `<p class="bh-kaart-regel"><span>${date(o.created)}</span><span>${esc((o.items || []).map(i => i.qty + '× ' + i.name).join(', '))}</span><b>${euro(o.total)}</b><em class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${esc(o.status)}</em></p>`).join('') || '<p class="bh-meta">Geen bestellingen.</p>'}
         ${boek.length ? `<h4>Experience</h4>${boek.map(b => `<p class="bh-kaart-regel"><span>${when(b.slot)}</span><span>${gezelschap(b)}</span><b>${euro(b.paid || 0)}</b><em class="bh-status">${esc(b.status)}</em></p>`).join('')}` : ''}
+        ${k.oud ? `<h4>Oude webshop</h4><p class="bh-kaart-regel"><span>klant sinds ${k.oud.sinds ? date(k.oud.sinds) : 'onbekend'}</span><span>samen besteed</span><b>${euro(k.oud.besteed)}</b></p>` : ''}
+        ${(state.geurwijzer || []).filter(g => g.email === mail).slice(0, 3).map(g => `<h4>Geurwijzer <small>${date(g.created)}</small></h4><p class="bh-meta">${esc(g.top5.join(' · '))}</p>`).join('')}
       </div>
       <div class="bh-kaart-kol">
         <h4>Privénotitie <small>alleen voor jou, nooit zichtbaar voor de klant</small></h4>
@@ -385,8 +395,8 @@
       return;
     }
     if (wissen) {
-      if (!confirm('Privénotitie en wachtlijst-aanmeldingen van deze klant wissen?\n\nBestellingen en facturen blijven bewaard, omdat die wettelijk zeven jaar bewaard moeten worden.')) return;
-      try { const r = await api({ action: 'klantWissen', email: wissen.dataset.klantwissen }); toast(`Gewist${r.gewist ? ` (ook ${r.gewist} van de wachtlijst)` : ''}`); await loadOverview(); renderKlanten(); } catch (x) { toast(x.message, true); }
+      if (!confirm('Privénotitie, wachtlijst, geurwijzer en gegevens uit de oude webshop van deze klant wissen?\n\nBestellingen en facturen blijven bewaard, omdat die wettelijk zeven jaar bewaard moeten worden.')) return;
+      try { const r = await api({ action: 'klantWissen', email: wissen.dataset.klantwissen }); toast(`Gewist${r.gewist ? ` (ook ${r.gewist} ${r.gewist === 1 ? 'aanmelding' : 'aanmeldingen'} en profielen)` : ''}`); await loadOverview(); renderKlanten(); } catch (x) { toast(x.message, true); }
       return;
     }
     if (e.target.closest('a, button, textarea, .bh-kaart')) return;
@@ -397,6 +407,82 @@
   $('wlList').addEventListener('click', async e => {
     const b = e.target.closest('[data-delwl]'); if (!b) return;
     try { await api({ action: 'wachtlijstDelete', id: b.dataset.delwl }); await loadOverview(); } catch (x) { toast(x.message, true); }
+  });
+
+  /* klantenexport van de oude webshop (CSV uit PrestaShop) */
+  $('klImportKnop').addEventListener('click', () => $('klImportBestand').click());
+  $('klImportBestand').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    if (state.klantenImport && !confirm(`Er staan al ${state.klantenImport.aantal} klanten uit de oude webshop in. Vervangen door dit bestand?`)) return;
+    try {
+      const r = await api({ action: 'klantenImport', csv: await f.text(), bestand: f.name });
+      toast(`${r.aantal} klanten geïmporteerd${r.samengevoegd ? `, ${r.samengevoegd} dubbele samengevoegd` : ''}${r.overgeslagen ? `, ${r.overgeslagen} test- of spamaccounts overgeslagen` : ''}`);
+      await loadOverview(); renderKlanten();
+    } catch (x) { toast(x.message, true); }
+  });
+
+  /* ── geurwijzer ── */
+  const GW_GEZIEN = 'bh-gw-gezien';
+  const gwLaatst = () => { try { return Number(localStorage.getItem(GW_GEZIEN)) || 0; } catch (x) { return 0; } };
+  function gwBadge() {
+    const n = (state.geurwijzer || []).filter(g => g.created > gwLaatst()).length;
+    $('badgeGw').hidden = !n; $('badgeGw').textContent = n;
+  }
+  function gwGezien() {
+    try { localStorage.setItem(GW_GEZIEN, String(Date.now())); } catch (x) { /* */ }
+    gwBadge();
+  }
+  let gwOpen = null;
+  function renderGeurwijzer() {
+    const q = ($('gwZoek').value || '').trim().toLowerCase();
+    const alle = state.geurwijzer || [];
+    const rows = alle.filter(g => !q || [g.name, g.email, g.phone, ...g.top5].join(' ').toLowerCase().includes(q));
+    const week = alle.filter(g => Date.now() - g.created < 7 * 86400000).length;
+    const telling = {};
+    alle.forEach(g => g.top5.slice(0, 1).forEach(n => { telling[n] = (telling[n] || 0) + 1; }));
+    const vaakst = Object.entries(telling).sort((a, b) => b[1] - a[1])[0];
+    $('gwStats').innerHTML = `<span><b>${alle.length}</b> ingevuld</span><span><b>${week}</b> deze week</span>${vaakst ? `<span>vaakst nr. 1: <b>${esc(vaakst[0])}</b></span>` : ''}`;
+    const klant = new Set((state.klanten || []).map(k => k.email));
+    $('gwList').innerHTML = rows.length ? rows.map(g => `
+      <article class="bh-card bh-klant${gwOpen === g.id ? ' is-open' : ''}" data-gw="${esc(g.id)}">
+        <div class="bh-card-when"><b>${date(g.created)}</b>${klant.has(g.email) ? '<span class="bh-pill">klant</span>' : ''}</div>
+        <div class="bh-card-main">
+          <p class="bh-name">${esc(g.name)}</p>
+          <p class="bh-contact">${g.phone ? `<a href="tel:${esc(g.phone)}">${esc(g.phone)}</a> · ` : ''}<a href="mailto:${esc(g.email)}">${esc(g.email)}</a></p>
+          <p class="bh-note">${g.top5.map((n, i) => `${i + 1}. ${esc(n)}`).join(' &nbsp; ')}</p>
+        </div>
+        <div class="bh-card-side"><div class="bh-card-actions">
+          <a class="bh-btn bh-sm" href="https://wa.me/${esc(String(g.phone).replace(/\D/g, '').replace(/^0/, '31'))}?text=${encodeURIComponent(`Hoi ${g.name}, je deed de geurwijzer op onze site. Je top 3: ${g.top5.slice(0, 3).join(', ')}. Zin om ze te komen ruiken?`)}" target="_blank" rel="noopener">WhatsApp</a>
+          <button class="bh-btn bh-sm bh-weg" data-delgw="${esc(g.id)}">Wissen</button>
+        </div></div>
+        ${gwOpen === g.id ? `<div class="bh-kaart">
+          <div class="bh-kaart-kol">
+            <h4>Geurprofiel</h4>
+            ${g.zin ? `<p class="bh-meta">${esc(g.zin)}</p>` : ''}
+            ${g.profiel.length ? `<p>${g.profiel.map(c => `<span class="bh-pill">${esc(c)}</span>`).join(' ')}</p>` : ''}
+            <h4>Top 5</h4>
+            ${g.top5.map((n, i) => `<p class="bh-kaart-regel"><span>${i + 1}</span><span><a href="/geur/${esc(n.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))}" target="_blank" rel="noopener">${esc(n)}</a></span></p>`).join('')}
+          </div>
+          <div class="bh-kaart-kol">
+            <h4>Antwoorden</h4>
+            ${g.antwoorden.map(a => `<p class="bh-kaart-regel"><span>${esc(a.q)}</span><b>${esc(a.a.join(', ') || '–')}</b></p>`).join('') || '<p class="bh-meta">Geen antwoorden bewaard.</p>'}
+          </div>
+        </div>` : ''}
+      </article>`).join('') : `<p class="bh-empty">${alle.length ? 'Niemand gevonden.' : 'Nog niemand heeft de geurwijzer ingevuld sinds deze functie aanstaat.'}</p>`;
+  }
+  $('gwZoek').addEventListener('input', renderGeurwijzer);
+  $('gwList').addEventListener('click', async e => {
+    const del = e.target.closest('[data-delgw]');
+    if (del) {
+      if (!confirm('Deze inzending wissen? Dat kan niet ongedaan worden.')) return;
+      try { await api({ action: 'geurwijzerDelete', id: del.dataset.delgw }); toast('Gewist'); await loadOverview(); } catch (x) { toast(x.message, true); }
+      return;
+    }
+    if (e.target.closest('a, button, .bh-kaart')) return;
+    const kaart = e.target.closest('[data-gw]'); if (!kaart) return;
+    gwOpen = gwOpen === kaart.dataset.gw ? null : kaart.dataset.gw;
+    renderGeurwijzer();
   });
 
   /* ── kortingscodes ── */
@@ -667,6 +753,8 @@
     const items = [];
     if (afgebroken.length) items.push(`<div class="bh-regel"><b>${afgebroken.length} afgebroken ${afgebroken.length === 1 ? 'betaling' : 'betalingen'}</b><span>deze week, samen ${euro(afgebroken.reduce((t, o) => t + o.total, 0))}. Ze krijgen na een dag automatisch één herinnering.</span><em><button class="bh-link-btn" data-ga="bestellingen" data-status="wacht op betaling">Bekijk</button></em></div>`);
     if (wl.length) items.push(`<div class="bh-regel"><b>${wl.length} op de wachtlijst</b><span>voor de Experience</span><em><button class="bh-link-btn" data-ga="klanten">Bekijk</button></em></div>`);
+    const gw = (state.geurwijzer || []).filter(g => g.created > gwLaatst());
+    if (gw.length) items.push(`<div class="bh-regel"><b>${gw.length} ${gw.length === 1 ? 'nieuwe geurwijzer' : 'nieuwe geurwijzers'}</b><span>${esc(gw.slice(0, 3).map(g => g.name).join(', '))}${gw.length > 3 ? ' en meer' : ''}: bel of app ze met hun top 5</span><em><button class="bh-link-btn" data-ga="geurwijzer">Bekijk</button></em></div>`);
     if (!state.tweestap) items.push(`<div class="bh-regel"><b>Beveilig je dashboard</b><span>Zet tweestapsverificatie aan, dan kan niemand inloggen zonder jouw telefoon.</span><em><button class="bh-link-btn" data-ga="account">Instellen</button></em></div>`);
     $('vdOpvolgen').innerHTML = items.join('') || '<p class="bh-leeg">Niets op te volgen.</p>';
     void vandaagStart;
