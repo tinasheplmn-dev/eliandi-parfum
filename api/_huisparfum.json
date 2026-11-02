@@ -1,0 +1,44 @@
+[
+  {
+    "n": "Royal Oud Home Perfume",
+    "kort": "Majestueuze Arabische luxe",
+    "img": "assets/huisparfum/royal-oud",
+    "prijs": 19.95,
+    "tekst": "Royal Oud Home Perfume omhult je interieur met diepe, zeldzame oudh-tonen verrijkt met warme specerijen en subtiele bloemnuances. De royale 400 ml flacon creëert een elegante, majestueuze sfeer met langdurige diffusie. Perfect voor wie zijn huis wil vullen met pure pracht en tijdloze Arabische luxe."
+  },
+  {
+    "n": "Mixed Oud Home Perfume",
+    "kort": "Gelaagde Arabische luxe",
+    "img": "assets/huisparfum/mixed-oud",
+    "prijs": 19.95,
+    "tekst": "Mixed Oud Home Perfume combineert meerdere oudh-soorten tot een diepe, warme en verfijnde geur die je interieur omhult met pure Arabische luxe. Subtiele specerijen en bloemnuances geven de compositie een gelaagde, mysterieuze elegantie, terwijl de royale 400 ml flacon zorgt voor een langdurige en betoverende sfeer."
+  },
+  {
+    "n": "Supreme Emirat Home Perfume",
+    "kort": "Luxe Arabische huisgeur",
+    "img": "assets/huisparfum/supreme-emirat",
+    "prijs": 19.95,
+    "tekst": "Supreme Emirat Home Perfume omhult je interieur met warme Arabische elegantie. Exotische specerijen, rijke houttonen en subtiele bloemnuances creëren een diepe, weelderige geur die elke ruimte transformeert tot een serene, uitnodigende oase. De royale 400 ml flacon zorgt voor langdurige, luxe diffusie. Perfect voor een huis dat rijk aan sfeer en karakter mag zijn."
+  },
+  {
+    "n": "Dubai By Night Home Perfume",
+    "kort": "Warme specerijen en diepe oudh",
+    "img": "assets/huisparfum/dubai-by-night",
+    "prijs": 19.95,
+    "tekst": "Dubai By Night huisparfum van Pure Malaki vangt de essentie van een zinderende avond in Dubai. Met warme specerijen, exotische bloemen en een vleugje diepe oudh verspreidt deze exclusieve geur in een luxueuze 400 ml flacon een elegante, mystieke sfeer die elke ruimte omhult."
+  },
+  {
+    "n": "Amber Collection Home Perfume",
+    "kort": "Amber, vanille en zachte kruiden",
+    "img": "assets/huisparfum/amber-collection",
+    "prijs": 19.95,
+    "tekst": "Laat je meevoeren door de warmte en rijkdom van het Amber Collection huisparfum van Pure Malaki. Deze exclusieve geur in een stijlvolle 400 ml flacon verweeft weelderige ambertonen met zoete vanille en zachte kruiden. Het resultaat is een diepe, uitnodigende geurbeleving die elke ruimte vult met luxe en verfijning."
+  },
+  {
+    "n": "Chic Musk Home Perfume",
+    "kort": "Zachte muskus en delicate bloemen",
+    "img": "assets/huisparfum/chic-musk",
+    "prijs": 19.95,
+    "tekst": "Chic Musk huisparfum van Pure Malaki laat je interieur baden in elegantie. Deze verfijnde geur in een stijlvol 400 ml flacon combineert zachte muskus, delicate bloemen en subtiele houttonen, waardoor een serene, langdurige sfeer ontstaat die rust en klasse uitstraalt."
+  }
+]

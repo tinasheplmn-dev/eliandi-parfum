@@ -476,6 +476,37 @@
     zet('nieuw', tel(p => p._nieuw));
   }
 
+  /* ── huisparfum: aparte lijst (api/_huisparfum.json), één maat van 400 ml ── */
+  let huis = [];
+  function renderHuis() {
+    const box = $('shHuis'); if (!box) return;
+    $('huisparfum').hidden = !huis.length;
+    box.innerHTML = huis.map(h => `<article class="sh-huis-card${h.op ? ' is-soldout' : ''}" data-huis="${esc(h.n)}">
+      <div class="sh-huis-foto"><img src="/${esc(h.img)}-480.webp" srcset="/${esc(h.img)}-480.webp 480w, /${esc(h.img)}.webp 900w" sizes="(max-width: 600px) 90vw, 300px" alt="${esc(h.n)}, 400 ml" loading="lazy" decoding="async">
+        ${h.op ? '<span class="sh-card-tag sh-card-out">Uitverkocht</span>' : ''}</div>
+      <div class="sh-huis-body">
+        <h3>${esc(h.n)}</h3>
+        <p class="sh-huis-kort">${esc(h.kort || '')}</p>
+        <p class="sh-huis-tekst">${esc(h.tekst)}</p>
+        <button type="button" class="sh-notes-toggle" data-huis-meer aria-expanded="false">Lees meer</button>
+        <div class="sh-huis-koop"><span class="sh-huis-prijs">${euro(h.prijs)}<small>400 ml</small></span>
+          ${h.op ? '<span class="sh-huis-op">Tijdelijk uitverkocht</span>' : '<button type="button" class="btn btn-gold sh-add" data-huis-add>In winkelmand</button>'}</div>
+      </div>
+    </article>`).join('');
+  }
+  const huisBox = $('shHuis');
+  if (huisBox) huisBox.addEventListener('click', e => {
+    const meer = e.target.closest('[data-huis-meer]');
+    if (meer) { const open = meer.closest('.sh-huis-card').classList.toggle('is-open'); meer.setAttribute('aria-expanded', open); meer.textContent = open ? 'Minder' : 'Lees meer'; return; }
+    const add = e.target.closest('[data-huis-add]');
+    if (!add || !window.EliandiCart) return;
+    const h = huis.find(x => x.n === add.closest('.sh-huis-card').dataset.huis);
+    if (!h) return;
+    window.EliandiCart.add(h.n, 400, h.prijs, { kind: 'huis' });
+    add.textContent = 'Toegevoegd ✓'; add.classList.add('is-done');
+    setTimeout(() => { add.textContent = 'In winkelmand'; add.classList.remove('is-done'); }, 1800);
+  });
+
   /* ── start: catalogus plus aanpassingen van Angelo ── */
   let gestart = false;
   function start(list) {
@@ -518,6 +549,8 @@
   });
   fetch('/api/products', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null).then(d => {
     dashboard = d;
+    huis = (d && d.huis) || []; renderHuis();
+    if (huis.length && location.hash === '#huisparfum') setTimeout(() => $('huisparfum').scrollIntoView({ block: 'start' }), 50);
     start(samenvoegen(lite, d));
     return haalVol();
   }).then(vol => { if (vol && vol !== lite) start(samenvoegen(vol.slice(), dashboard)); });

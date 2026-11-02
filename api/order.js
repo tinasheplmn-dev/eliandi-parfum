@@ -6,7 +6,7 @@
    Bezorgen of ophalen in de winkel.
    Env: SHIPPING_PRICE_CENTS (standaard 495 = €4,95). */
 const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak, vreemdeHerkomst } = require('./_lib');
-const { priceTable, getOverrides, OLIE, oliePrijs } = require('./_catalog');
+const { priceTable, getOverrides, OLIE, oliePrijs, huisLijst, HUIS_ML } = require('./_catalog');
 const { saveOrder } = require('./_records');
 const { getBedrijf } = require('./_factuur');
 const korting = require('./_korting');
@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
   if (await teVaak(req, 'order', 15, 600)) return send(res, 429, { error: 'Te veel pogingen achter elkaar. Probeer het over een paar minuten opnieuw.' });
   const b = await readJson(req);
 
-  const [PRICES, overrides, bedrijf] = await Promise.all([priceTable(), getOverrides(), getBedrijf()]);
+  const [PRICES, overrides, bedrijf, huis] = await Promise.all([priceTable(), getOverrides(), getBedrijf(), huisLijst()]);
   const items = Array.isArray(b.items) ? b.items.slice(0, 20) : [];
   const lines = [];
   const setPerfumes = [];
@@ -45,6 +45,18 @@ module.exports = async (req, res) => {
 
     const name = clean(it.n, 120);
     const ml = parseInt(it.ml, 10);
+
+    /* huisparfum: één maat (400 ml), prijs en voorraad uit het dashboard */
+    if (it.kind === 'huis') {
+      const h = huis.find(x => x.n === name && !x.hidden);
+      if (!h || !(h.prijs > 0)) return send(res, 400, { error: `${name || 'Een product'} is op dit moment niet leverbaar.` });
+      if (h.stock !== null) {
+        if (h.stock <= 0) return send(res, 400, { error: `${name} is op dit moment uitverkocht.` });
+        if (h.stock < qty) return send(res, 400, { error: `Van ${name} ${h.stock === 1 ? 'is er nog maar één' : 'zijn er nog maar ' + h.stock}.` });
+      }
+      lines.push({ name: `${name} · ${HUIS_ML} ml`, n: name, ml: HUIS_ML, kind: 'huis', description: 'Huisparfum', cents: Math.round(h.prijs * 100), qty });
+      continue;
+    }
 
     /* parfumolie: vaste prijs per maat uit het dashboard, bij elke geur met een prijs */
     if (it.kind === 'olie') {

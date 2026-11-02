@@ -21,6 +21,7 @@
   const meta = i => i.kind === 'discovery'
     ? '5 &times; 10 ml &middot; ' + esc((i.perfumes || []).join(', '))
     : i.kind === 'olie' ? esc(i.ml) + ' ml &middot; parfumolie'
+    : i.kind === 'huis' ? esc(i.ml) + ' ml &middot; huisparfum'
     : esc(i.ml) + ' ml &middot; extrait de parfum';
   const write = items => {
     try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) { /* privémodus */ }

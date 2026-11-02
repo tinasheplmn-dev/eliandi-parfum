@@ -11,7 +11,7 @@ const { getBedrijf, saveBedrijf, factuurPdf, pakbonPdf, boekingAlsFactuur, bedra
 const korting = require('./_korting');
 const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
-const { analyze, getCustom, getOverrides, basisPrijzen, getNamen, verhuisNaam, BASE_PRICES } = require('./_catalog');
+const { analyze, getCustom, getOverrides, basisPrijzen, getNamen, verhuisNaam, BASE_PRICES, huisLijst, HUISPARFUM } = require('./_catalog');
 
 const PAGES = ['index', 'experience', 'quiz'];
 
@@ -291,11 +291,12 @@ const actions = {
     vouchers.sort((a, b) => b.created - a.created);
     const wachtlijst = (await list('idx:wachtlijst', 'wachtlijst:')).sort((a, b) => b.created - a.created);
     const geurwijzer = (await list('idx:geurwijzer', 'geurwijzer:')).sort((a, b) => b.created - a.created).slice(0, 1000);
-    const [notities, overrides, oud] = await Promise.all([store.getJson('cms:klant-notities', {}), getOverrides(), store.getJson('cms:klanten-oud', null)]);
+    const [notities, overrides, oud, huis] = await Promise.all([store.getJson('cms:klant-notities', {}), getOverrides(), store.getJson('cms:klanten-oud', null), huisLijst()]);
     /* voorraad die bijna op is: 2 of minder (0 = uitverkocht) */
     const MATEN = ['30 ml', '50 ml', '100 ml', 'olie 6 ml', 'olie 13 ml'];
     const voorraadLaag = [];
     Object.entries(overrides).forEach(([n, o]) => (o.stock || []).forEach((x, i) => { if (x !== null && x !== undefined && x <= 2) voorraadLaag.push({ n, maat: MATEN[i], over: x }); }));
+    huis.forEach(h => { if (!h.hidden && h.stock !== null && h.stock <= 2) voorraadLaag.push({ n: h.n, maat: '400 ml', over: h.stock }); });
     voorraadLaag.sort((a, b) => a.over - b.over);
     return [200, { bookings, orders, vouchers, wachtlijst, geurwijzer, klanten: klanten(orders, bookings, oud ? oud.klanten : []), notities, voorraadLaag,
       klantenImport: oud ? { geimporteerd: oud.geimporteerd, bestand: oud.bestand, aantal: oud.klanten.length } : null, tweestap: Boolean(await bev.tweestap()), statussen: ORDER_STATUSSEN, persistent: store.persistent, koppelingen: koppelingen() }];
@@ -557,7 +558,19 @@ const actions = {
       const o = overrides[n] || {};
       return { n, v: o.v || v, hidden: Boolean(o.hidden), stock: o.stock || null, tags: o.tags || '' };
     });
-    return [200, { base, custom, videos }];
+    return [200, { base, custom, videos, huis: await huisLijst() }];
+  },
+  /* huisparfum: prijs, voorraad (leeg = onbeperkt, 0 = uitverkocht) en verbergen */
+  async huisSave(req, b) {
+    const n = clean(b.n, 120);
+    if (!HUISPARFUM.some(h => h.n === n)) return [404, { error: 'Product niet gevonden.' }];
+    const x = parseFloat(String(b.prijs == null ? '' : b.prijs).replace(',', '.'));
+    if (!(x > 0)) return [400, { error: 'Vul een prijs in.' }];
+    const stock = b.stock === '' || b.stock == null ? null : Math.max(0, parseInt(b.stock, 10) || 0);
+    const alle = await store.getJson('cms:huisparfum', {});
+    alle[n] = { v: Math.round(x * 100) / 100, ...(stock !== null ? { stock } : {}), ...(b.hidden ? { hidden: true } : {}) };
+    await store.setJson('cms:huisparfum', alle);
+    return [200, { ok: true }];
   },
   /* naam van een geur uit de catalogus wijzigen (tikfout in de sheet):
      prijzen, voorraad, reviews en video verhuizen mee, oude link stuurt door */
@@ -718,12 +731,12 @@ async function inzichten(dagen) {
   const omzetExperience = boekingen.reduce((t, b) => t + (b.paid || 0), 0);
 
   /* bestsellers en verdeling per soort */
-  const prod = {}, soort = { '30 ml': 0, '50 ml': 0, '100 ml': 0, 'olie 6 ml': 0, 'olie 13 ml': 0, 'Discovery Set': 0 };
+  const prod = {}, soort = { '30 ml': 0, '50 ml': 0, '100 ml': 0, 'olie 6 ml': 0, 'olie 13 ml': 0, 'Discovery Set': 0, Huisparfum: 0 };
   betaald.forEach(o => (o.items || []).forEach(i => {
     const naam = i.kind === 'discovery' ? 'Discovery Set' : (i.n || i.name);
     const p = prod[naam] || (prod[naam] = { n: naam, stuks: 0, omzet: 0 });
     p.stuks += i.qty; p.omzet += i.cents * i.qty;
-    const s = i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'olie' ? `olie ${i.ml} ml` : `${i.ml} ml`;
+    const s = i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'olie' ? `olie ${i.ml} ml` : i.kind === 'huis' ? 'Huisparfum' : `${i.ml} ml`;
     if (soort[s] !== undefined) soort[s] += i.qty;
   }));
   const kortingen = {};
@@ -787,7 +800,7 @@ async function exportBestand(soort) {
     }, {
       naam: 'Regels', geld: [4, 5],
       kolommen: ['Datum', 'Bestelling', 'Status', 'Product', 'Stukprijs', 'Regeltotaal', 'Aantal', 'Soort'],
-      rijen: orders.flatMap(o => (o.items || []).map(i => [new Date(o.created), o.id.toUpperCase(), o.status, i.name, i.cents / 100, i.cents * i.qty / 100, i.qty, i.kind === 'olie' ? 'parfumolie' : i.kind === 'discovery' ? 'Discovery Set' : 'extrait'])),
+      rijen: orders.flatMap(o => (o.items || []).map(i => [new Date(o.created), o.id.toUpperCase(), o.status, i.name, i.cents / 100, i.cents * i.qty / 100, i.qty, i.kind === 'olie' ? 'parfumolie' : i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'huis' ? 'huisparfum' : 'extrait'])),
     }]) };
   }
   if (soort === 'export-klanten') {
@@ -824,7 +837,7 @@ async function exportBestand(soort) {
 
 /* ── back-up: alles wat niet in de code staat ── */
 async function backup() {
-  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:product-videos', 'cms:reviews', 'cms:klant-notities', 'cms:klanten-oud', 'cms:namen', 'cms:settings', ...PAGES.map(p => 'cms:content:' + p)];
+  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:product-videos', 'cms:reviews', 'cms:klant-notities', 'cms:klanten-oud', 'cms:namen', 'cms:huisparfum', 'cms:settings', ...PAGES.map(p => 'cms:content:' + p)];
   const waarden = await store.mgetJson(sleutels);
   const [orders, bookings, vouchers, wachtlijst, geurwijzer] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), list('idx:vouchers', 'voucher:'), list('idx:wachtlijst', 'wachtlijst:'), list('idx:geurwijzer', 'geurwijzer:')]);
   const cms = {}; sleutels.forEach((k, i) => { if (waarden[i] != null) cms[k] = waarden[i]; });
@@ -925,7 +938,7 @@ async function dagelijks() {
 const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
 const ACTIE_NAAM = {
   orderStatus: 'status bestelling', orderNote: 'notitie bestelling', creditnota: 'creditnota gemaakt', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
-  productOverride: 'product aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
+  productOverride: 'product aangepast', huisSave: 'huisparfum aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
   kortingSave: 'kortingscode opgeslagen', productHernoem: 'naam geur gewijzigd', tegoedInnen: 'flacontegoed ingewisseld in de winkel', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
   reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
   bookingCancel: 'boeking geannuleerd', bookingAdd: 'boeking toegevoegd', bookingDone: 'boeking afgerond', recordDelete: 'verwijderd',

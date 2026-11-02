@@ -45,7 +45,7 @@
 
 /* ─── Categorieën bovenaan ─── */
 .sh-cats { padding: 0 0 clamp(26px, 4vw, 44px); }
-.sh-cat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.sh-cat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
 .sh-cat {
   position: relative; display: grid; grid-template-rows: 1fr auto; aspect-ratio: 4 / 5; overflow: hidden; text-decoration: none;
   border: 1px solid rgba(184,134,11,.24); background: #121108;
@@ -404,4 +404,35 @@
   .sh-sort select { padding-left: 10px; padding-right: 26px; font-size: 13px; }
   .sh-filter-toggle { padding-left: 12px; padding-right: 12px; }
   .sh-search input { font-size: 16px; }
+}
+
+/* ── huisparfum (Pure Malaki, 400 ml) ── */
+.sh-cat-huis .sh-cat-art { background-color: #f4f1ec; background-size: 92% auto; background-position: center 18%; }
+.sh-huis { scroll-margin-top: 130px; border-top: 1px solid rgba(184,134,11,.16); padding: clamp(50px, 8vh, 90px) 0; }
+.sh-huis[hidden] { display: none; }
+.sh-huis-head { max-width: 60ch; margin-bottom: clamp(24px, 4vw, 40px); }
+.sh-huis-head .kicker { margin-bottom: 12px; }
+.sh-huis-head p:last-child { color: var(--tekst); line-height: 1.75; }
+.sh-huis-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.sh-huis-card { display: flex; flex-direction: column; background: linear-gradient(180deg, #1d1b15 0%, #17160f 100%); border: 1px solid rgba(184,134,11,.22); transition: border-color .45s, transform .45s var(--ease-lux); }
+.sh-huis-card:hover { border-color: rgba(233,199,103,.55); transform: translateY(-4px); }
+.sh-huis-foto { position: relative; background: #f4f1ec; aspect-ratio: 1145 / 1374; overflow: hidden; }
+.sh-huis-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sh-huis-card.is-soldout .sh-huis-foto img { opacity: .5; filter: grayscale(.6); }
+.sh-huis-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.sh-huis-body h3 { font-family: var(--serif); font-weight: 500; font-size: 1.22rem; line-height: 1.25; color: var(--ivoor); }
+.sh-huis-kort { font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--goud-licht); }
+.sh-huis-tekst { font-size: .86rem; line-height: 1.65; color: var(--tekst); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sh-huis-card.is-open .sh-huis-tekst { -webkit-line-clamp: unset; display: block; }
+.sh-huis-koop { margin-top: auto; padding-top: 12px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 14px; }
+.sh-huis-prijs { font: 500 1.3rem var(--serif); color: var(--goud-glans); display: grid; line-height: 1.1; }
+.sh-huis-prijs small { font: 400 10px var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--tekst-dim); }
+.sh-huis-op { font-size: .8rem; color: var(--tekst-dim); }
+@media (max-width: 1240px) { .sh-cat-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 860px) { .sh-huis-grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
+@media (max-width: 600px) {
+  .sh-huis-body { padding: 14px; }
+  .sh-huis-body h3 { font-size: 1.02rem; }
+  .sh-huis-koop { grid-template-columns: 1fr; gap: 10px; }
+  .sh-huis-tekst { -webkit-line-clamp: 2; }
 }

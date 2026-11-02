@@ -76,10 +76,10 @@ module.exports = async (req, res) => {
     const def = codes.find(c => c.code === k.code) || {};
     return send(res, 200, { korting: { code: k.code, label: k.label, pct: def.soort === 'pct' ? Number(def.waarde) : 0, bedrag: def.soort === 'bedrag' ? Number(def.waarde) / 100 : (def.code ? 0 : k.cents / 100) } });
   }
-  const [custom, overrides, abonnement, bedrijf, reviews, namen] = await Promise.all([
+  const [custom, overrides, abonnement, bedrijf, reviews, namen, huis] = await Promise.all([
     getCustom(), getOverrides(), require('./_mollie').abonnementMogelijk(),
     require('./_factuur').getBedrijf(), require('./_lib').store.getJson('cms:reviews', {}),
-    require('./_catalog').getNamen(),
+    require('./_catalog').getNamen(), require('./_catalog').huisLijst(),
   ]);
   /* browsers vragen altijd opnieuw; alleen Vercel bewaart het antwoord heel even */
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
@@ -89,5 +89,6 @@ module.exports = async (req, res) => {
     custom, overrides, namen, abonnement, gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,
     olie: { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 },
     fotos: require('./_fotos.json'),
+    huis: huis.filter(h => !h.hidden).map(h => ({ n: h.n, kort: h.kort, img: h.img, tekst: h.tekst, prijs: h.prijs, op: h.stock === 0 })),
   });
 };

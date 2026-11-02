@@ -116,7 +116,7 @@ async function voorraadAfboeken(o) {
   const { SIZES, OLIE } = require('./_catalog');
   let gewijzigd = false;
   (o.items || []).forEach(i => {
-    const plek = i.kind === 'olie' ? OLIE[i.ml] : SIZES[i.ml];
+    const plek = i.kind === 'olie' ? OLIE[i.ml] : i.kind ? undefined : SIZES[i.ml];
     if (!i.n || plek === undefined) return;
     const ov = overrides[i.n];
     if (!ov || !Array.isArray(ov.stock) || ov.stock[plek] == null) return;
@@ -124,6 +124,14 @@ async function voorraadAfboeken(o) {
     gewijzigd = true;
   });
   if (gewijzigd) await store.setJson('cms:product-overrides', overrides);
+  /* huisparfum heeft één maat en een eigen opslag */
+  const huis = (o.items || []).filter(i => i.kind === 'huis' && i.n);
+  if (huis.length) {
+    const hv = await store.getJson('cms:huisparfum', {});
+    let anders = false;
+    huis.forEach(i => { const h = hv[i.n]; if (h && h.stock != null) { h.stock = Math.max(0, h.stock - i.qty); anders = true; } });
+    if (anders) await store.setJson('cms:huisparfum', hv);
+  }
 }
 
 /* Statussen die Angelo in het dashboard zet. De klant krijgt bericht

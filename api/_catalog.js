@@ -124,4 +124,17 @@ const SIZES = { 30: 0, 50: 1, 100: 2 };
 const OLIE = { 6: 3, 13: 4 };
 const oliePrijs = (bedrijf, ml) => (bedrijf && bedrijf.olie !== false ? Number(bedrijf[ml === 6 ? 'olie6' : 'olie13']) || 0 : 0);
 
-module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite };
+/* Huisparfum (Pure Malaki, 400 ml): een vaste lijst in api/_huisparfum.json,
+   één maat. Prijs, voorraad en verbergen past Angelo aan in het dashboard:
+   cms:huisparfum { "<naam>": { v?: prijs, stock?: aantal, hidden?: true } } */
+const HUISPARFUM = require('./_huisparfum.json');
+const HUIS_ML = 400;
+async function huisLijst() {
+  const ov = await store.getJson('cms:huisparfum', {});
+  return HUISPARFUM.map(h => {
+    const o = ov[h.n] || {};
+    return { ...h, prijs: o.v || h.prijs, stock: o.stock == null ? null : o.stock, hidden: Boolean(o.hidden) };
+  });
+}
+
+module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite, HUISPARFUM, HUIS_ML, huisLijst };

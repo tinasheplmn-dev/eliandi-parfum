@@ -553,8 +553,31 @@
     state.reviews = (await api({ action: 'reviewsList' })).reviews;
     renderCustom();
     renderBase();
+    renderHuis();
     zonderPrijs();
   }
+  function renderHuis() {
+    $('huisList').innerHTML = (state.products.huis || []).map(h => `
+      <form class="bh-card bh-prod bh-base" data-huis="${esc(h.n)}">
+        <div class="bh-card-main"><p class="bh-name">${esc(h.n)}</p><p class="bh-meta">${esc(h.kort || '')}</p></div>
+        <div class="bh-base-fields">
+          <label>Prijs<input name="prijs" value="${fmt(h.prijs)}" inputmode="decimal"></label>
+          <label>Voorraad<input name="stock" value="${h.stock != null ? h.stock : ''}" inputmode="numeric" placeholder="∞"></label>
+          <label class="bh-check"><input type="checkbox" name="hidden" ${h.hidden ? 'checked' : ''}> Verbergen</label>
+          <button class="bh-btn bh-sm bh-gold" type="submit">Opslaan</button>
+        </div>
+      </form>`).join('');
+  }
+  $('huisList').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target, d = Object.fromEntries(new FormData(f));
+    try {
+      await api({ action: 'huisSave', n: f.dataset.huis, prijs: d.prijs, stock: d.stock, hidden: Boolean(d.hidden) });
+      toast('Opgeslagen');
+      state.products = await api({ action: 'productsList' });
+      renderHuis();
+    } catch (x) { toast(x.message, true); }
+  });
   /* geuren zonder prijs (ook niet in de sheet) zijn niet te bestellen */
   function zonderPrijs() {
     const lijst = state.products.base.filter(p => !p.hidden && !(p.v || []).some(Boolean));

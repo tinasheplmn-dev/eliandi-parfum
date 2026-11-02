@@ -352,3 +352,11 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 - **Discovery Set** kost €54,95 (`DISCOVERY_FALLBACK_CENTS` / `PRICE_FALLBACK_CENTS` = 5495; `DISCOVERY_PRICE_CENTS` in Vercel gaat voor, maar staat niet aan). De Signatuur-Garantie is uit de geurwijzer gehaald.
 - **Flacontegoed**: na betaling van een Discovery Set of een doos van De Geurreis maakt `onPaid` (`api/_records.js`) één persoonlijke code `FLACON-XXXXXX` van €10 per doos, 30 dagen geldig (`maakTegoed` in `api/_korting.js`, opslag `tegoed:<code>` + `idx:tegoed`). De code staat in de bevestigingsmail en bij de bestelling in het dashboard. Online werkt hij als kortingscode, alleen met een flacon van 30/50/100 ml in de mand, één keer. In de winkel: Beheer > Kortingen > Flacontegoed, code of naam opzoeken, **Ingewisseld in de winkel**.
 - **Namen**: de sheet blijft de bron; `api/_namen.json` bevat correcties van tikfouten, `cms:namen` wat Angelo zelf wijzigt (Beheer > Producten > geur zoeken > *Naam op de site*). Beide zijn `{ naam in de sheet: naam op de site }` en gelden overal (shop, productpagina, geurwijzer, winkelmand, factuur). Prijzen, voorraad, zoektermen, reviews en video verhuizen mee (`verhuisNaam`), de oude link `/geur/<oud>` stuurt met 301 door, een winkelmand met de oude naam blijft afrekenen. Teksten en vertalingen blijven onder de sheetnaam (`p._o`).
+
+## Huisparfum Pure Malaki (2 november 2026)
+
+- Zes huisparfums van 400 ml (Royal Oud, Mixed Oud, Supreme Emirat, Dubai By Night, Amber Collection, Chic Musk), €19,95, één maat. De lijst met teksten staat in `api/_huisparfum.json`, de foto's in `assets/huisparfum/` (`<naam>.webp` 900 px, `<naam>-480.webp`).
+- In de shop: eigen blok **Huisparfum** (`#huisparfum`) onder de collectie en een tegel bij de categorieën; niet in de geurfilters, de geurwijzer of de Discovery Set.
+- Winkelmandregel `{ kind: 'huis', ml: 400 }`; `api/order.js` rekent met de prijs van de server. Telt niet als flacon voor het flacontegoed.
+- Beheer > Producten > Huisparfum: prijs, voorraad (leeg = onbeperkt, 0 = uitverkocht) en verbergen, opgeslagen in `cms:huisparfum` (zit in de back-up). Voorraad gaat omlaag bij betaling en verschijnt bij "Voorraad bijna op".
+- Een nieuw huisparfum toevoegen: regel in `api/_huisparfum.json` plus twee foto's in `assets/huisparfum/`.

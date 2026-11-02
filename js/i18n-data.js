@@ -345,6 +345,14 @@ window.ELIANDI_I18N = [
   ["Olie", "Oil", "زيت"],
   ["Parfumolie", "Perfume oil", "زيت عطري"],
   ["Of als parfumolie", "Or as perfume oil", "أو كزيت عطري"],
+  /* huisparfum */
+  ["ml · huisparfum", "ml · home perfume", "مل · عطر منزلي"],
+  ["Huisparfum", "Home perfume", "عطر منزلي"],
+  ["Huisparfum · Pure Malaki", "Home perfume · Pure Malaki", "عطر منزلي · Pure Malaki"],
+  ["Pure Malaki, 400 ml voor je interieur", "Pure Malaki, 400 ml for your home", "Pure Malaki، 400 مل لمنزلك"],
+  ["Geur voor je hele huis.", "Scent for your whole home.", "عطر لمنزلك بالكامل."],
+  ["Warme Arabische huisgeuren van Pure Malaki in een royale sprayflacon. Eén maat, één prijs.", "Warm Arabian home fragrances by Pure Malaki in a generous spray bottle. One size, one price.", "عطور منزلية عربية دافئة من Pure Malaki في بخاخ سخي الحجم. حجم واحد، سعر واحد."],
+  ["Lees meer", "Read more", "اقرأ المزيد"],
   ["dezelfde geur, geconcentreerd in olie", "the same scent, concentrated in oil", "العطر نفسه، مركّزًا في زيت"],
   ["Elke flacon wordt in de winkel gevuld en met de hand afgewerkt. De verpakking verschilt per geur.", "Every bottle is filled in the boutique and finished by hand. Packaging varies by scent.", "كل زجاجة تُعبّأ في البوتيك وتُشطّب يدويًا. يختلف التغليف من عطر لآخر."],
 
