@@ -553,7 +553,18 @@
     state.reviews = (await api({ action: 'reviewsList' })).reviews;
     renderCustom();
     renderBase();
+    zonderPrijs();
   }
+  /* geuren zonder prijs (ook niet in de sheet) zijn niet te bestellen */
+  function zonderPrijs() {
+    const lijst = state.products.base.filter(p => !p.hidden && !(p.v || []).some(Boolean));
+    $('prodZonderPrijs').hidden = !lijst.length;
+    $('prodZonderPrijs').innerHTML = lijst.length ? `<b>${lijst.length} ${lijst.length === 1 ? 'geur heeft' : 'geuren hebben'} nog geen prijs</b> en ${lijst.length === 1 ? 'is' : 'zijn'} daarom online niet te bestellen (klanten zien "bestel via de winkel"). Klik een naam, vul de prijzen in en druk op Opslaan: ${lijst.map(p => `<button type="button" class="bh-link-btn" data-zonderprijs="${esc(p.n)}">${esc(p.n)}</button>`).join(', ')}.` : '';
+  }
+  $('prodZonderPrijs').addEventListener('click', e => {
+    const b = e.target.closest('[data-zonderprijs]'); if (!b) return;
+    $('prodMetTags').checked = false; $('prodSearch').value = b.dataset.zonderprijs; renderBase();
+  });
   const fmt = v => v == null ? '' : String(v).replace('.', ',');
   /* video bij een geur: uploaden, bekijken, weghalen */
   function videoBlok(n) {
@@ -677,6 +688,7 @@
       await api({ action: 'productOverride', n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden) });
       toast(n !== f.dataset.n ? 'Naam en gegevens opgeslagen' : 'Opgeslagen');
       state.products = await api({ action: 'productsList' });
+      zonderPrijs();
       if (n !== f.dataset.n) { state.reviews = (await api({ action: 'reviewsList' })).reviews; $('prodSearch').value = n; renderBase(); }
       renderTags();
     } catch (x) { toast(x.message, true); }

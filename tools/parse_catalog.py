@@ -362,7 +362,9 @@ print("lite bytes:", os.path.getsize(LITE_OUT))
 # nooit met prijzen die de browser meestuurt.
 PRICES_OUT = OUT.replace("js/catalog.js", "api/_prices.json")
 with open(PRICES_OUT, "w") as f:
-    json.dump({p["n"]: p["v"] for p in products if any(p["v"])}, f,
+    # ook geuren zonder prijs in de sheet: dan staan ze in het dashboard en
+    # kan Angelo daar de prijs invullen (zonder prijs blijft bestellen dicht)
+    json.dump({p["n"]: p["v"] for p in products}, f,
               ensure_ascii=False, separators=(",", ":"))
 print("prijslijst:", PRICES_OUT)
 
