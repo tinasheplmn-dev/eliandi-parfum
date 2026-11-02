@@ -11,7 +11,7 @@ const { getBedrijf, saveBedrijf, factuurPdf, pakbonPdf, boekingAlsFactuur, bedra
 const korting = require('./_korting');
 const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
-const { analyze, getCustom, getOverrides, BASE_PRICES } = require('./_catalog');
+const { analyze, getCustom, getOverrides, basisPrijzen, getNamen, verhuisNaam, BASE_PRICES } = require('./_catalog');
 
 const PAGES = ['index', 'experience', 'quiz'];
 
@@ -430,7 +430,18 @@ const actions = {
   },
 
   /* ── kortingscodes ── */
-  async kortingList() { return [200, { codes: await korting.getCodes() }]; },
+  async kortingList() {
+    const tegoed = (await list('idx:tegoed', 'tegoed:')).sort((a, b) => b.created - a.created);
+    return [200, { codes: await korting.getCodes(), tegoed }];
+  },
+  /* flacontegoed in de winkel verzilverd: daarna niet meer online te gebruiken */
+  async tegoedInnen(req, b) {
+    const t = await korting.getTegoed(b.code);
+    if (!t) return [404, { error: 'Deze code kennen we niet.' }];
+    if (t.gebruikt) return [400, { error: `Deze code is al gebruikt (${t.gebruikt.waar === 'winkel' ? 'in de winkel' : 'online'}).` }];
+    await korting.gebruikt(t.code, 'winkel');
+    return [200, { ok: true }];
+  },
   async kortingSave(req, b) {
     const codes = await korting.getCodes();
     const code = clean(b.code, 24).toUpperCase().replace(/[^A-Z0-9-]/g, '');
@@ -541,16 +552,33 @@ const actions = {
 
   /* ── producten ── */
   async productsList() {
-    const [custom, overrides, videos] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {})]);
-    const base = Object.entries(BASE_PRICES).map(([n, v]) => {
+    const [custom, overrides, videos, BASIS] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}), basisPrijzen()]);
+    const base = Object.entries(BASIS).map(([n, v]) => {
       const o = overrides[n] || {};
       return { n, v: o.v || v, hidden: Boolean(o.hidden), stock: o.stock || null, tags: o.tags || '' };
     });
     return [200, { base, custom, videos }];
   },
+  /* naam van een geur uit de catalogus wijzigen (tikfout in de sheet):
+     prijzen, voorraad, reviews en video verhuizen mee, oude link stuurt door */
+  async productHernoem(req, b) {
+    const n = clean(b.n, 120), nieuw = clean(b.nieuw, 80).replace(/\s+/g, ' ');
+    if (!nieuw) return [400, { error: 'Vul een naam in.' }];
+    const namen = await getNamen();
+    const sheet = Object.keys(BASE_PRICES).find(x => (namen[x] || x) === n);
+    if (!sheet) return [404, { error: 'Product niet gevonden.' }];
+    if (nieuw === n) return [200, { ok: true, n }];
+    const bezet = new Set([...Object.keys(BASE_PRICES).map(x => namen[x] || x), ...(await getCustom()).map(p => p.n)].filter(x => x !== n).map(x => x.toLowerCase()));
+    if (bezet.has(nieuw.toLowerCase())) return [400, { error: 'Er is al een geur met die naam.' }];
+    const eigen = await store.getJson('cms:namen', {});
+    eigen[sheet] = nieuw;
+    await store.setJson('cms:namen', eigen);
+    await verhuisNaam(n, nieuw);
+    return [200, { ok: true, n: nieuw }];
+  },
   async productOverride(req, b) {
     const n = clean(b.n, 120);
-    if (!BASE_PRICES[n]) return [404, { error: 'Product niet gevonden.' }];
+    if (!(await basisPrijzen())[n]) return [404, { error: 'Product niet gevonden.' }];
     const overrides = await getOverrides();
     const money = v => { const x = parseFloat(String(v).replace(',', '.')); return x > 0 ? Math.round(x * 100) / 100 : null; };
     const v = Array.isArray(b.v) ? b.v.slice(0, 3).map(money) : null;
@@ -576,7 +604,7 @@ const actions = {
     const p = analyze({ ...b.product, id: (b.product && b.product.id) || newId(5) });
     if (!p.n) return [400, { error: 'Geef het parfum een naam.' }];
     if (!p.v.some(Boolean)) return [400, { error: 'Vul minstens één prijs in.' }];
-    if (BASE_PRICES[p.n]) return [400, { error: 'Deze naam bestaat al in de catalogus.' }];
+    if ((await basisPrijzen())[p.n]) return [400, { error: 'Deze naam bestaat al in de catalogus.' }];
     const i = custom.findIndex(x => x.id === p.id);
     if (i >= 0) custom[i] = p; else custom.unshift(p);
     await store.setJson('cms:products', custom);
@@ -633,7 +661,7 @@ const actions = {
   },
   async productVideo(req, b) {
     const n = clean(b.n, 120);
-    if (!BASE_PRICES[n] && !(await getCustom()).some(p => p.n === n)) return [404, { error: 'Product niet gevonden.' }];
+    if (!(await basisPrijzen())[n] && !(await getCustom()).some(p => p.n === n)) return [404, { error: 'Product niet gevonden.' }];
     const videos = await store.getJson('cms:product-videos', {});
     const was = videos[n];
     if (b.video === null) delete videos[n];
@@ -783,7 +811,7 @@ async function exportBestand(soort) {
   if (soort === 'export-voorraad') {
     const [overrides, custom] = await Promise.all([getOverrides(), getCustom()]);
     const v = (o, i) => (o && o.stock && o.stock[i] != null ? o.stock[i] : 'onbeperkt');
-    const rijen = Object.entries(BASE_PRICES).map(([n, prijs]) => { const o = overrides[n] || {}; const p = o.v || prijs; return [n, o.hidden ? 'verborgen' : 'zichtbaar', p[0] || '', p[1] || '', p[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), o.tags || '']; })
+    const rijen = Object.entries(await basisPrijzen()).map(([n, prijs]) => { const o = overrides[n] || {}; const p = o.v || prijs; return [n, o.hidden ? 'verborgen' : 'zichtbaar', p[0] || '', p[1] || '', p[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), o.tags || '']; })
       .concat(custom.map(p => { const o = overrides[p.n] || {}; return [p.n + ' (eigen)', 'zichtbaar', p.v[0] || '', p.v[1] || '', p.v[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), p.tags || '']; }));
     return { naam: `eliandi-voorraad-${dag(nu)}.xlsx`, data: maakXlsx([{
       naam: 'Voorraad', geld: [2, 3, 4],
@@ -796,7 +824,7 @@ async function exportBestand(soort) {
 
 /* ── back-up: alles wat niet in de code staat ── */
 async function backup() {
-  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:product-videos', 'cms:reviews', 'cms:klant-notities', 'cms:klanten-oud', 'cms:settings', ...PAGES.map(p => 'cms:content:' + p)];
+  const sleutels = ['cms:bedrijf', 'cms:kortingen', 'cms:product-overrides', 'cms:products', 'cms:product-videos', 'cms:reviews', 'cms:klant-notities', 'cms:klanten-oud', 'cms:namen', 'cms:settings', ...PAGES.map(p => 'cms:content:' + p)];
   const waarden = await store.mgetJson(sleutels);
   const [orders, bookings, vouchers, wachtlijst, geurwijzer] = await Promise.all([list('idx:orders', 'order:'), list('idx:bookings', 'booking:'), list('idx:vouchers', 'voucher:'), list('idx:wachtlijst', 'wachtlijst:'), list('idx:geurwijzer', 'geurwijzer:')]);
   const cms = {}; sleutels.forEach((k, i) => { if (waarden[i] != null) cms[k] = waarden[i]; });
@@ -898,7 +926,7 @@ const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedr
 const ACTIE_NAAM = {
   orderStatus: 'status bestelling', orderNote: 'notitie bestelling', creditnota: 'creditnota gemaakt', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
   productOverride: 'product aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
-  kortingSave: 'kortingscode opgeslagen', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
+  kortingSave: 'kortingscode opgeslagen', productHernoem: 'naam geur gewijzigd', tegoedInnen: 'flacontegoed ingewisseld in de winkel', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
   reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
   bookingCancel: 'boeking geannuleerd', bookingAdd: 'boeking toegevoegd', bookingDone: 'boeking afgerond', recordDelete: 'verwijderd',
   slotToggle: 'agenda aangepast', contentSave: 'tekst op de site aangepast', mediaUpload: 'afbeelding geüpload', productVideo: 'productvideo aangepast', wachtlijstDelete: 'wachtlijst afgehandeld', klantenImport: 'klanten oude webshop geïmporteerd', geurwijzerDelete: 'geurwijzer-inzending gewist',

@@ -13,7 +13,7 @@
      api/checkout.js (env DISCOVERY_PRICE_CENTS / SUBSCRIPTION_PRICE_CENTS);
      houd beide gelijk. De Geurreis verzendt per kwartaal, in de eerste
      week van januari, april, juli en oktober. */
-  const DISCOVERY_PRICE = '49,95';
+  const DISCOVERY_PRICE = '54,95';
   const SUBSCRIPTION_PRICE = '39,95';
   const SHIP_MONTHS = [0, 3, 6, 9]; // jan, apr, jul, okt (0-basis)
 
@@ -42,6 +42,8 @@
 
     if (typeof ELIANDI_CATALOG === 'undefined') return;
     const ov = d.overrides || {};
+    const nm = d.namen || {};
+    ELIANDI_CATALOG.forEach(p => { if (nm[p.n]) p.n = nm[p.n]; });
     for (let i = ELIANDI_CATALOG.length - 1; i >= 0; i--) {
       const p = ELIANDI_CATALOG[i], o = ov[p.n];
       if (!o) continue;
@@ -730,7 +732,7 @@
   const STACK_ONCE = [
     '5 × 10 ml uit jouw geurprofiel',
     'Gesigneerde gouden doos',
-    '€10 flacontegoed',
+    '€10 flacontegoed, 30 dagen geldig',
     'Gesigneerde geurprofielkaart',
   ];
   const STACK_SUB = [

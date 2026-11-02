@@ -70,7 +70,7 @@ mockmodus (bedankpagina met testmodus-melding, er wordt niets afgerekend).
 Live zetten = in Vercel deze environment variables instellen:
 
 - `STRIPE_SECRET_KEY` — de geheime sleutel uit het Stripe-dashboard
-- `DISCOVERY_PRICE_CENTS` — prijs van de set in centen (standaard 4995);
+- `DISCOVERY_PRICE_CENTS` — prijs van de set in centen (standaard 5495 = €54,95);
   houd `DISCOVERY_PRICE` in `js/quiz.js` gelijk aan wat de klant ziet
 - `SHIPPING_PRICE_CENTS` — verzendkosten in centen (standaard 495, 0 = gratis)
 
@@ -87,7 +87,7 @@ ornament-fallback). De volledige promptset voor het genereren staat in
 - Shop staat op `shop.html`: categorie-overzicht bovenaan, zoeken, filteren op doelgroep, karakter, geurfamilie en prijs, bestellen via de winkelmand.
 - Elke geur heeft een eigen pagina op `/geur/<slug>` (`api/geur.js`, op de server opgebouwd uit `js/catalog.js`, `api/_teksten.json` en de dashboard-aanpassingen): maat kiezen, karakter (intensiteit, houdbaarheid, zoetheid, warmte), seizoen en moment, geurpiramide, garantie, verwante geuren.
 - Productfoto's: zet ze in `assets/producten/` en koppel ze in `api/_fotos.json`, bijvoorbeeld `{"dames":{"30":"assets/producten/dames-30ml.webp",...,"6":"assets/producten/olie-6ml.webp","13":"assets/producten/olie-13ml.webp"}}` (sleutels zijn de maten in ml; olie is per maat, voor alle doelgroepen gelijk). Bestanden onder `assets/` worden een jaar gecachet: geef een vervangen foto daarom altijd een nieuwe bestandsnaam. Zolang er geen foto is, tekent de pagina een flacon in de kleur van de sterkste geurfamilie.
-- Discovery Set-prijs (€49,95) is een aanname; door eigenaar te bevestigen.
+- Discovery Set-prijs: €54,95 (bevestigd door Angelo, november 2026).
 - Reviews zijn echte Google-reviews, aangeleverd door de eigenaar.
 - Foto's Discovery Set zijn telefoonfoto's; nette productfoto op zwart maakt
   het blok nog sterker.
@@ -346,3 +346,9 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 - **Geurwijzer in het dashboard**: na het invullen van naam, e-mail en telefoon gaat het profiel naar `POST /api/products?geurwijzer=1` (geen extra functie: Hobby staat er twaalf toe). Opslag `geurwijzer:<id>` + `idx:geurwijzer`, twee jaar. Tabblad **Geurwijzer**: top 5, profiel, antwoorden, WhatsApp-knop, wissen, Excel. Nieuwe inzendingen staan ook bij Vandaag.
 - **Klanten uit de oude webshop**: Klanten > *Klanten oude webshop importeren* leest de PrestaShop-export (CSV). Dubbele adressen worden één klant, test- en spamaccounts gaan er niet in. Opslag `cms:klanten-oud`; de klantenlijst toont ze met "oude webshop" en het bedrag dat ze daar besteedden. Gegevens wissen haalt ook geurwijzer en oude-webshopgegevens weg.
 - **Domein**: de oude server stuurde www permanent (301) door naar eliandiparfum.com; browsers onthouden dat. Vercel stuurde het kale domein juist naar www, wat bij terugkerende bezoekers "te vaak doorgestuurd" gaf. Nu tonen beide adressen de site zonder doorverwijzing en is `https://eliandiparfum.com` overal de canonieke URL (canonical, og:url, sitemap, mails).
+
+## Discovery Set €54,95, flacontegoed en namen corrigeren (2 november 2026)
+
+- **Discovery Set** kost €54,95 (`DISCOVERY_FALLBACK_CENTS` / `PRICE_FALLBACK_CENTS` = 5495; `DISCOVERY_PRICE_CENTS` in Vercel gaat voor, maar staat niet aan). De Signatuur-Garantie is uit de geurwijzer gehaald.
+- **Flacontegoed**: na betaling van een Discovery Set of een doos van De Geurreis maakt `onPaid` (`api/_records.js`) één persoonlijke code `FLACON-XXXXXX` van €10 per doos, 30 dagen geldig (`maakTegoed` in `api/_korting.js`, opslag `tegoed:<code>` + `idx:tegoed`). De code staat in de bevestigingsmail en bij de bestelling in het dashboard. Online werkt hij als kortingscode, alleen met een flacon van 30/50/100 ml in de mand, één keer. In de winkel: Beheer > Kortingen > Flacontegoed, code of naam opzoeken, **Ingewisseld in de winkel**.
+- **Namen**: de sheet blijft de bron; `api/_namen.json` bevat correcties van tikfouten, `cms:namen` wat Angelo zelf wijzigt (Beheer > Producten > geur zoeken > *Naam op de site*). Beide zijn `{ naam in de sheet: naam op de site }` en gelden overal (shop, productpagina, geurwijzer, winkelmand, factuur). Prijzen, voorraad, zoektermen, reviews en video verhuizen mee (`verhuisNaam`), de oude link `/geur/<oud>` stuurt met 301 door, een winkelmand met de oude naam blijft afrekenen. Teksten en vertalingen blijven onder de sheetnaam (`p._o`).

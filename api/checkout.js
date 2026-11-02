@@ -7,7 +7,7 @@
 
    Omgevingsvariabelen (Vercel > Settings > Environment Variables):
    - STRIPE_SECRET_KEY         sk_live_... of sk_test_...  (verplicht voor echt afrekenen)
-   - DISCOVERY_PRICE_CENTS     eenmalige set in centen (standaard 4995 = €49,95)
+   - DISCOVERY_PRICE_CENTS     eenmalige set in centen (standaard 5495 = €54,95)
    - SUBSCRIPTION_PRICE_CENTS  De Geurreis per kwartaal in centen (standaard 3995 = €39,95, incl. verzending)
    - SHIPPING_PRICE_CENTS      verzendkosten eenmalige set (standaard 495 = €4,95; 0 = gratis)
    - SITE_URL               bijv. https://eliandiparfum.com (standaard: afgeleid van request)
@@ -17,7 +17,7 @@
    zodat de hele flow te testen is voordat het Stripe-account er is.
    ═══════════════════════════════════════════════════════════════ */
 
-const PRICE_FALLBACK_CENTS = 4995;     // €49,95 eenmalig — pas aan via DISCOVERY_PRICE_CENTS
+const PRICE_FALLBACK_CENTS = 5495;     // €54,95 eenmalig — pas aan via DISCOVERY_PRICE_CENTS
 const SUB_PRICE_FALLBACK_CENTS = 3995; // €39,95 per kwartaal — pas aan via SUBSCRIPTION_PRICE_CENTS
 
 module.exports = async (req, res) => {

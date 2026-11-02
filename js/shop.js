@@ -46,7 +46,7 @@
     cmp: [], set: [],
     f: { g: new Set(), n: new Set(), k: new Set(), f: new Set(), p: new Set() },
   };
-  const DISCOVERY_PRICE = 49.95; // weergave; de server rekent met DISCOVERY_PRICE_CENTS
+  const DISCOVERY_PRICE = 54.95; // weergave; de server rekent met DISCOVERY_PRICE_CENTS
   const lees = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
   const bewaar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* privémodus */ } };
   const uitverkocht = (p, k) => Boolean(p.stock && p.stock[k] === 0);
@@ -491,6 +491,9 @@
     state.reviews = d.reviews || {};
     state.fotos = d.fotos || {};
     const olie = d.olie || {};
+    /* tikfouten in namen uit de sheet, gecorrigeerd in het dashboard */
+    const nm = d.namen || {};
+    basis = basis.map(p => (nm[p.n] ? { ...p, n: nm[p.n] } : p));
     const lijst = basis.filter(p => !(ov[p.n] && ov[p.n].hidden)).map(p => {
       const o = ov[p.n] || {};
       const v = (o.v || p.v || []).slice(0, 3);

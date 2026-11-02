@@ -63,13 +63,56 @@ function analyze(input) {
 const getCustom = () => store.getJson('cms:products', []);
 const getOverrides = () => store.getJson('cms:product-overrides', {});
 
+/* ── Namen: de sheet blijft de bron, maar een tikfout in een naam kan
+   eroverheen gecorrigeerd worden. api/_namen.json = correcties in de code,
+   cms:namen = wat Angelo zelf in het dashboard wijzigt (gaat voor).
+   Beide: { "<naam in de sheet>": "<naam op de site>" }. Prijzen, voorraad,
+   reviews en video's staan in de opslag onder de naam op de site; bij een
+   nieuwe correctie verhuizen ze één keer mee (verhuisNaam). ── */
+const CODE_NAMEN = require('./_namen.json');
+const NAAM_SLEUTELS = ['cms:product-overrides', 'cms:reviews', 'cms:product-videos'];
+async function verhuisNaam(oud, nieuw) {
+  if (!oud || !nieuw || oud === nieuw) return;
+  const waarden = await store.mgetJson(NAAM_SLEUTELS);
+  for (let i = 0; i < NAAM_SLEUTELS.length; i++) {
+    const m = waarden[i];
+    if (!m || m[oud] === undefined || m[nieuw] !== undefined) continue;
+    m[nieuw] = m[oud]; delete m[oud];
+    await store.setJson(NAAM_SLEUTELS[i], m);
+  }
+}
+async function getNamen() {
+  const eigen = await store.getJson('cms:namen', {});
+  /* correcties uit de code: opgeslagen gegevens één keer meeverhuizen */
+  const versie = 'once:namen:' + require('crypto').createHash('sha1').update(JSON.stringify(CODE_NAMEN)).digest('hex').slice(0, 12);
+  if (!(await store.get(versie))) {
+    for (const [oud, nieuw] of Object.entries(CODE_NAMEN)) if (!eigen[oud]) await verhuisNaam(oud, nieuw);
+    await store.set(versie, '1');
+  }
+  return { ...CODE_NAMEN, ...eigen };
+}
+const opSite = (namen, n) => namen[n] || n;
+/* catalogus met de namen zoals ze op de site staan; _o = naam in de sheet */
+const hernoem = (lijst, namen) => lijst.map(p => (namen[p.n] && namen[p.n] !== p.n ? { ...p, _o: p.n, n: namen[p.n] } : p));
+/* basisprijzen onder de naam op de site */
+async function basisPrijzen(namen) {
+  namen = namen || await getNamen();
+  const uit = {};
+  Object.entries(BASE_PRICES).forEach(([n, v]) => { uit[opSite(namen, n)] = v; });
+  return uit;
+}
+
 /* Prijstabel waarmee afgerekend wordt: catalogus + aanpassingen + eigen producten. */
 async function priceTable() {
-  const [custom, overrides] = await Promise.all([getCustom(), getOverrides()]);
+  const [custom, overrides, namen] = await Promise.all([getCustom(), getOverrides(), getNamen()]);
   const table = {};
-  Object.entries(BASE_PRICES).forEach(([n, v]) => {
+  Object.entries(BASE_PRICES).forEach(([sheet, v]) => {
+    const n = opSite(namen, sheet);
     const o = overrides[n] || {};
-    if (!o.hidden) table[n] = o.v || v;
+    if (!o.hidden) {
+      table[n] = o.v || v;
+      if (n !== sheet) table[sheet] = table[n]; // een winkelmand van vóór de correctie blijft werken
+    }
   });
   custom.forEach(p => { if (p.v.some(Boolean)) table[p.n] = p.v; });
   return table;
@@ -81,4 +124,4 @@ const SIZES = { 30: 0, 50: 1, 100: 2 };
 const OLIE = { 6: 3, 13: 4 };
 const oliePrijs = (bedrijf, ml) => (bedrijf && bedrijf.olie !== false ? Number(bedrijf[ml === 6 ? 'olie6' : 'olie13']) || 0 : 0);
 
-module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs };
+module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite };

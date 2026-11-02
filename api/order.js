@@ -12,7 +12,7 @@ const { getBedrijf } = require('./_factuur');
 const korting = require('./_korting');
 
 const SIZES = { 30: 0, 50: 1, 100: 2 };
-const DISCOVERY_FALLBACK_CENTS = 4995; // gelijk aan api/checkout.js
+const DISCOVERY_FALLBACK_CENTS = 5495; // gelijk aan api/checkout.js
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
@@ -95,7 +95,7 @@ module.exports = async (req, res) => {
   /* kortingscode */
   let kort = null;
   if (b.code) {
-    const k = await korting.bereken(b.code, subtotaal);
+    const k = await korting.bereken(b.code, subtotaal, lines.some(l => !l.kind));
     if (k && k.fout) return send(res, 400, { error: k.fout });
     if (k) kort = { code: k.code, cents: k.cents, label: k.label };
   }

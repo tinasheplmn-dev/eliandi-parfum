@@ -11,7 +11,7 @@
    sterkste geurfamilie. */
 const fs = require('fs');
 const path = require('path');
-const { getCustom, getOverrides, oliePrijs } = require('./_catalog');
+const { getCustom, getOverrides, oliePrijs, getNamen, hernoem } = require('./_catalog');
 const { getBedrijf } = require('./_factuur');
 const { store } = require('./_lib');
 
@@ -146,16 +146,16 @@ function verwant(p, alle) {
 }
 
 async function lijst() {
-  const [custom, overrides, videos] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}).catch(() => ({}))]);
-  const uit = catalog().filter(p => !(overrides[p.n] && overrides[p.n].hidden)).map(p => {
+  const [custom, overrides, videos, namen] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}).catch(() => ({})), getNamen()]);
+  const uit = hernoem(catalog(), namen).filter(p => !(overrides[p.n] && overrides[p.n].hidden)).map(p => {
     const o = overrides[p.n];
     if (!o) return p;
     const v = o.v || p.v || [];
     const ps = v.filter(Boolean);
     return { ...p, v, stock: o.stock || null, tags: o.tags || '', p: ps.length ? Math.min(...ps) : p.p };
   });
-  const namen = new Set(uit.map(p => p.n));
-  (custom || []).forEach(p => { if (!namen.has(p.n)) uit.push({ ...p, custom: true }); });
+  const bekend = new Set(uit.map(p => p.n));
+  (custom || []).forEach(p => { if (!bekend.has(p.n)) uit.push({ ...p, custom: true }); });
   /* een video die Angelo bij de geur heeft gezet (dashboard > Producten) */
   return uit.map(p => (videos && videos[p.n] ? { ...p, video: videos[p.n] } : p));
 }
@@ -184,27 +184,28 @@ function pagina(p, alle, site, reviews, olie, lang) {
   const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
   const fotoVan = i => (FOTOS[p.g] && FOTOS[p.g][String(MATEN[i])]) || '';
   const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
-  const story = (TEKSTEN[p.n] || []).filter(t => t !== p.i);
+  const sleutel = p._o || p.n; // teksten en vertalingen staan onder de naam in de sheet
+  const story = (TEKSTEN[sleutel] || []).filter(t => t !== p.i);
   /* een geur van één molecuul (Ambroxan) heeft geen piramide maar een hoofdnoot */
   const noten = [['Hoofdnoot', 'Van begin tot eind', p.k], ['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
   const basisUrl = `${site}/geur/${slug(p.n)}`;
   const url = lang === 'nl' ? basisUrl : `${basisUrl}?lang=${lang}`;
   const titel = `${p.n} | Extrait de parfum | Eliandi Parfum`;
-  const vtI = VERTALINGEN[p.n];
+  const vtI = VERTALINGEN[sleutel];
   const introTaal = lang !== 'nl' && vtI && vtI.nl.i === p.i && vtI[lang] && vtI[lang].i ? vtI[lang].i : '';
   const omschrijving = (introTaal || p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi in 's-Hertogenbosch.`).slice(0, 155);
   const verwanten = verwant(p, alle);
   /* vertaalparen [nl, en, ar] voor js/taal.js, alleen voor teksten die nog kloppen */
-  const vt = VERTALINGEN[p.n];
+  const vt = VERTALINGEN[sleutel];
   const paren = [];
   if (vt) {
     if (p.i && vt.nl.i === p.i) paren.push([p.i, vt.en.i, vt.ar.i]);
-    (TEKSTEN[p.n] || []).forEach((t, j) => { if (vt.nl.s[j] === t) paren.push([t, vt.en.s[j], vt.ar.s[j]]); });
+    (TEKSTEN[sleutel] || []).forEach((t, j) => { if (vt.nl.s[j] === t) paren.push([t, vt.en.s[j], vt.ar.s[j]]); });
   }
   const vertaald = paren.length > 0;
 
   /* gestructureerde gegevens voor Google: prijs per maat, voorraad, verzending, reviews */
-  const vt0 = VERTALINGEN[p.n];
+  const vt0 = VERTALINGEN[sleutel];
   const ldOmschrijving = lang !== 'nl' && vt0 && vt0[lang] && vt0[lang].i && vt0.nl.i === p.i ? vt0[lang].i : omschrijving;
   const verzending = land => ({ '@type': 'OfferShippingDetails', shippingDestination: { '@type': 'DefinedRegion', addressCountry: land },
     shippingRate: { '@type': 'MonetaryAmount', value: '4.95', currency: 'EUR' },
@@ -491,6 +492,13 @@ module.exports = async (req, res) => {
     const [alle, reviews, bedrijf] = await Promise.all([lijst(), store.getJson('cms:reviews', {}).catch(() => ({})), getBedrijf()]);
     const olie = { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 };
     const p = alle.find(q => slug(q.n) === wanted);
+    /* naam gecorrigeerd: de oude link stuurt blijvend door naar de nieuwe */
+    const oud = !p && alle.find(q => q._o && slug(q._o) === wanted);
+    if (oud) {
+      res.statusCode = 301;
+      res.setHeader('Location', `/geur/${slug(oud.n)}${lang === 'nl' ? '' : '?lang=' + lang}`);
+      return res.end();
+    }
     if (!p) {
       res.statusCode = 404;
       res.setHeader('Cache-Control', 'no-store');

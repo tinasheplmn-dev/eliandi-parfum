@@ -242,7 +242,7 @@
     $('orStats').innerHTML = `<span><b>${state.orders.filter(o => OPEN.includes(o.status)).length}</b> te doen</span><span><b>${euro(echt.filter(o => o.created > maand).reduce((s, o) => s + o.total, 0))}</b> omzet 30 dagen</span>`;
     let lijst = orFilter === 'open' ? state.orders.filter(o => OPEN.includes(o.status) || o.status === 'wacht op betaling') : state.orders;
     const zq = ($('orZoek').value || '').trim().toLowerCase(), zs = $('orStatus').value, zp = Number($('orPeriode').value) || 0;
-    if (zq) lijst = lijst.filter(o => [o.name, o.email, o.phone, o.id, o.factuur && o.factuur.nummer, o.address, o.note, ...(o.items || []).map(i => i.name), ...(o.perfumes || [])].join(' ').toLowerCase().includes(zq));
+    if (zq) lijst = lijst.filter(o => [o.name, o.email, o.phone, o.id, o.factuur && o.factuur.nummer, o.tegoed && o.tegoed.code, o.korting && o.korting.code, o.address, o.note, ...(o.items || []).map(i => i.name), ...(o.perfumes || [])].join(' ').toLowerCase().includes(zq));
     if (zs) lijst = lijst.filter(o => o.status === zs);
     if (zp) lijst = lijst.filter(o => o.created > Date.now() - zp * 86400000);
     const statussen = (state.statussen || []).filter(x => x !== 'betaald');
@@ -256,6 +256,7 @@
           ${o.perfumes && o.perfumes.length ? `<p class="bh-meta"><b>Samples:</b> ${o.perfumes.map(esc).join(' · ')}</p>` : ''}
           ${o.address ? `<p class="bh-meta"><b>Adres:</b> ${esc(o.address)}</p>` : ''}
           ${o.korting ? `<p class="bh-meta"><b>Korting:</b> ${esc(o.korting.code)} (-${euro(o.korting.cents)})</p>` : ''}
+          ${o.tegoed ? `<p class="bh-meta"><b>Flacontegoed gekregen:</b> ${esc(o.tegoed.code)} (${euro(o.tegoed.cents)}, t/m ${date(o.tegoed.tot)})</p>` : ''}
           ${o.trackTrace ? `<p class="bh-meta"><b>Track &amp; trace:</b> ${esc(o.trackTrace)}</p>` : ''}
           <p class="bh-meta bh-notitie"><b>Privénotitie</b> <small>alleen voor jou</small> <span data-note="${o.id}" contenteditable="true" spellcheck="false" data-leeg="Klik om iets te noteren">${esc(o.note || '')}</span></p>
         </div>
@@ -487,7 +488,7 @@
 
   /* ── kortingscodes ── */
   async function loadKortingen() {
-    const { codes } = await api({ action: 'kortingList' });
+    const { codes, tegoed } = await api({ action: 'kortingList' });
     $('kortList').innerHTML = codes.length ? codes.map(c => `
       <article class="bh-card bh-prod">
         <div class="bh-card-main">
@@ -496,7 +497,29 @@
         </div>
         <div class="bh-card-side"><div class="bh-card-actions"><button class="bh-btn bh-sm bh-weg" data-delkort="${esc(c.code)}">Verwijderen</button></div></div>
       </article>`).join('') : '<p class="bh-empty">Nog geen kortingscodes.</p>';
+    state.tegoed = tegoed || [];
+    renderTegoed();
   }
+  function renderTegoed() {
+    const q = ($('tgZoek').value || '').trim().toLowerCase();
+    const rows = (state.tegoed || []).filter(t => !q || [t.code, t.naam, t.email].join(' ').toLowerCase().includes(q));
+    const status = t => (t.gebruikt ? `<span class="bh-pill">${t.gebruikt.waar === 'winkel' ? 'ingewisseld in de winkel' : 'online gebruikt'} ${date(t.gebruikt.t)}</span>`
+      : t.tot < Date.now() ? '<span class="bh-pill">verlopen</span>' : `<span class="bh-pill bh-pill-notitie">geldig t/m ${date(t.tot)}</span>`);
+    $('tgList').innerHTML = rows.length ? rows.map(t => `
+      <article class="bh-card bh-prod">
+        <div class="bh-card-main">
+          <p class="bh-name">${esc(t.code)} <small class="bh-ref">${euro(t.cents)} flacontegoed</small> ${status(t)}</p>
+          <p class="bh-meta">${esc(t.naam || '')} · <a href="mailto:${esc(t.email)}">${esc(t.email)}</a> · bij bestelling ${esc(String(t.orderId || '').toUpperCase())}</p>
+        </div>
+        <div class="bh-card-side"><div class="bh-card-actions">${!t.gebruikt && t.tot >= Date.now() ? `<button class="bh-btn bh-sm bh-gold" data-innen="${esc(t.code)}">Ingewisseld in de winkel</button>` : ''}</div></div>
+      </article>`).join('') : `<p class="bh-empty">${q ? 'Geen code gevonden.' : 'Nog geen flacontegoed uitgegeven.'}</p>`;
+  }
+  $('tgZoek').addEventListener('input', renderTegoed);
+  $('tgList').addEventListener('click', async e => {
+    const b = e.target.closest('[data-innen]'); if (!b) return;
+    if (!confirm(`Flacontegoed ${b.dataset.innen} afboeken? Daarna kan de klant hem niet meer online gebruiken.`)) return;
+    try { await api({ action: 'tegoedInnen', code: b.dataset.innen }); toast('Afgeboekt'); await loadKortingen(); } catch (x) { toast(x.message, true); }
+  });
   $('kortForm').addEventListener('submit', async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
@@ -597,6 +620,7 @@
       <form class="bh-card bh-prod bh-base" data-n="${esc(p.n)}">
         <div class="bh-card-main"><p class="bh-name">${esc(p.n)}</p>${p.tags ? `<div class="bh-tagrij">${p.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => `<span class="bh-tag">${esc(t)}</span>`).join('')}</div>` : ''}</div>
         <div class="bh-base-fields">
+          <label class="bh-tags">Naam op de site<input name="naam" value="${esc(p.n)}" maxlength="80" title="Pas aan als er een tikfout in staat; prijzen, voorraad, reviews en de oude link gaan mee"></label>
           ${['30', '50', '100'].map((ml, i) => `<label>${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
           ${['30', '50', '100', 'olie 6', 'olie 13'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
           <label class="bh-tags">Zoektermen<input name="tags" value="${esc(p.tags || '')}" placeholder="bijv. Bleu de Chanel"></label>
@@ -644,9 +668,16 @@
     e.preventDefault();
     const f = e.target, d = Object.fromEntries(new FormData(f));
     try {
-      await api({ action: 'productOverride', n: f.dataset.n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden) });
-      toast('Opgeslagen');
+      let n = f.dataset.n;
+      const naam = String(d.naam || '').trim().replace(/\s+/g, ' ');
+      if (naam && naam !== n) {
+        if (!confirm(`Naam wijzigen van "${n}" naar "${naam}"?\n\nPrijzen, voorraad, reviews en video gaan mee, en de oude link stuurt door naar de nieuwe.`)) return;
+        n = (await api({ action: 'productHernoem', n, nieuw: naam })).n;
+      }
+      await api({ action: 'productOverride', n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden) });
+      toast(n !== f.dataset.n ? 'Naam en gegevens opgeslagen' : 'Opgeslagen');
       state.products = await api({ action: 'productsList' });
+      if (n !== f.dataset.n) { state.reviews = (await api({ action: 'reviewsList' })).reviews; $('prodSearch').value = n; renderBase(); }
       renderTags();
     } catch (x) { toast(x.message, true); }
   });

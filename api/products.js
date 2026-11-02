@@ -74,18 +74,19 @@ module.exports = async (req, res) => {
     if (!k || k.fout) return send(res, 400, { error: (k && k.fout) || 'Onbekende code.' });
     const codes = await require('./_korting').getCodes();
     const def = codes.find(c => c.code === k.code) || {};
-    return send(res, 200, { korting: { code: k.code, label: k.label, pct: def.soort === 'pct' ? Number(def.waarde) : 0, bedrag: def.soort === 'bedrag' ? Number(def.waarde) / 100 : 0 } });
+    return send(res, 200, { korting: { code: k.code, label: k.label, pct: def.soort === 'pct' ? Number(def.waarde) : 0, bedrag: def.soort === 'bedrag' ? Number(def.waarde) / 100 : (def.code ? 0 : k.cents / 100) } });
   }
-  const [custom, overrides, abonnement, bedrijf, reviews] = await Promise.all([
+  const [custom, overrides, abonnement, bedrijf, reviews, namen] = await Promise.all([
     getCustom(), getOverrides(), require('./_mollie').abonnementMogelijk(),
     require('./_factuur').getBedrijf(), require('./_lib').store.getJson('cms:reviews', {}),
+    require('./_catalog').getNamen(),
   ]);
   /* browsers vragen altijd opnieuw; alleen Vercel bewaart het antwoord heel even */
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   res.setHeader('Vercel-CDN-Cache-Control', 'max-age=15, stale-while-revalidate=45');
   const { oliePrijs } = require('./_catalog');
   send(res, 200, {
-    custom, overrides, abonnement, gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,
+    custom, overrides, namen, abonnement, gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,
     olie: { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 },
     fotos: require('./_fotos.json'),
   });

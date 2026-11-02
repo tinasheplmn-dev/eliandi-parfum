@@ -175,7 +175,12 @@ async function onPaid(session) {
         await saveOrder(o);
       } catch (e) { console.error('factuur', e.message); }
       try { await voorraadAfboeken(o); } catch (e) { console.error('voorraad', e.message); }
-      if (o.korting && o.korting.code) { try { await require('./_korting').gebruikt(o.korting.code); } catch (e) { /* niet erg */ } }
+      if (o.korting && o.korting.code) { try { await require('./_korting').gebruikt(o.korting.code, 'online', o.id); } catch (e) { /* niet erg */ } }
+      /* Discovery Set of De Geurreis: persoonlijk flacontegoed, 30 dagen */
+      try {
+        const t = await require('./_korting').maakTegoed(o);
+        if (t) { o.tegoed = { code: t.code, cents: t.cents, tot: t.tot }; await saveOrder(o); }
+      } catch (e) { console.error('flacontegoed', e.message); }
     }
 
     if (o && await eenmalig('mail-bestelling:' + m.orderId)) {

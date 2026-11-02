@@ -202,6 +202,10 @@ async function bestellingBetaald(o, bijlage) {
       ? `Je haalt hem op in de winkel, ${esc(WINKEL)}. Angelo laat weten wanneer hij klaarstaat.`
       : `Hij gaat naar ${esc(o.address || 'het adres dat je hebt opgegeven')}. Je hoort het zodra hij onderweg is.`,
     o.factuur ? `Je factuur (${esc(o.factuur.nummer)}) zit als bijlage bij deze mail.` : '',
+    o.tegoed ? '<div style="margin:6px 0;padding:18px 20px;border:1px solid #b8860b;border-radius:4px;text-align:center">'
+      + `<div style="color:#8a8275;font-size:11px;letter-spacing:.2em;text-transform:uppercase">Jouw flacontegoed · ${euro(o.tegoed.cents)}</div>`
+      + `<div style="color:#e9c767;font-size:22px;letter-spacing:.08em;margin:8px 0;font-family:Georgia,serif;white-space:nowrap"><strong>${esc(o.tegoed.code)}</strong></div>`
+      + `<div style="color:#d8d2c6;font-size:13px;line-height:1.6">Geldig tot en met ${tegoedDatum(o.tegoed.tot)} op een flacon van 30, 50 of 100 ml. Vul de code online in bij het afrekenen, of laat deze mail zien in de winkel.</div></div>` : '',
   ].filter(Boolean);
 
   return verstuur({
@@ -210,9 +214,12 @@ async function bestellingBetaald(o, bijlage) {
     html: omslag({ kicker: 'Bestelling ontvangen', kop: 'Dank je wel.', regels }),
     ...(bijlage ? { attachments: [bijlage] } : {}),
     text: `Je bestelling bij Eliandi is betaald. Totaal ${euro(o.total)}.\n`
-      + (o.items || []).map(i => `${i.qty}x ${i.name}`).join('\n') + `\nVragen? Bel ${TEL}.`,
+      + (o.items || []).map(i => `${i.qty}x ${i.name}`).join('\n')
+      + (o.tegoed ? `\nJouw flacontegoed van ${euro(o.tegoed.cents)}: ${o.tegoed.code}, geldig t/m ${tegoedDatum(o.tegoed.tot)} op een flacon van 30, 50 of 100 ml (online of in de winkel).` : '')
+      + `\nVragen? Bel ${TEL}.`,
   });
 }
+const tegoedDatum = ts => new Date(ts).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Amsterdam' });
 
 async function bonBetaald(v, site) {
   const link = `${(site || SITE()).replace(/\/$/, '')}/cadeaubon?code=${encodeURIComponent(v.code)}`;
