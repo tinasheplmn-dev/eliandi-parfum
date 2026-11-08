@@ -360,3 +360,10 @@ variabele: `eliandi-lokaal`, werkt alleen op localhost). Tabbladen:
 - Winkelmandregel `{ kind: 'huis', ml: 400 }`; `api/order.js` rekent met de prijs van de server. Telt niet als flacon voor het flacontegoed.
 - Beheer > Producten > Huisparfum: prijs, voorraad (leeg = onbeperkt, 0 = uitverkocht) en verbergen, opgeslagen in `cms:huisparfum` (zit in de back-up). Voorraad gaat omlaag bij betaling en verschijnt bij "Voorraad bijna op".
 - Een nieuw huisparfum toevoegen: regel in `api/_huisparfum.json` plus twee foto's in `assets/huisparfum/`.
+
+## Geurwijzer per doelgroep en geuren volledig bewerken in Beheer (8 november 2026)
+
+- **Geurwijzer** (`js/quiz.js`): voor een vrouw of man minstens 3 van de 5 geuren uit de eigen categorie en hooguit 2 unisex (`kiesTop`); "Verras me" blijft de hele collectie. Geuren met meer dan vier geurfamilies krijgen 0,45 aftrek per extra familie, omdat ze anders op elk profiel lijken.
+- **Niet aanbevelen**: `geenAdvies` haalt een geur uit de geurwijzer en uit "lijkt op" op de productpagina; hij blijft in de shop. Cobra staat zo in `CORRECTIES` van `tools/parse_catalog.py` en in `js/catalog.js`. In Beheer per geur aan of uit te zetten.
+- **Beheer > Producten**: de hele collectie als lijst, met zoeken en filter op dames/heren/unisex. Klikken opent alles van die geur: naam, voor wie, families, noten, korte omschrijving, verhaal, prijzen, voorraad, zoektermen, verbergen, video en reviews.
+- **Opslag**: `cms:product-overrides` bevat naast prijs en voorraad ook de gewijzigde inhoud (`INHOUD` in `api/_catalog.js`; `st` = verhaal). Alleen wat afwijkt van de sheet wordt bewaard, dus een nieuwe sheet overschrijft Angelo's wijzigingen niet. Veranderen noten of teksten, dan rekent `nieuweInhoud` (`api/admin.js`) het geurprofiel opnieuw uit. Een gewijzigde tekst blijft Nederlands in EN/AR tot hij vertaald is.

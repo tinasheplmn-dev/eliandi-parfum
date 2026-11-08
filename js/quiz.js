@@ -49,6 +49,8 @@
       if (!o) continue;
       if (o.hidden) { ELIANDI_CATALOG.splice(i, 1); continue; }
       if (o.v) { p.v = o.v; const ps = o.v.filter(Boolean); p.p = ps.length ? Math.min(...ps) : p.p; }
+      /* noten, doelgroep en "niet aanbevelen" uit het dashboard */
+      ['g', 'f', 'k', 't', 'h', 'b', 'i', 'd', 'w', 's', 'x', 'o', 'geenAdvies'].forEach(k => { if (o[k] !== undefined) p[k] = o[k]; });
     }
     const names = new Set(ELIANDI_CATALOG.map(p => p.n));
     (d.custom || []).forEach(p => { if (!names.has(p.n)) ELIANDI_CATALOG.push(p); });
@@ -383,16 +385,35 @@
     return { score, cos, contributions };
   }
 
+  /* voor een vrouw of man: minstens drie uit de eigen categorie, hooguit twee unisex */
+  function kiesTop(scored, eigen) {
+    if (!eigen) return scored.slice(0, 5);
+    const top = scored.filter(r => r.p.g === eigen).slice(0, 3);
+    let unisex = 0;
+    for (const r of scored) {
+      if (top.length >= 5) break;
+      if (top.includes(r) || (r.p.g === 'unisex' && unisex >= 2)) continue;
+      if (r.p.g === 'unisex') unisex++;
+      top.push(r);
+    }
+    return top.sort((a, b) => b.score - a.score);
+  }
+
   function computeResults() {
     const u = buildProfile();
     state.profileChips = u.chips;
 
-    let pool = ELIANDI_CATALOG;
+    let pool = ELIANDI_CATALOG.filter(p => !p.geenAdvies);
     if (u.genders) pool = pool.filter(p => u.genders.includes(p.g));
 
-    const scored = pool.map(p => ({ p, ...scoreProduct(p, u) }));
+    /* een geur met noten uit bijna elke familie lijkt op elk profiel en
+       zou overal bovenaan komen; daarom een aftrek per familie boven de vier */
+    const scored = pool.map(p => {
+      const r = scoreProduct(p, u);
+      return { p, ...r, score: r.score - Math.max(0, Object.keys(p.d || {}).length - 4) * 0.45 };
+    });
     scored.sort((a, b) => b.score - a.score);
-    const top = scored.slice(0, 5);
+    const top = kiesTop(scored, u.genders && u.genders.find(g => g !== 'unisex'));
 
     const best = top[0] ? top[0].score : 1;
     top.forEach((r, i) => {

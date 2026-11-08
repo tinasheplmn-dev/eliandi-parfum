@@ -293,3 +293,27 @@ button.bh-regel { cursor: pointer; } button.bh-regel:hover b { color: var(--glan
 .bh-video-prev { position: relative; display: block; width: 72px; aspect-ratio: 1; background: #111; border: 1px solid rgba(212,167,60,.35); overflow: hidden; }
 .bh-video-prev img { width: 100%; height: 100%; object-fit: cover; opacity: .8; }
 .bh-video-prev i { position: absolute; left: 50%; top: 50%; transform: translate(-35%, -50%); border-left: 14px solid #e9c767; border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
+
+/* collectie als lijst, klikken opent het bewerkscherm */
+#baseList { display: grid; gap: 6px; }
+.bh-rij { display: grid; grid-template-columns: minmax(180px, 2fr) 90px minmax(170px, 1.4fr) minmax(120px, 1fr); gap: 12px; align-items: center; width: 100%; text-align: left; padding: 11px 16px; background: var(--paneel); border: 1px solid var(--rand); color: var(--tekst); font: inherit; cursor: pointer; scroll-margin-top: 12px; }
+.bh-rij:hover, .bh-rij.is-open { border-color: var(--glans); }
+.bh-rij b { color: var(--ivoor); font-weight: 500; }
+.bh-rij-voor { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.bh-rij-prijs { font-size: 13px; color: var(--dim); }
+.bh-rij-pillen { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.bh-editor { display: block; margin-bottom: 8px; border-color: var(--glans); }
+.bh-editor label { display: grid; gap: 5px; font-size: 11px; color: var(--dim); }
+.bh-editor label small { text-transform: none; letter-spacing: 0; }
+.bh-editor .bh-grid { margin-bottom: 16px; }
+.bh-editor input:not([type=checkbox]), .bh-editor select, .bh-editor textarea { width: 100%; box-sizing: border-box; padding: 9px 10px; background: var(--zwart, #141414); border: 1px solid var(--rand); color: var(--ivoor); font: 14px var(--sans); }
+.bh-editor textarea { resize: vertical; line-height: 1.5; }
+.bh-editor .bh-base-fields input[inputmode] { width: 90px; }
+.bh-editor .bh-tags input { width: 240px; }
+.bh-editor .bh-review-add input, .bh-editor .bh-review-add select { width: auto; }
+.bh-breed2 { grid-column: span 2; }
+@media (max-width: 760px) {
+  .bh-rij { grid-template-columns: 1fr auto; }
+  .bh-rij-prijs { grid-column: 1; } .bh-rij-pillen { grid-column: 1 / -1; justify-content: flex-start; }
+  .bh-breed2 { grid-column: auto; }
+}

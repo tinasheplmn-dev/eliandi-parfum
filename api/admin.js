@@ -11,7 +11,8 @@ const { getBedrijf, saveBedrijf, factuurPdf, pakbonPdf, boekingAlsFactuur, bedra
 const korting = require('./_korting');
 const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
-const { analyze, getCustom, getOverrides, basisPrijzen, getNamen, verhuisNaam, BASE_PRICES, huisLijst, HUISPARFUM } = require('./_catalog');
+const { analyze, getCustom, getOverrides, basisPrijzen, getNamen, verhuisNaam, BASE_PRICES, huisLijst, HUISPARFUM, catalogus, hernoem, INHOUD, metInhoud, profiel } = require('./_catalog');
+const TEKSTEN = require('./_teksten.json');
 
 const PAGES = ['index', 'experience', 'quiz'];
 
@@ -168,6 +169,40 @@ function koppelingen() {
     betalen: require('./_mollie').enabled() ? 'mollie'
       : (process.env.STRIPE_SECRET_KEY ? 'stripe' : 'test'),
   };
+}
+
+/* ── een geur uit de catalogus bewerken: alleen wat afwijkt van de sheet
+   wordt bewaard, en het geurprofiel volgt de noten en teksten ── */
+const sheetVerhaal = p => (TEKSTEN[p._o || p.n] || []).filter(t => t !== p.i);
+const GEUR_VELDEN = ['f', 'k', 't', 'h', 'b', 'i', 'st'];
+const PROFIEL = ['d', 'w', 's', 'x', 'o'];
+async function nieuweInhoud(n, inv, prev) {
+  const basis = hernoem(catalogus(), await getNamen()).find(p => p.n === n);
+  if (!basis) return {};
+  const tekst = (v, max) => clean(v, max).replace(/</g, '');
+  const lijst = (v, max) => [...new Set(String(v || '').split(',').map(x => tekst(x, 60)).filter(Boolean))].slice(0, max);
+  const nieuw = {
+    g: ['dames', 'heren', 'unisex'].includes(inv.g) ? inv.g : basis.g,
+    f: lijst(inv.f, 8), k: lijst(inv.k, 12), t: lijst(inv.t, 12), h: lijst(inv.h, 12), b: lijst(inv.b, 12),
+    i: tekst(inv.i, 1000),
+    st: String(inv.st || '').split(/\n\s*\n/).map(x => tekst(x, 2000)).filter(Boolean).slice(0, 12),
+  };
+  const sheet = { g: basis.g, f: basis.f || [], k: basis.k || [], t: basis.t || [], h: basis.h || [], b: basis.b || [], i: basis.i || '', st: sheetVerhaal(basis) };
+  const huidig = metInhoud(sheet, prev);
+  const gelijk = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const uit = {};
+  Object.keys(nieuw).forEach(k => { if (!gelijk(nieuw[k], sheet[k])) uit[k] = nieuw[k]; });
+  if (GEUR_VELDEN.some(k => uit[k] !== undefined)) {
+    if (prev.d !== undefined && GEUR_VELDEN.every(k => gelijk(nieuw[k], huidig[k]))) PROFIEL.forEach(k => { uit[k] = prev[k]; });
+    else {
+      /* families en noten tellen dubbel, net als in tools/parse_catalog.py */
+      const noten = [...nieuw.f, ...nieuw.k, ...nieuw.t, ...nieuw.h, ...nieuw.b];
+      Object.assign(uit, profiel([nieuw.i, ...nieuw.st, ...noten, ...noten].join(' ')));
+    }
+  }
+  const geenAdvies = Boolean(inv.geenAdvies);
+  if (geenAdvies !== Boolean(basis.geenAdvies)) uit.geenAdvies = geenAdvies;
+  return uit;
 }
 
 const actions = {
@@ -553,11 +588,14 @@ const actions = {
 
   /* ── producten ── */
   async productsList() {
-    const [custom, overrides, videos, BASIS] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}), basisPrijzen()]);
+    const [custom, overrides, videos, BASIS, namen] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}), basisPrijzen(), getNamen()]);
+    const sheet = {};
+    hernoem(catalogus(), namen).forEach(p => { sheet[p.n] = p; });
     const base = Object.entries(BASIS).map(([n, v]) => {
       const o = overrides[n] || {};
-      return { n, v: o.v || v, hidden: Boolean(o.hidden), stock: o.stock || null, tags: o.tags || '' };
-    });
+      const p = metInhoud(sheet[n] || {}, o);
+      return { n, v: o.v || v, hidden: Boolean(o.hidden), stock: o.stock || null, tags: o.tags || '', g: p.g || 'unisex', geenAdvies: Boolean(p.geenAdvies) };
+    }).sort((a, b) => a.n.localeCompare(b.n, 'nl'));
     return [200, { base, custom, videos, huis: await huisLijst() }];
   },
   /* huisparfum: prijs, voorraad (leeg = onbeperkt, 0 = uitverkocht) en verbergen */
@@ -589,6 +627,14 @@ const actions = {
     await verhuisNaam(n, nieuw);
     return [200, { ok: true, n: nieuw }];
   },
+  /* alles wat er van een geur op de site staat, voor het bewerkscherm */
+  async productDetail(req, b) {
+    const n = clean(b.n, 120);
+    const basis = hernoem(catalogus(), await getNamen()).find(p => p.n === n);
+    if (!basis) return [404, { error: 'Product niet gevonden.' }];
+    const p = metInhoud({ ...basis, st: sheetVerhaal(basis) }, (await getOverrides())[n]);
+    return [200, { n, g: p.g, f: p.f || [], k: p.k || [], t: p.t || [], h: p.h || [], b: p.b || [], i: p.i || '', st: p.st || [], geenAdvies: Boolean(p.geenAdvies) }];
+  },
   async productOverride(req, b) {
     const n = clean(b.n, 120);
     if (!(await basisPrijzen())[n]) return [404, { error: 'Product niet gevonden.' }];
@@ -601,7 +647,9 @@ const actions = {
     const prev = overrides[n] || {};
     /* zoektermen: namen waar klanten op kunnen zoeken, bijvoorbeeld de geur waar deze op lijkt */
     const tags = b.tags !== undefined ? clean(b.tags, 300) : (prev.tags || '');
+    const inhoud = b.inhoud ? await nieuweInhoud(n, b.inhoud, prev) : Object.fromEntries(INHOUD.filter(k => prev[k] !== undefined).map(k => [k, prev[k]]));
     overrides[n] = {
+      ...inhoud,
       ...(v ? { v } : prev.v ? { v: prev.v } : {}),
       ...(b.hidden ? { hidden: true } : {}),
       ...(stock ? (stock.some(x => x !== null) ? { stock } : {}) : prev.stock ? { stock: prev.stock } : {}),
@@ -935,7 +983,7 @@ async function dagelijks() {
   return { herinneringen: verstuurd, videosOpgeruimd, administratieGemaild };
 }
 
-const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
+const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'productDetail', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
 const ACTIE_NAAM = {
   orderStatus: 'status bestelling', orderNote: 'notitie bestelling', creditnota: 'creditnota gemaakt', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
   productOverride: 'product aangepast', huisSave: 'huisparfum aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',

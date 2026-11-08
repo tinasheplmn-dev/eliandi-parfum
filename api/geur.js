@@ -11,7 +11,7 @@
    sterkste geurfamilie. */
 const fs = require('fs');
 const path = require('path');
-const { getCustom, getOverrides, oliePrijs, getNamen, hernoem } = require('./_catalog');
+const { getCustom, getOverrides, oliePrijs, getNamen, hernoem, catalogus, metInhoud } = require('./_catalog');
 const { getBedrijf } = require('./_factuur');
 const { store } = require('./_lib');
 
@@ -60,15 +60,6 @@ function vertaalHtml(html, lang, paren) {
     return deel.replace(/\b(alt|title|aria-label|placeholder)="([^"]*)"/g, (m, a, v) => { const x = t(ontsnap(v)); return x == null ? m : `${a}="${esc(x)}"`; })
       .replace(/(<meta (?:name="description"|property="og:(?:title|description)") content=")([^"]*)(")/, (m, a, v, z) => { const x = t(ontsnap(v)); return x == null ? m : a + esc(x) + z; });
   }).join('');
-}
-
-/* de catalogus is een browserbestand; we lezen de JSON eruit */
-let CATALOG = null;
-function catalog() {
-  if (CATALOG) return CATALOG;
-  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'catalog.js'), 'utf8');
-  CATALOG = JSON.parse(src.slice(src.indexOf('['), src.lastIndexOf(']') + 1));
-  return CATALOG;
 }
 
 const slug = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -142,17 +133,17 @@ function verwant(p, alle) {
     s -= Math.abs((q.w || 0) - (p.w || 0)) * .5 + Math.abs((q.s || 0) - (p.s || 0)) * .5;
     return s;
   };
-  return alle.map(q => [score(q), q]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]).slice(0, 4).map(([, q]) => q);
+  return alle.filter(q => !q.geenAdvies).map(q => [score(q), q]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]).slice(0, 4).map(([, q]) => q);
 }
 
 async function lijst() {
   const [custom, overrides, videos, namen] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}).catch(() => ({})), getNamen()]);
-  const uit = hernoem(catalog(), namen).filter(p => !(overrides[p.n] && overrides[p.n].hidden)).map(p => {
+  const uit = hernoem(catalogus(), namen).filter(p => !(overrides[p.n] && overrides[p.n].hidden)).map(p => {
     const o = overrides[p.n];
     if (!o) return p;
     const v = o.v || p.v || [];
     const ps = v.filter(Boolean);
-    return { ...p, v, stock: o.stock || null, tags: o.tags || '', p: ps.length ? Math.min(...ps) : p.p };
+    return { ...metInhoud(p, o), v, stock: o.stock || null, tags: o.tags || '', p: ps.length ? Math.min(...ps) : p.p };
   });
   const bekend = new Set(uit.map(p => p.n));
   (custom || []).forEach(p => { if (!bekend.has(p.n)) uit.push({ ...p, custom: true }); });
@@ -185,7 +176,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
   const fotoVan = i => (FOTOS[p.g] && FOTOS[p.g][String(MATEN[i])]) || '';
   const foto = ml => (FOTOS[p.g] && FOTOS[p.g][String(ml)]) || '';
   const sleutel = p._o || p.n; // teksten en vertalingen staan onder de naam in de sheet
-  const story = (TEKSTEN[sleutel] || []).filter(t => t !== p.i);
+  const story = (p.st || TEKSTEN[sleutel] || []).filter(t => t !== p.i);
   /* een geur van één molecuul (Ambroxan) heeft geen piramide maar een hoofdnoot */
   const noten = [['Hoofdnoot', 'Van begin tot eind', p.k], ['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
   const basisUrl = `${site}/geur/${slug(p.n)}`;

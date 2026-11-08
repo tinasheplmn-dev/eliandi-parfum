@@ -586,7 +586,7 @@
   }
   $('prodZonderPrijs').addEventListener('click', e => {
     const b = e.target.closest('[data-zonderprijs]'); if (!b) return;
-    $('prodMetTags').checked = false; $('prodSearch').value = b.dataset.zonderprijs; renderBase();
+    $('prodMetTags').checked = false; $('prodVoor').value = ''; $('prodSearch').value = b.dataset.zonderprijs; prodOpen = null; openProduct(b.dataset.zonderprijs);
   });
   const fmt = v => v == null ? '' : String(v).replace('.', ',');
   /* video bij een geur: uploaden, bekijken, weghalen */
@@ -643,22 +643,28 @@
         ${videoBlok(p.n)}
       </article>`).join('') : '';
   }
-  function renderBase() {
-    const q = $('prodSearch').value.trim().toLowerCase();
-    const metTags = $('prodMetTags').checked;
-    let rows = state.products.base;
-    if (metTags) rows = rows.filter(p => p.tags);
-    rows = q.length < 2 && !metTags ? [] : rows.filter(p => !q || p.n.toLowerCase().includes(q) || String(p.tags || '').toLowerCase().includes(q)).slice(0, metTags ? 60 : 12);
-    renderTags();
-    $('baseList').innerHTML = rows.map(p => `
-      <form class="bh-card bh-prod bh-base" data-n="${esc(p.n)}">
-        <div class="bh-card-main"><p class="bh-name">${esc(p.n)}</p>${p.tags ? `<div class="bh-tagrij">${p.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => `<span class="bh-tag">${esc(t)}</span>`).join('')}</div>` : ''}</div>
+  /* de hele collectie als lijst; klikken opent alles van die geur */
+  let prodOpen = null;
+  const prijsRegel = v => (v || []).slice(0, 3).filter(Boolean).map(x => '€' + fmt(x)).join(' · ');
+  function bewerkForm(p, d) {
+    return `<form class="bh-card bh-base bh-editor" data-n="${esc(p.n)}">
+        <div class="bh-grid">
+          <label class="bh-wide">Naam op de site<input name="naam" value="${esc(p.n)}" maxlength="80" title="Prijzen, voorraad, reviews en de oude link gaan mee"></label>
+          <label>Voor wie<select name="voor">${['dames', 'heren', 'unisex'].map(g => `<option value="${g}" ${d.g === g ? 'selected' : ''}>${g[0].toUpperCase() + g.slice(1)}</option>`).join('')}</select></label>
+          <label class="bh-breed2">Geurfamilies<input name="f" value="${esc(d.f.join(', '))}" placeholder="Oriëntaals, Kruidig"></label>
+          <label>Topnoten<input name="t" value="${esc(d.t.join(', '))}"></label>
+          <label>Hartnoten<input name="h" value="${esc(d.h.join(', '))}"></label>
+          <label>Basisnoten<input name="b" value="${esc(d.b.join(', '))}"></label>
+          <label class="bh-wide">Hoofdnoot <small>(alleen voor een geur zonder piramide, zoals Ambroxan)</small><input name="k" value="${esc(d.k.join(', '))}"></label>
+          <label class="bh-wide">Korte omschrijving<textarea name="i" rows="2">${esc(d.i)}</textarea></label>
+          <label class="bh-wide">Verhaal <small>(witregel = nieuwe alinea; pas dit ook aan als de noten veranderen)</small><textarea name="st" rows="6">${esc(d.st.join('\n\n'))}</textarea></label>
+        </div>
         <div class="bh-base-fields">
-          <label class="bh-tags">Naam op de site<input name="naam" value="${esc(p.n)}" maxlength="80" title="Pas aan als er een tikfout in staat; prijzen, voorraad, reviews en de oude link gaan mee"></label>
-          ${['30', '50', '100'].map((ml, i) => `<label>${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
+          ${['30', '50', '100'].map((ml, i) => `<label>Prijs ${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
           ${['30', '50', '100', 'olie 6', 'olie 13'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
           <label class="bh-tags">Zoektermen<input name="tags" value="${esc(p.tags || '')}" placeholder="bijv. Bleu de Chanel"></label>
           <label class="bh-check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> Verbergen</label>
+          <label class="bh-check"><input type="checkbox" name="geenAdvies" ${d.geenAdvies ? 'checked' : ''}> Niet aanbevelen in de geurwijzer</label>
           <button class="bh-btn bh-sm bh-gold" type="submit">Opslaan</button>
         </div>
         ${videoBlok(p.n)}
@@ -666,10 +672,34 @@
           <p class="bh-meta"><b>Reviews:</b> ${(state.reviews && state.reviews[p.n] || []).map(r => `<span class="bh-review">${'★'.repeat(r.sterren)} ${esc(r.naam)}: “${esc(r.tekst.slice(0, 60))}${r.tekst.length > 60 ? '…' : ''}” <button type="button" class="bh-x" data-delreview="${r.id}" title="Verwijderen">×</button></span>`).join('') || 'nog geen'}</p>
           <div class="bh-review-add"><input data-rv="naam" placeholder="Naam klant"><select data-rv="sterren"><option>5</option><option>4</option><option>3</option></select><input data-rv="tekst" placeholder="Wat zei de klant?"><button type="button" class="bh-btn bh-sm" data-addreview="${esc(p.n)}">Review toevoegen</button></div>
         </div>
-      </form>`).join('') || (q.length >= 2 ? '<p class="bh-empty">Geen parfum gevonden.</p>' : '');
+      </form>`;
   }
-  $('prodSearch').addEventListener('input', renderBase);
-  $('prodMetTags').addEventListener('change', renderBase);
+  function renderBase() {
+    const q = $('prodSearch').value.trim().toLowerCase();
+    const voor = $('prodVoor').value;
+    let rows = state.products.base;
+    if ($('prodMetTags').checked) rows = rows.filter(p => p.tags);
+    if (voor) rows = rows.filter(p => p.g === voor);
+    if (q) rows = rows.filter(p => p.n.toLowerCase().includes(q) || String(p.tags || '').toLowerCase().includes(q));
+    renderTags();
+    $('prodTel').textContent = `${rows.length} van ${state.products.base.length} geuren`;
+    $('baseList').innerHTML = rows.map(p => {
+      const open = prodOpen && prodOpen.n === p.n;
+      const pillen = [p.hidden ? 'verborgen' : '', p.geenAdvies ? 'niet in geurwijzer' : ''].filter(Boolean).map(t => `<span class="bh-pill">${t}</span>`).join('');
+      return `<button type="button" class="bh-rij${open ? ' is-open' : ''}" data-open="${esc(p.n)}" aria-expanded="${Boolean(open)}">
+        <b>${esc(p.n)}</b><span class="bh-rij-voor">${esc(p.g)}</span><span class="bh-rij-prijs">${prijsRegel(p.v) || 'nog geen prijs'}</span><span class="bh-rij-pillen">${pillen}</span>
+      </button>${open ? bewerkForm(p, prodOpen) : ''}`;
+    }).join('') || '<p class="bh-empty">Geen parfum gevonden.</p>';
+  }
+  async function openProduct(n) {
+    if (prodOpen && prodOpen.n === n) { prodOpen = null; renderBase(); return; }
+    try {
+      prodOpen = await api({ action: 'productDetail', n });
+      renderBase();
+      $('baseList').querySelector('.bh-rij.is-open').scrollIntoView({ block: 'start' });
+    } catch (x) { toast(x.message, true); }
+  }
+  ['prodSearch', 'prodVoor', 'prodMetTags'].forEach(id => $(id).addEventListener($(id).type === 'search' ? 'input' : 'change', () => { prodOpen = null; renderBase(); }));
   function renderTags() {
     const lijst = [...state.products.base, ...(state.products.custom || []).map(p => ({ ...p, eigen: true }))].filter(p => p.tags);
     $('tagTel').textContent = lijst.length ? `${lijst.length} ${lijst.length === 1 ? 'geur' : 'geuren'}` : '';
@@ -678,10 +708,13 @@
   }
   $('tagLijst').addEventListener('click', e => {
     const b = e.target.closest('[data-tagnaam]'); if (!b) return;
-    $('prodMetTags').checked = false; $('prodSearch').value = b.dataset.tagnaam; renderBase();
-    $('prodSearch').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('prodMetTags').checked = false; $('prodVoor').value = ''; $('prodSearch').value = b.dataset.tagnaam; prodOpen = null;
+    if (state.products.base.some(p => p.n === b.dataset.tagnaam)) openProduct(b.dataset.tagnaam);
+    else { renderBase(); $('prodSearch').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
   $('baseList').addEventListener('click', async e => {
+    const rij = e.target.closest('[data-open]');
+    if (rij) { openProduct(rij.dataset.open); return; }
     const add = e.target.closest('[data-addreview]'), del = e.target.closest('[data-delreview]');
     if (!add && !del) return;
     e.preventDefault();
@@ -708,12 +741,14 @@
         if (!confirm(`Naam wijzigen van "${n}" naar "${naam}"?\n\nPrijzen, voorraad, reviews en video gaan mee, en de oude link stuurt door naar de nieuwe.`)) return;
         n = (await api({ action: 'productHernoem', n, nieuw: naam })).n;
       }
-      await api({ action: 'productOverride', n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden) });
+      await api({ action: 'productOverride', n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden),
+        inhoud: { g: d.voor, f: d.f, k: d.k, t: d.t, h: d.h, b: d.b, i: d.i, st: d.st, geenAdvies: Boolean(d.geenAdvies) } });
       toast(n !== f.dataset.n ? 'Naam en gegevens opgeslagen' : 'Opgeslagen');
       state.products = await api({ action: 'productsList' });
       zonderPrijs();
-      if (n !== f.dataset.n) { state.reviews = (await api({ action: 'reviewsList' })).reviews; $('prodSearch').value = n; renderBase(); }
-      renderTags();
+      if (n !== f.dataset.n) { state.reviews = (await api({ action: 'reviewsList' })).reviews; if ($('prodSearch').value) $('prodSearch').value = n; }
+      prodOpen = await api({ action: 'productDetail', n });
+      renderBase();
     } catch (x) { toast(x.message, true); }
   });
 
@@ -721,7 +756,7 @@
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
     try {
-      await api({ action: 'productSave', product: { id: d.id || undefined, n: d.n, g: d.g, f: d.f, t: d.t, h: d.h, b: d.b, i: d.i, v: [d.v0, d.v1, d.v2], tags: d.tags } });
+      await api({ action: 'productSave', product: { id: d.id || undefined, n: d.n, g: d.g, f: d.f, t: d.t, h: d.h, b: d.b, i: d.i, v: [d.v0, d.v1, d.v2], tags: d.tags, geenAdvies: Boolean(d.geenAdvies) } });
       e.target.reset();
       e.target.elements.id.value = '';
       toast('Parfum opgeslagen');
@@ -735,7 +770,7 @@
       const f = $('prodForm').elements;
       f.id.value = p.id; f.n.value = p.n; f.g.value = p.g; f.f.value = p.f.join(', ');
       f.t.value = p.t.join(', '); f.h.value = p.h.join(', '); f.b.value = p.b.join(', '); f.i.value = p.i;
-      f.v0.value = fmt(p.v[0]); f.v1.value = fmt(p.v[1]); f.v2.value = fmt(p.v[2]); f.tags.value = p.tags || '';
+      f.v0.value = fmt(p.v[0]); f.v1.value = fmt(p.v[1]); f.v2.value = fmt(p.v[2]); f.tags.value = p.tags || ''; f.geenAdvies.checked = Boolean(p.geenAdvies);
       $('prodForm').scrollIntoView({ behavior: 'smooth' });
     }
     if (del && confirm('Dit parfum verwijderen?')) {

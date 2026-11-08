@@ -529,7 +529,10 @@
       const o = ov[p.n] || {};
       const v = (o.v || p.v || []).slice(0, 3);
       const ps = v.filter(Boolean);
-      return { ...p, v: metOlie(v), stock: o.stock || null, tags: o.tags || '', p: ps.length ? Math.min(...ps) : p.p };
+      /* noten, doelgroep en teksten die Angelo in het dashboard wijzigde */
+      const inhoud = {};
+      ['g', 'f', 'k', 't', 'h', 'b', 'i', 'd', 'w', 's', 'x', 'o'].forEach(k => { if (o[k] !== undefined) inhoud[k] = o[k]; });
+      return { ...p, ...inhoud, v: metOlie(v), stock: o.stock || null, tags: o.tags || '', p: ps.length ? Math.min(...ps) : p.p };
     });
     const namen = new Set(lijst.map(p => p.n));
     (d.custom || []).forEach(p => { if (!namen.has(p.n)) lijst.push({ ...p, v: metOlie((p.v || []).slice(0, 3)), custom: true }); });

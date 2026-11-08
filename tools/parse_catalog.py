@@ -213,6 +213,8 @@ PIRAMIDE_UIT_TEKST = {
 
 # Correcties op wat de trefwoorden afleiden, op aanwijzing van Angelo.
 CORRECTIES = {
+    # blijft in de shop, maar de geurwijzer en "lijkt op" raden hem niet aan (Angelo)
+    "Cobra": {"geenAdvies": True},
     # warm oriëntaals, roos en gourmand; de ozonische opening is een bijrol
     "The Magic of Eliandi": {
         "f": ["Oriëntaals", "Roos & bloemig", "Gourmand", "Amberachtig"],
@@ -321,7 +323,7 @@ for cells in ws.iter_rows(min_row=2):
     c = CORRECTIES.get(name)
     if c:
         p = products[-1]
-        p.update({k: v for k, v in c.items() if k in ("f", "i", "w")})
+        p.update({k: v for k, v in c.items() if k in ("f", "i", "w", "geenAdvies")})
         for k in c.get("zonder", []):
             p["d"].pop(k, None)
         if "verhaal" in c:

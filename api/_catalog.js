@@ -8,6 +8,8 @@
    catalogus (zelfde trefwoorden als tools/parse_catalog.py), zodat de
    geurwijzer ze meteen kan aanraden.
    ═══════════════════════════════════════════════════════════════ */
+const fs = require('fs');
+const path = require('path');
 const { store } = require('./_lib');
 const BASE_PRICES = require('./_prices.json');
 
@@ -37,6 +39,20 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const list = v => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => String(s).trim()).filter(Boolean).slice(0, 8);
 const money = v => { const n = parseFloat(String(v).replace(',', '.')); return n > 0 ? Math.round(n * 100) / 100 : null; };
 
+/* geurprofiel uit tekst en noten: wat de geurwijzer en de filters gebruiken */
+function profiel(tekst) {
+  const text = tekst.toLowerCase();
+  const d = {};
+  Object.entries(DIMS).forEach(([k, pats]) => { const h = hits(text, pats); if (h) d[k] = Math.min(3, h); });
+  return {
+    d,
+    w: clamp(hits(text, WARM) - hits(text, FRESH), -3, 3),
+    s: Math.min(4, (d.vanille || 0) + (d.gourmand || 0)),
+    x: clamp(hits(text, STRONG) - hits(text, SOFT) + (d.oud ? 1 : 0) + (d.amber ? 1 : 0), -2, 4),
+    o: clamp(hits(text, NIGHT) - hits(text, DAY), -2, 3),
+  };
+}
+
 function analyze(input) {
   const p = {
     id: input.id, n: String(input.n || '').trim().slice(0, 80),
@@ -45,20 +61,35 @@ function analyze(input) {
     i: String(input.i || '').trim().slice(0, 400),
     v: [money(input.v && input.v[0]), money(input.v && input.v[1]), money(input.v && input.v[2])],
     img: input.img || '', custom: true,
+    ...(input.geenAdvies ? { geenAdvies: true } : {}),
     tags: String(input.tags || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 300),
   };
-  const text = [p.i, ...p.f, ...p.t, ...p.h, ...p.b].join(' ').toLowerCase();
-  const d = {};
-  Object.entries(DIMS).forEach(([k, pats]) => { const h = hits(text, pats); if (h) d[k] = Math.min(3, h); });
-  p.d = d;
-  p.w = clamp(hits(text, WARM) - hits(text, FRESH), -3, 3);
-  p.s = Math.min(4, (d.vanille || 0) + (d.gourmand || 0));
-  p.x = clamp(hits(text, STRONG) - hits(text, SOFT) + (d.oud ? 1 : 0) + (d.amber ? 1 : 0), -2, 4);
-  p.o = clamp(hits(text, NIGHT) - hits(text, DAY), -2, 3);
+  Object.assign(p, profiel([p.i, ...p.f, ...p.t, ...p.h, ...p.b].join(' ')));
   const prices = p.v.filter(Boolean);
   p.p = prices.length ? Math.min(...prices) : null;
   return p;
 }
+
+/* de catalogus is een browserbestand; we lezen de JSON eruit */
+let CATALOGUS = null;
+function catalogus() {
+  if (CATALOGUS) return CATALOGUS;
+  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'catalog.js'), 'utf8');
+  CATALOGUS = JSON.parse(src.slice(src.indexOf('['), src.lastIndexOf(']') + 1));
+  return CATALOGUS;
+}
+
+/* Wat Angelo per geur uit de catalogus kan wijzigen, bewaard in
+   cms:product-overrides: voor wie, families, noten, teksten (st = verhaal),
+   het geurprofiel dat daaruit volgt en "niet aanbevelen" in de geurwijzer.
+   Alleen wat afwijkt van de sheet wordt bewaard. */
+const INHOUD = ['g', 'f', 'k', 't', 'h', 'b', 'i', 'st', 'd', 'w', 's', 'x', 'o', 'geenAdvies'];
+const metInhoud = (p, o) => {
+  if (!o) return p;
+  const uit = { ...p };
+  INHOUD.forEach(k => { if (o[k] !== undefined) uit[k] = o[k]; });
+  return uit;
+};
 
 const getCustom = () => store.getJson('cms:products', []);
 const getOverrides = () => store.getJson('cms:product-overrides', {});
@@ -137,4 +168,4 @@ async function huisLijst() {
   });
 }
 
-module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite, HUISPARFUM, HUIS_ML, huisLijst };
+module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite, HUISPARFUM, HUIS_ML, huisLijst, catalogus, INHOUD, metInhoud, profiel };

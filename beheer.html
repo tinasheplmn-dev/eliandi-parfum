@@ -249,6 +249,7 @@
           <label>Prijs 50 ml<input name="v1" inputmode="decimal" placeholder="39,95"></label>
           <label>Prijs 100 ml<input name="v2" inputmode="decimal" placeholder="64,99"></label>
           <label class="bh-wide">Zoektermen <small>(waar klanten ook op mogen zoeken, bijvoorbeeld de geur waar deze op lijkt; scheid met komma's)</small><input name="tags" placeholder="Bleu de Chanel, blauw, fris"></label>
+          <label class="bh-wide bh-check"><input type="checkbox" name="geenAdvies"> Niet aanbevelen in de geurwijzer</label>
           <div class="bh-wide bh-actions">
             <button class="bh-btn bh-gold" type="submit">Opslaan</button>
             <button class="bh-btn" type="reset" id="prodReset">Leegmaken</button>
@@ -257,10 +258,12 @@
         <div class="bh-list" id="customList"></div>
 
         <h3 class="bh-sub">Bestaande collectie</h3>
-        <p class="bh-hint">Zoek een parfum om de prijzen of de voorraad per maat (ook parfumolie) aan te passen, zoektermen toe te voegen, het tijdelijk te verbergen, of een review toe te voegen. Voorraad leeg laten = onbeperkt; 0 = uitverkocht. Zoektermen zijn woorden waarop klanten deze geur ook vinden, zoals de geur waar hij op lijkt; ze zijn niet zichtbaar op de site.</p>
+        <p class="bh-hint">Klik op een parfum om alles aan te passen: naam, voor wie, noten, teksten, prijzen, voorraad, zoektermen, video en reviews. Voorraad leeg laten = onbeperkt; 0 = uitverkocht. Zoektermen zijn woorden waarop klanten deze geur ook vinden, zoals de geur waar hij op lijkt; ze zijn niet zichtbaar op de site.</p>
         <div class="bh-toolbar">
           <input class="bh-search" id="prodSearch" type="search" placeholder="Zoek op naam of zoekterm…">
+          <select class="bh-select" id="prodVoor" aria-label="Voor wie"><option value="">Dames, heren en unisex</option><option value="dames">Dames</option><option value="heren">Heren</option><option value="unisex">Unisex</option></select>
           <label class="bh-check"><input type="checkbox" id="prodMetTags"> Alleen met zoektermen</label>
+          <span class="bh-meta" id="prodTel"></span>
           <button class="bh-btn bh-sm" data-dl="export-voorraad">Excel</button>
         </div>
         <div class="bh-warn bh-warn-info" id="prodZonderPrijs" hidden></div>
