@@ -5,7 +5,7 @@
    Nederlands staan; ?i18n=debug in de adresbalk toont wat er mist. */
 window.ELIANDI_I18N = [
   /* ── algemeen, navigatie, voettekst ── */
-  ["Eliandi Parfum | Jouw geur. Jouw verhaal. | Handgemaakte parfums in Den Bosch", "Eliandi Parfum | Your scent. Your story. | Handmade perfumes in Den Bosch", "إلياندي للعطور | عطرك. قصتك. | عطور مصنوعة يدويًا في دن بوس"],
+  ["Parfum in Den Bosch | Handgemaakte extrait de parfum | Eliandi Parfum", "Eliandi Parfum | Your scent. Your story. | Handmade perfumes in Den Bosch", "إلياندي للعطور | عطرك. قصتك. | عطور مصنوعة يدويًا في دن بوس"],
   ["Hoofdnavigatie", "Main navigation", "التنقل الرئيسي"],
   ["Shop", "Shop", "المتجر"],
   ["Experience", "Experience", "التجربة"],
@@ -345,6 +345,18 @@ window.ELIANDI_I18N = [
   ["Olie", "Oil", "زيت"],
   ["Parfumolie", "Perfume oil", "زيت عطري"],
   ["Of als parfumolie", "Or as perfume oil", "أو كزيت عطري"],
+  /* afrekenen, verzending, collecties */
+  ["Heb je een kortingscode?", "Do you have a discount code?", "هل لديك رمز خصم؟"],
+  ["Telefoonnummer (optioneel)", "Phone number (optional)", "رقم الهاتف (اختياري)"],
+  ["Vul je naam in.", "Please enter your name.", "يرجى إدخال اسمك."],
+  ["Vul een geldig e-mailadres in.", "Please enter a valid email address.", "يرجى إدخال بريد إلكتروني صحيح."],
+  ["Vul een geldig telefoonnummer in, of laat het veld leeg.", "Please enter a valid phone number, or leave it empty.", "يرجى إدخال رقم هاتف صحيح أو ترك الحقل فارغًا."],
+  ["Vul je straat en huisnummer in.", "Please enter your street and house number.", "يرجى إدخال الشارع ورقم المنزل."],
+  ["Die postcode klopt nog niet.", "That postcode is not correct yet.", "الرمز البريدي غير صحيح."],
+  ["Vul je plaats in.", "Please enter your city.", "يرجى إدخال مدينتك."],
+  ["Verzending en retour", "Shipping and returns", "الشحن والإرجاع"],
+  ["Verzending & retour", "Shipping & returns", "الشحن والإرجاع"],
+  ["Kies een collectie", "Choose a collection", "اختر مجموعة"],
   /* huisparfum */
   ["ml · huisparfum", "ml · home perfume", "مل · عطر منزلي"],
   ["Huisparfum", "Home perfume", "عطر منزلي"],

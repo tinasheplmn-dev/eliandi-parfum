@@ -190,3 +190,21 @@
 .pd-thumb-video span { z-index: 1; color: var(--ivoor); }
 .pd-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0c0c0c; z-index: 1; }
 .pd-stage.is-video .pd-stage-ml { display: none; }
+
+/* collectiepagina's */
+.cl-kop { padding-top: 12px; max-width: 760px; margin-left: auto; margin-right: auto; text-align: center; }
+.cl-tel { margin-top: 14px; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--tekst-dim); }
+.cl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; padding-top: 34px; padding-bottom: 34px; }
+.cl-kaart { display: grid; gap: 4px; padding: 0 0 14px; text-decoration: none; background: #17160f; border: 1px solid rgba(184,134,11,.22); transition: border-color .3s, transform .3s; }
+.cl-kaart:hover { border-color: rgba(233,199,103,.6); transform: translateY(-3px); }
+.cl-kaart img { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: cover; display: block; margin-bottom: 8px; }
+.cl-kaart b { padding: 0 12px; font: 500 1.02rem var(--serif); color: var(--ivoor); }
+.cl-kaart small { padding: 0 12px; font-size: 11px; color: var(--tekst-dim); min-height: 1.4em; }
+.cl-kaart span { padding: 0 12px; font-size: 13px; color: var(--goud-glans); }
+.cl-meer { padding-bottom: 60px; text-align: center; }
+.cl-meer p:first-of-type { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 14px 0; }
+.cl-meer p:first-of-type a { font-size: 12px; padding: 7px 12px; border: 1px solid rgba(184,134,11,.3); color: var(--tekst); text-decoration: none; }
+.cl-meer p:first-of-type a:hover { border-color: var(--goud-glans); color: var(--ivoor); }
+.cl-hulp { color: var(--tekst); }
+.cl-hulp a { color: var(--goud-glans); }
+@media (max-width: 480px) { .cl-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }

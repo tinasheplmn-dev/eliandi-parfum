@@ -11,11 +11,14 @@
 
   /* ── Intro-overlay ── */
   const intro = document.getElementById('intro');
-  const INTRO_MS = prefersReduced ? 0 : 2000;
-  setTimeout(() => {
+  /* één keer per bezoek en kort, want de bezoeker komt voor de geuren */
+  let gezien = false;
+  try { gezien = Boolean(sessionStorage.getItem('eliandi_intro')); sessionStorage.setItem('eliandi_intro', '1'); } catch (e) { /* privémodus */ }
+  if (gezien || prefersReduced) intro.remove();
+  else setTimeout(() => {
     intro.classList.add('is-done');
-    setTimeout(() => intro.remove(), 1100);
-  }, INTRO_MS);
+    setTimeout(() => intro.remove(), 600);
+  }, 800);
 
   /* ── Gouden essence: deeltjescanvas ── */
   const canvas = document.getElementById('essence');
@@ -24,7 +27,15 @@
     let W = 0, H = 0, dpr = 1, particles = [];
     const mouse = { x: -9999, y: -9999 };
 
-    const COUNT = () => Math.round(Math.min(W / 14, isTouch ? 46 : 110));
+    const gloed = c => {
+      const el = document.createElement('canvas'); el.width = el.height = 64;
+      const g2 = el.getContext('2d'), gr = g2.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, `rgba(${c},1)`); gr.addColorStop(1, `rgba(${c},0)`);
+      g2.fillStyle = gr; g2.fillRect(0, 0, 64, 64);
+      return el;
+    };
+    const GLOED = { warm: gloed('205,127,50'), goud: gloed('212,167,60') };
+    const COUNT = () => Math.round(Math.min(W / 14, isTouch ? 22 : 90));
 
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -79,22 +90,20 @@
 
         const flicker = .75 + Math.sin(p.phase * 1.7) * .25;
         const a = p.alpha * flicker * scrollDim;
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.2);
-        const c = p.warm ? '205,127,50' : '212,167,60';
-        g.addColorStop(0, `rgba(${c},${a})`);
-        g.addColorStop(1, `rgba(${c},0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r * 3.2, 0, Math.PI * 2);
-        ctx.fill();
+        /* een vooraf getekend gloeibolletje is veel lichter dan elk frame een verloop */
+        const r = p.r * 3.2;
+        ctx.globalAlpha = Math.max(0, Math.min(1, a));
+        ctx.drawImage(p.warm ? GLOED.warm : GLOED.goud, p.x - r, p.y - r, r * 2, r * 2);
       }
+      ctx.globalAlpha = 1;
       requestAnimationFrame(tick);
     }
 
     window.addEventListener('resize', resize, { passive: true });
     window.addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; }, { passive: true });
-    resize();
-    requestAnimationFrame(tick);
+    /* de deeltjes zijn sfeer: pas starten als de pagina er staat */
+    const startDeeltjes = () => { resize(); requestAnimationFrame(tick); };
+    if ('requestIdleCallback' in window) requestIdleCallback(startDeeltjes, { timeout: 2500 }); else setTimeout(startDeeltjes, 1500);
 
     // essence sterkst in hero & cinematic break, gedimd daartussen
     const dimZones = [document.getElementById('hero'), document.querySelector('.break')].filter(Boolean);

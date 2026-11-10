@@ -11,7 +11,7 @@ const { getBedrijf, saveBedrijf, factuurPdf, pakbonPdf, boekingAlsFactuur, bedra
 const korting = require('./_korting');
 const { DEFAULTS, getSettings, peopleFrom, priceOf, priceTable, slotsFor, slotStoreKey } = require('./_slots');
 const { saveBooking, setBookingStatus, holdSlots, getBooking } = require('./_records');
-const { analyze, getCustom, getOverrides, basisPrijzen, getNamen, verhuisNaam, BASE_PRICES, huisLijst, HUISPARFUM, catalogus, hernoem, INHOUD, metInhoud, profiel } = require('./_catalog');
+const { analyze, getCustom, getOverrides, basisPrijzen, getNamen, verhuisNaam, BASE_PRICES, huisLijst, HUISPARFUM, catalogus, hernoem, INHOUD, metInhoud, profiel, zoektermenInladen } = require('./_catalog');
 const TEKSTEN = require('./_teksten.json');
 
 const PAGES = ['index', 'experience', 'quiz'];
@@ -166,7 +166,7 @@ function oudeKlanten(tekst) {
 function koppelingen() {
   return {
     agenda: require('./_agenda').enabled(),
-    betalen: require('./_mollie').enabled() ? 'mollie'
+    betalen: require('./_mollie').enabled() ? (require('./_mollie').testModus() ? 'test' : 'mollie')
       : (process.env.STRIPE_SECRET_KEY ? 'stripe' : 'test'),
   };
 }
@@ -588,6 +588,7 @@ const actions = {
 
   /* ── producten ── */
   async productsList() {
+    await zoektermenInladen();
     const [custom, overrides, videos, BASIS, namen] = await Promise.all([getCustom(), getOverrides(), store.getJson('cms:product-videos', {}), basisPrijzen(), getNamen()]);
     const sheet = {};
     hernoem(catalogus(), namen).forEach(p => { sheet[p.n] = p; });
@@ -646,7 +647,7 @@ const actions = {
     const stock = Array.isArray(b.stock) ? b.stock.slice(0, 5).map(x => (x === '' || x === null || x === undefined ? null : Math.max(0, parseInt(x, 10) || 0))) : null;
     const prev = overrides[n] || {};
     /* zoektermen: namen waar klanten op kunnen zoeken, bijvoorbeeld de geur waar deze op lijkt */
-    const tags = b.tags !== undefined ? clean(b.tags, 300) : (prev.tags || '');
+    const tags = b.tags !== undefined ? clean(b.tags, 600) : (prev.tags || '');
     const inhoud = b.inhoud ? await nieuweInhoud(n, b.inhoud, prev) : Object.fromEntries(INHOUD.filter(k => prev[k] !== undefined).map(k => [k, prev[k]]));
     overrides[n] = {
       ...inhoud,

@@ -88,3 +88,11 @@
   .co-main input, .co-main select { font-size: 16px; }
   .co-summary { scroll-margin-top: 80px; }
 }
+
+/* kortingscode ingeklapt, fouten bij het veld */
+details.co-code > summary { cursor: pointer; font-size: 13px; color: var(--goud-licht, #e9c767); margin-bottom: 8px; }
+details.co-code:not([open]) > summary { margin-bottom: 0; }
+.co-pay b { font-weight: 600; margin-left: 6px; }
+.co-trust a { color: inherit; text-decoration: underline; }
+.ql-field input.is-fout { border-color: #d9534f; }
+.co-row-sum[hidden], .co-free[hidden] { display: none; }

@@ -149,6 +149,69 @@ async function priceTable() {
   return table;
 }
 
+/* ── Verborgen zoektermen ──
+   Waar klanten een geur ook op mogen vinden: het parfum waarop hij
+   gebaseerd is en de oude code (N083). Ze staan alleen op de server, in
+   cms:product-overrides (tags), en gaan nooit in een pagina of openbaar
+   antwoord. api/_zoektermen.json is de startlijst uit de spreadsheet; die
+   wordt één keer toegevoegd, daarna beheert Angelo ze in het dashboard. */
+let STARTLIJST = {};
+try { STARTLIJST = require('./_zoektermen.json'); } catch (e) { /* niet meegeleverd */ }
+const terms = s => String(s || '').split(/\s*,\s*/).map(t => t.trim()).filter(Boolean);
+async function zoektermenInladen() {
+  if (!Object.keys(STARTLIJST).length) return;
+  const vlag = 'once:zoektermen:' + require('crypto').createHash('sha1').update(JSON.stringify(STARTLIJST)).digest('hex').slice(0, 12);
+  if (await store.get(vlag)) return;
+  const [overrides, namen] = await Promise.all([getOverrides(), getNamen()]);
+  Object.entries(STARTLIJST).forEach(([sheet, lijst]) => {
+    if (!BASE_PRICES[sheet]) return;
+    const n = opSite(namen, sheet), o = overrides[n] || (overrides[n] = {});
+    const nu = terms(o.tags);
+    const erbij = terms(lijst).filter(t => !nu.some(x => x.toLowerCase() === t.toLowerCase()));
+    o.tags = [...nu, ...erbij].join(', ');
+  });
+  await store.setJson('cms:product-overrides', overrides);
+  await store.set(vlag, '1');
+}
+const plat = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const STOPWOORDEN = new Set(['de', 'het', 'een', 'le', 'la', 'les', 'l', 'the', 'of', 'by', 'di', 'pour', 'eau', 'parfum', 'perfume', 'edp', 'edt', 'extrait', 'ml', 'van']);
+function afstand(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let rij = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const nu = [i];
+    for (let j = 1; j <= b.length; j++) nu[j] = Math.min(rij[j] + 1, nu[j - 1] + 1, rij[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    rij = nu;
+  }
+  return rij[b.length];
+}
+let ZOEKINDEX = null;
+async function zoekIndex() {
+  if (ZOEKINDEX && Date.now() - ZOEKINDEX.t < 30000) return ZOEKINDEX.lijst;
+  await zoektermenInladen();
+  const [overrides, custom, namen] = await Promise.all([getOverrides(), getCustom(), getNamen()]);
+  const woorden = (n, tags) => [...new Set(plat(`${n} ${tags || ''}`).split(' ').filter(Boolean))];
+  const lijst = Object.keys(BASE_PRICES).map(s => opSite(namen, s)).filter(n => !(overrides[n] && overrides[n].hidden))
+    .map(n => ({ n, w: woorden(n, overrides[n] && overrides[n].tags) }));
+  custom.forEach(p => lijst.push({ n: p.n, w: woorden(p.n, p.tags) }));
+  ZOEKINDEX = { t: Date.now(), lijst };
+  return lijst;
+}
+/* namen van geuren die bij een zoekopdracht horen; de zoekterm zelf blijft op de server */
+async function zoekNamen(vraag) {
+  const alle = plat(vraag).split(' ').filter(Boolean);
+  const q = alle.filter(w => !STOPWOORDEN.has(w));
+  const zoek = q.length ? q : alle;
+  if (!zoek.length || zoek.join('').length < 2) return [];
+  const treffer = (w, doel) => (w === doel ? 3 : w.length >= 3 && doel.startsWith(w) ? 2
+    : w.length >= 5 && /^\p{L}+$/u.test(w) && afstand(w, doel, w.length >= 7 ? 2 : 1) <= (w.length >= 7 ? 2 : 1) ? 1 : 0); // tikfouten, niet bij codes zoals X3339
+  return (await zoekIndex()).map(p => {
+    let totaal = 0;
+    for (const w of zoek) { const s = Math.max(...p.w.map(d => treffer(w, d))); if (!s) return null; totaal += s; }
+    return { n: p.n, s: totaal };
+  }).filter(Boolean).sort((a, b) => b.s - a.s || a.n.localeCompare(b.n, 'nl')).slice(0, 30).map(p => p.n);
+}
+
 /* Maten: 30/50/100 ml extrait op plek 0-2, parfumolie 6/13 ml op plek 3-4
    (ook in de voorraad-array per product). */
 const SIZES = { 30: 0, 50: 1, 100: 2 };
@@ -168,4 +231,4 @@ async function huisLijst() {
   });
 }
 
-module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite, HUISPARFUM, HUIS_ML, huisLijst, catalogus, INHOUD, metInhoud, profiel };
+module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite, HUISPARFUM, HUIS_ML, huisLijst, catalogus, INHOUD, metInhoud, profiel, zoektermenInladen, zoekNamen };

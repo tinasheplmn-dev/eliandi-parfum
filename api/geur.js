@@ -16,6 +16,7 @@ const { getBedrijf } = require('./_factuur');
 const { store } = require('./_lib');
 
 const TEKSTEN = require('./_teksten.json');
+const OUDE_CODES = require('./_oude_codes.json');
 /* Engelse en Arabische versie van intro en verhaal (gegenereerd, zie README).
    Een vertaling telt alleen zolang de Nederlandse tekst nog gelijk is. */
 let VERTALINGEN = {};
@@ -99,6 +100,9 @@ function karakter(p) {
 const seizoen = p => (p.w || 0) >= 2 ? 'Herfst en winter' : (p.w || 0) <= -2 ? 'Lente en zomer' : 'Het hele jaar';
 const moment = p => (p.o || 0) >= 1 ? 'Avond en uitgaan' : (p.o || 0) <= -1 ? 'Overdag' : 'Dag en avond';
 const doelgroep = p => ({ dames: 'Dames', heren: 'Heren' }[p.g] || 'Unisex');
+const GROEP_NAAM = { dames: 'Damesparfum', heren: 'Herenparfum', unisex: 'Unisex parfum' };
+const GROEP_COLLECTIE = { dames: 'damesparfum', heren: 'herenparfum', unisex: 'unisex-parfum' };
+const FAM_COLLECTIE = { oud: 'oud-parfum', amber: 'amber-parfum', vanille: 'vanille-parfum', gourmand: 'zoete-parfum', bloemig: 'bloemige-parfum', fris: 'frisse-parfum', kruidig: 'kruidige-parfum', hout: 'houtachtige-parfum', musk: 'musk-parfum', fruitig: 'fruitige-parfum', leer: 'leer-en-rook-parfum' };
 
 function families(p) {
   const uit = [];
@@ -181,10 +185,12 @@ function pagina(p, alle, site, reviews, olie, lang) {
   const noten = [['Hoofdnoot', 'Van begin tot eind', p.k], ['Topnoten', 'De eerste indruk', p.t], ['Hartnoten', 'Het karakter', p.h], ['Basisnoten', 'Wat blijft hangen', p.b]].filter(([, , l]) => l && l.length);
   const basisUrl = `${site}/geur/${slug(p.n)}`;
   const url = lang === 'nl' ? basisUrl : `${basisUrl}?lang=${lang}`;
-  const titel = `${p.n} | Extrait de parfum | Eliandi Parfum`;
+  const titel = lang === 'nl' ? `${p.n} | ${GROEP_NAAM[p.g] || 'Unisex parfum'} | Eliandi Parfum` : `${p.n} | Extrait de parfum | Eliandi Parfum`;
   const vtI = VERTALINGEN[sleutel];
   const introTaal = lang !== 'nl' && vtI && vtI.nl.i === p.i && vtI[lang] && vtI[lang].i ? vtI[lang].i : '';
-  const omschrijving = (introTaal || p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi in 's-Hertogenbosch.`).slice(0, 155);
+  const vanafPrijs = Math.min(...extrait.filter(Boolean).concat(9999));
+  const prijsZin = lang === 'nl' && vanafPrijs < 9999 ? ` Vanaf €${vanafPrijs.toFixed(2).replace('.', ',')}, handgemaakt in Den Bosch.` : '';
+  const omschrijving = ((introTaal || p.i || `${p.n}, handgemaakt extrait de parfum van Eliandi in 's-Hertogenbosch.`).slice(0, 155 - prijsZin.length) + prijsZin).trim();
   const verwanten = verwant(p, alle);
   /* vertaalparen [nl, en, ar] voor js/taal.js, alleen voor teksten die nog kloppen */
   const vt = VERTALINGEN[sleutel];
@@ -223,7 +229,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
   };
   const kruimel = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'Shop', item: `${site}/shop` },
-    { '@type': 'ListItem', position: 2, name: doelgroep(p), item: `${site}/shop?f=g%3A${p.g}` },
+    { '@type': 'ListItem', position: 2, name: doelgroep(p), item: `${site}/collectie/${GROEP_COLLECTIE[p.g]}` },
     { '@type': 'ListItem', position: 3, name: p.n, item: basisUrl },
   ] };
 
@@ -234,7 +240,6 @@ function pagina(p, alle, site, reviews, olie, lang) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${esc(titel)}</title>
   <meta name="description" content="${esc(omschrijving)}">
-  ${p.tags ? `<meta name="keywords" content="${esc(p.tags)}">` : ''}
   <meta property="og:title" content="${esc(p.n)} | Eliandi Parfum">
   <meta property="og:description" content="${esc(omschrijving)}">
   <meta property="og:type" content="product">
@@ -248,9 +253,8 @@ function pagina(p, alle, site, reviews, olie, lang) {
   <link rel="alternate" hreflang="x-default" href="${esc(basisUrl)}">
   <meta property="og:locale" content="${{ nl: 'nl_NL', en: 'en_GB', ar: 'ar_AR' }[lang]}">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" href="/assets/fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/playfair-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/cart.css">
   <link rel="stylesheet" href="/css/shop.css">
@@ -263,14 +267,14 @@ function pagina(p, alle, site, reviews, olie, lang) {
 </head>
 <body class="shoppage productpage" data-page="geur">
   <header class="qnav sh-nav">
-    <a class="qnav-brand" href="/"><img class="qnav-mark" src="/assets/logo-eliandi.png" alt="Eliandi Parfum logo"><span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span></a>
+    <a class="qnav-brand" href="/"><img class="qnav-mark" src="/assets/logo-eliandi-96.webp" width="34" height="42" alt="Eliandi Parfum logo"><span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span></a>
     <nav class="sh-nav-links" aria-label="Shop"><a href="/shop">Shop</a><a href="/quiz">Geurwijzer</a><a href="/experience">Experience</a></nav>
     <a class="qnav-exit" href="/shop">Terug naar de shop</a>
   </header>
 
   <main class="pd-main" id="top">
     <nav class="wrap pd-crumbs" aria-label="Je bent hier">
-      <a href="/shop">Shop</a><span>/</span><a href="/shop?f=g%3A${p.g}">${esc(doelgroep(p))}</a><span>/</span><b>${esc(p.n)}</b>
+      <a href="/shop">Shop</a><span>/</span><a href="/collectie/${GROEP_COLLECTIE[p.g]}">${esc(doelgroep(p))}</a><span>/</span><b>${esc(p.n)}</b>
     </nav>
 
     <section class="wrap pd-top">
@@ -290,7 +294,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
       <div class="pd-info">
         <p class="kicker">${esc(doelgroep(p))} &middot; Extrait de parfum</p>
         <h1 class="pd-h1">${esc(p.n)}</h1>
-        ${fams.length ? `<div class="pd-fams">${fams.slice(0, 4).map(f => `<a href="/shop?f=f%3A${f}">${FAM_NAAM[f]}</a>`).join('')}</div>` : ''}
+        ${fams.length ? `<div class="pd-fams">${fams.slice(0, 4).map(f => `<a href="${FAM_COLLECTIE[f] ? '/collectie/' + FAM_COLLECTIE[f] : '/shop?f=f%3A' + f}">${FAM_NAAM[f]}</a>`).join('')}</div>` : ''}
         ${rv.length ? `<a class="pd-stars-link" href="#reviews"><span class="pd-stars">${sterren(gem)}</span> ${rv.length} ${rv.length === 1 ? 'review' : 'reviews'}</a>` : ''}
         ${p.i ? `<p class="pd-lead">${esc(p.i)}</p>` : ''}
 
@@ -409,9 +413,120 @@ function pagina(p, alle, site, reviews, olie, lang) {
   return lang === 'nl' ? html : vertaalHtml(html, lang, paren);
 }
 
+/* ── collectiepagina's: volledig op de server opgebouwd, zodat zoekmachines
+   per geurfamilie en doelgroep een echte pagina met alle geuren zien ── */
+const FAM = k => p => families(p).includes(k);
+const COLLECTIES = [
+  { slug: 'damesparfum', naam: 'Damesparfum', f: p => p.g === 'dames', titel: 'Damesparfum kopen | Extrait de parfum uit Den Bosch',
+    intro: 'Bloemig, zoet, warm of juist fris: alle damesgeuren van Eliandi op een rij. Elke geur is een extrait de parfum, in de winkel aan de Vughterstraat in \'s-Hertogenbosch met de hand gemaakt.' },
+  { slug: 'herenparfum', naam: 'Herenparfum', f: p => p.g === 'heren', titel: 'Herenparfum kopen | Extrait de parfum uit Den Bosch',
+    intro: 'Van frisse dagelijkse geuren tot diepe avondgeuren met oud en amber. Alle herengeuren van Eliandi, als extrait de parfum met de hand gemaakt in \'s-Hertogenbosch.' },
+  { slug: 'unisex-parfum', naam: 'Unisex parfum', f: p => p.g === 'unisex', titel: 'Unisex parfum kopen | Niche extrait de parfum',
+    intro: 'Geuren die niet in een hokje passen. Onze unisex parfums draag je zoals jij dat wilt, als extrait de parfum en met de hand gemaakt in \'s-Hertogenbosch.' },
+  { slug: 'arabische-parfum', naam: 'Arabische parfum', f: p => ['oud', 'amber'].some(k => families(p).includes(k)), titel: 'Arabische parfum kopen | Oud en amber uit Den Bosch',
+    intro: 'Eliandi is geworteld in eeuwenoude Arabische parfumtradities. In deze collectie staan de geuren met oud en warme, oosterse amber, gemaakt in de winkel in \'s-Hertogenbosch.' },
+  { slug: 'oud-parfum', naam: 'Oud parfum', f: FAM('oud'), titel: 'Oud parfum kopen | Extrait de parfum met oud',
+    intro: 'Oud is een van de kostbaarste grondstoffen uit de parfumerie: diep, houtig en warm. Ontdek alle geuren van Eliandi met oud erin.' },
+  { slug: 'amber-parfum', naam: 'Amber parfum', f: FAM('amber'), titel: 'Amber parfum kopen | Warme oosterse geuren',
+    intro: 'Warm, rond en een beetje zoet. Amber geeft een geur diepte. Dit zijn de amberachtige en oosterse geuren van Eliandi.' },
+  { slug: 'vanille-parfum', naam: 'Vanille parfum', f: FAM('vanille'), titel: 'Vanille parfum kopen | Warme extrait de parfum',
+    intro: 'Vanille maakt een geur zacht en verleidelijk. Van romig en licht tot donker en rokerig: alle vanillegeuren van Eliandi.' },
+  { slug: 'zoete-parfum', naam: 'Zoete parfum', f: FAM('gourmand'), titel: 'Zoete parfum kopen | Gourmand extrait de parfum',
+    intro: 'Karamel, honing, koffie en chocolade. Gourmandgeuren ruiken bijna om op te eten. Dit zijn de zoete geuren uit de collectie.' },
+  { slug: 'bloemige-parfum', naam: 'Bloemige parfum', f: FAM('bloemig'), titel: 'Bloemige parfum kopen | Roos, jasmijn en meer',
+    intro: 'Roos, jasmijn, iris en oranjebloesem. Van licht en poederig tot vol en sensueel: alle bloemige geuren van Eliandi.' },
+  { slug: 'frisse-parfum', naam: 'Frisse parfum', f: FAM('fris'), titel: 'Frisse parfum kopen | Citrus en aquatische geuren',
+    intro: 'Citrus, groene noten en zeelucht. Frisse geuren voor overdag, voor warme dagen en voor wie het graag licht houdt.' },
+  { slug: 'kruidige-parfum', naam: 'Kruidige parfum', f: FAM('kruidig'), titel: 'Kruidige parfum kopen | Saffraan, kardemom en wierook',
+    intro: 'Saffraan, kardemom, kaneel en wierook geven een geur karakter. Dit zijn de kruidige geuren van Eliandi.' },
+  { slug: 'houtachtige-parfum', naam: 'Houtachtige parfum', f: FAM('hout'), titel: 'Houtachtige parfum kopen | Ceder, sandelhout, vetiver',
+    intro: 'Ceder, sandelhout en vetiver: rustig, droog en elegant. Alle houtachtige geuren uit de collectie.' },
+  { slug: 'musk-parfum', naam: 'Musk parfum', f: FAM('musk'), titel: 'Musk parfum kopen | Zachte muskusgeuren',
+    intro: 'Zacht, schoon en dicht op de huid. Dit zijn de geuren van Eliandi met musk.' },
+  { slug: 'fruitige-parfum', naam: 'Fruitige parfum', f: FAM('fruitig'), titel: 'Fruitige parfum kopen | Sappige extrait de parfum',
+    intro: 'Framboos, perzik, peer en zwarte bes. Fruitige geuren zijn speels en vrolijk. Dit zijn de fruitige geuren van Eliandi.' },
+  { slug: 'leer-en-rook-parfum', naam: 'Leer en rook', f: FAM('leer'), titel: 'Parfum met leer, rook en tabak',
+    intro: 'Stoer en rokerig: leer, tabak en berkenteer. Voor wie een geur wil die opvalt.' },
+];
+function collectiePagina(c, alle, site) {
+  const lijst = alle.filter(c.f).filter(p => (p.v || []).slice(0, 3).some(Boolean));
+  const url = `${site}/collectie/${c.slug}`;
+  const prijsVan = p => Math.min(...(p.v || []).slice(0, 3).filter(Boolean));
+  const vanaf = lijst.length ? Math.min(...lijst.map(prijsVan)) : 0;
+  const euro = n => '€' + Number(n).toFixed(2).replace('.', ',');
+  const beschrijving = `${c.intro} ${lijst.length} geuren, vanaf ${euro(vanaf)}.`.slice(0, 158);
+  const kaart = p => { const f = FOTOS[p.g] && FOTOS[p.g]['50'];
+    return `<a class="cl-kaart" href="/geur/${slug(p.n)}">${f ? `<img src="/${esc(f.replace(/\.webp$/, '-320.webp'))}" alt="${esc(p.n)}, ${esc(doelgroep(p).toLowerCase())}parfum" width="320" height="400" loading="lazy" decoding="async">` : ''}<b>${esc(p.n)}</b><small>${esc((p.f || []).slice(0, 2).join(' · '))}</small><span>vanaf ${euro(prijsVan(p))}</span></a>`; };
+  const ld = { '@context': 'https://schema.org', '@type': 'CollectionPage', name: c.naam, url, description: beschrijving,
+    mainEntity: { '@type': 'ItemList', numberOfItems: lijst.length, itemListElement: lijst.slice(0, 60).map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${site}/geur/${slug(p.n)}`, name: p.n })) } };
+  const kruimel = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Shop', item: `${site}/shop` }, { '@type': 'ListItem', position: 2, name: c.naam, item: url } ] };
+  return `<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(c.titel)} | Eliandi Parfum</title>
+  <meta name="description" content="${esc(beschrijving)}">
+  <meta property="og:title" content="${esc(c.naam)} | Eliandi Parfum">
+  <meta property="og:description" content="${esc(beschrijving)}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${esc(url)}">
+  <meta property="og:image" content="${site}/assets/parfumeur-ruikt-geurstrip-2.jpg">
+  <meta name="theme-color" content="#141414">
+  <link rel="canonical" href="${esc(url)}">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="preload" href="/assets/fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/playfair-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/cart.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <link rel="stylesheet" href="/css/product.css">
+  <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
+  <script type="application/ld+json">${JSON.stringify(kruimel).replace(/</g, '\\u003c')}</script>
+  <script src="/js/taal.js"></script>
+  <script src="/js/meet.js" defer></script>
+</head>
+<body class="shoppage productpage" data-page="collectie">
+  <header class="qnav sh-nav">
+    <a class="qnav-brand" href="/"><img class="qnav-mark" src="/assets/logo-eliandi-96.webp" width="34" height="42" alt="Eliandi Parfum logo"><span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span></a>
+    <nav class="sh-nav-links" aria-label="Shop"><a href="/shop">Shop</a><a href="/quiz">Geurwijzer</a><a href="/experience">Experience</a></nav>
+    <a class="qnav-exit" href="/shop">Naar de shop</a>
+  </header>
+  <main class="pd-main" id="top">
+    <nav class="wrap pd-crumbs" aria-label="Je bent hier"><a href="/shop">Shop</a><span>/</span><b>${esc(c.naam)}</b></nav>
+    <section class="wrap cl-kop">
+      <h1 class="pd-h1">${esc(c.naam)}</h1>
+      <p class="pd-lead">${esc(c.intro)}</p>
+      <p class="cl-tel">${lijst.length} geuren &middot; vanaf ${euro(vanaf)} &middot; 30, 50 of 100 ml</p>
+    </section>
+    <section class="wrap cl-grid">${lijst.map(kaart).join('')}</section>
+    <section class="wrap cl-meer">
+      <h2 class="sh-h2">Meer collecties</h2>
+      <p>${COLLECTIES.filter(x => x !== c).map(x => `<a href="/collectie/${x.slug}">${esc(x.naam)}</a>`).join('')}</p>
+      <p class="cl-hulp">Twijfel je? <a href="/quiz">De geurwijzer</a> kiest vijf geuren die bij je passen, of kom langs aan de <a href="/#bezoek">Vughterstraat 70 in Den Bosch</a>.</p>
+    </section>
+  </main>
+  <footer class="sh-footer"><p>Eliandi Parfum &middot; Vughterstraat 70, 5211 GK 's-Hertogenbosch &middot; <a href="tel:+31687080256">06 870 802 56</a> &middot; <a href="/verzending-retour">Verzending &amp; retour</a> &middot; <a href="/privacy">Privacy</a></p></footer>
+  <script src="/js/cart.js"></script>
+  <script src="/js/zonder-server.js" defer></script>
+</body>
+</html>`;
+}
+/* een oud PrestaShop-adres (/home/103-333-n083.html) naar de geur van nu */
+function oudNaarNieuw(bestand, alle) {
+  const m = String(bestand).toLowerCase().match(/^\d+-(?:\d+-)?(.+?)(?:\.html)?$/);
+  if (!m) return '/shop';
+  const s = m[1].replace(/^eliandi-/, '');
+  if (s === 'creeer-jouw-parfum') return '/experience';
+  const sheet = OUDE_CODES[s] || OUDE_CODES[s.replace(/^([a-z])(\d{1,2})$/, (x, l, d) => l + d.padStart(3, '0'))];
+  const hit = (sheet && alle.find(p => p.n === sheet || p._o === sheet)) || alle.find(p => slug(p.n) === s) || alle.find(p => slug(p.n).includes(s));
+  return hit ? `/geur/${slug(hit.n)}` : '/shop';
+}
+
 /* ── sitemap met alle geuren in drie talen ── */
 function sitemap(alle, site) {
-  const vast = ['/', '/shop', '/experience', '/quiz', '/privacy'];
+  const vast = ['/', '/shop', '/experience', '/quiz', '/verzending-retour', '/privacy', ...COLLECTIES.map(c => '/collectie/' + c.slug)];
   const alt = loc => ['nl', 'en', 'ar'].map(l => `<xhtml:link rel="alternate" hreflang="${l}" href="${esc(loc + (l === 'nl' ? '' : (loc.includes('?') ? '&' : '?') + 'lang=' + l))}"/>`).join('')
     + `<xhtml:link rel="alternate" hreflang="x-default" href="${esc(loc)}"/>`;
   const urls = vast.map(pad => `<url><loc>${esc(site + pad)}</loc><changefreq>weekly</changefreq><priority>${pad === '/' ? '1.0' : '0.8'}</priority></url>`)
@@ -470,6 +585,13 @@ module.exports = async (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.end(`User-agent: *\nAllow: /\nDisallow: /bedankt\nDisallow: /afrekenen\nDisallow: /beheer\nDisallow: /cadeaubon\nDisallow: /api/\n\nSitemap: ${site}/sitemap.xml\n`);
   }
+  if (u.searchParams.has('oud')) {
+    const alle = await lijst().catch(() => []);
+    res.statusCode = 301;
+    res.setHeader('Location', oudNaarNieuw(u.searchParams.get('oud'), alle));
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.end();
+  }
   if (u.searchParams.get('sitemap') || u.searchParams.get('feed')) {
     try {
       const [alle, bedrijf] = await Promise.all([lijst(), getBedrijf()]);
@@ -482,6 +604,13 @@ module.exports = async (req, res) => {
   try {
     const [alle, reviews, bedrijf] = await Promise.all([lijst(), store.getJson('cms:reviews', {}).catch(() => ({})), getBedrijf()]);
     const olie = { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 };
+    const col = COLLECTIES.find(c => c.slug === u.searchParams.get('collectie'));
+    if (col) {
+      res.statusCode = 200;
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      res.setHeader('Vercel-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=3600');
+      return res.end(collectiePagina(col, alle, site));
+    }
     const p = alle.find(q => slug(q.n) === wanted);
     /* naam gecorrigeerd: de oude link stuurt blijvend door naar de nieuwe */
     const oud = !p && alle.find(q => q._o && slug(q._o) === wanted);

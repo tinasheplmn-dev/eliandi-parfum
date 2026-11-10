@@ -21,7 +21,7 @@ fi
 
 rsync -a --delete \
   --exclude='.git' --exclude='.nojekyll' --exclude='node_modules' \
-  --exclude='tools/__pycache__' \
+  --exclude='tools/__pycache__' --exclude='api/_zoektermen.json' \
   "$BRON/" "$KLOON/"
 touch "$KLOON/.nojekyll"
 

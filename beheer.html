@@ -6,9 +6,8 @@
   <title>Beheer | Eliandi Parfum</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="assets/favicon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" href="/assets/fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/playfair-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/beheer.css">
   <link rel="manifest" href="beheer.webmanifest">
   <meta name="theme-color" content="#14130f">
@@ -23,7 +22,7 @@
   <!-- ══════════ INLOGGEN ══════════ -->
   <main class="bh-login" id="login">
     <form class="bh-login-card" id="loginForm">
-      <img src="assets/logo-eliandi.png" alt="" class="bh-login-logo">
+      <img src="assets/logo-eliandi-320.webp" alt="" class="bh-login-logo">
       <h1>Beheer</h1>
       <p>Eliandi Parfum</p>
       <input type="password" id="loginPw" placeholder="Wachtwoord" autocomplete="current-password" required>
@@ -41,7 +40,7 @@
   <div class="bh-app" id="app" hidden>
     <aside class="bh-side">
       <a class="bh-brand" href="index.html" target="_blank" rel="noopener">
-        <img src="assets/logo-eliandi.png" alt=""><span>Eliandi<br><em>Beheer</em></span>
+        <img src="assets/logo-eliandi-320.webp" alt=""><span>Eliandi<br><em>Beheer</em></span>
       </a>
       <nav class="bh-nav" id="nav">
         <button data-tab="vandaag" class="is-on">Vandaag</button>
@@ -248,7 +247,7 @@
           <label>Prijs 30 ml<input name="v0" inputmode="decimal" placeholder="24,99"></label>
           <label>Prijs 50 ml<input name="v1" inputmode="decimal" placeholder="39,95"></label>
           <label>Prijs 100 ml<input name="v2" inputmode="decimal" placeholder="64,99"></label>
-          <label class="bh-wide">Zoektermen <small>(waar klanten ook op mogen zoeken, bijvoorbeeld de geur waar deze op lijkt; scheid met komma's)</small><input name="tags" placeholder="Bleu de Chanel, blauw, fris"></label>
+          <label class="bh-wide">Verborgen zoektermen <small>(klanten vinden deze geur hierop maar zien ze nooit, bijvoorbeeld het parfum waarop hij gebaseerd is; scheid met komma's)</small><input name="tags" placeholder="Bleu de Chanel, blauw, fris"></label>
           <label class="bh-wide bh-check"><input type="checkbox" name="geenAdvies"> Niet aanbevelen in de geurwijzer</label>
           <div class="bh-wide bh-actions">
             <button class="bh-btn bh-gold" type="submit">Opslaan</button>
@@ -258,7 +257,7 @@
         <div class="bh-list" id="customList"></div>
 
         <h3 class="bh-sub">Bestaande collectie</h3>
-        <p class="bh-hint">Klik op een parfum om alles aan te passen: naam, voor wie, noten, teksten, prijzen, voorraad, zoektermen, video en reviews. Voorraad leeg laten = onbeperkt; 0 = uitverkocht. Zoektermen zijn woorden waarop klanten deze geur ook vinden, zoals de geur waar hij op lijkt; ze zijn niet zichtbaar op de site.</p>
+        <p class="bh-hint">Klik op een parfum om alles aan te passen: naam, voor wie, noten, teksten, prijzen, voorraad, zoektermen, video en reviews. Voorraad leeg laten = onbeperkt; 0 = uitverkocht. <b>Verborgen zoektermen</b> zijn woorden waarop klanten deze geur ook vinden, zoals het parfum waarop hij gebaseerd is of de oude code. Scheid ze met komma's. Ze staan nergens op de site en ook niet in de broncode: zoekt iemand erop, dan ziet die alleen de naam van jouw geur.</p>
         <div class="bh-toolbar">
           <input class="bh-search" id="prodSearch" type="search" placeholder="Zoek op naam of zoekterm…">
           <select class="bh-select" id="prodVoor" aria-label="Voor wie"><option value="">Dames, heren en unisex</option><option value="dames">Dames</option><option value="heren">Heren</option><option value="unisex">Unisex</option></select>

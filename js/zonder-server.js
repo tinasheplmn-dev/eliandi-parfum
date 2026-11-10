@@ -38,7 +38,7 @@
     const card = document.querySelector('#loginForm');
     if (!card) return;
     card.innerHTML = `
-      <img src="assets/logo-eliandi.png" alt="" class="bh-login-logo">
+      <img src="assets/logo-eliandi-320.webp" alt="" class="bh-login-logo">
       <p class="bh-login-kicker">Beheer</p>
       <p class="bh-err" style="color:#f2ecdf;line-height:1.8">Het beheer werkt alleen op de definitieve hosting,
       omdat boekingen en wijzigingen op een server bewaard worden. Op deze voorbeeldlink staan alleen de pagina's.</p>

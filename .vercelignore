@@ -6,3 +6,5 @@ netlify.toml
 .env.*
 .vercel
 .gitignore
+tools
+env.voorbeeld

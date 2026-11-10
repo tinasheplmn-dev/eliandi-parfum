@@ -13,9 +13,8 @@
   <meta name="theme-color" content="#141414">
   <link rel="canonical" href="https://eliandiparfum.com/shop">
   <link rel="icon" type="image/png" href="assets/favicon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" href="/assets/fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/playfair-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/cart.css">
   <link rel="stylesheet" href="css/shop.css">
@@ -26,7 +25,7 @@
 
   <header class="qnav sh-nav">
     <a class="qnav-brand" href="index.html">
-      <img class="qnav-mark" src="assets/logo-eliandi.png" alt="Eliandi Parfum logo">
+      <img class="qnav-mark" src="assets/logo-eliandi-96.webp" width="34" height="42" alt="Eliandi Parfum logo">
       <span class="qnav-wordmark">Eliandi<br><em>Parfum</em></span>
     </a>
     <nav class="sh-nav-links" aria-label="Shop">
@@ -66,7 +65,7 @@
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Unisex</b><small data-count="unisex"></small></span>
           </a>
-          <a class="sh-cat sh-cat-foto" href="#discovery" data-set-open style="--foto:url(/assets/discovery-front.webp)">
+          <a class="sh-cat sh-cat-foto" href="#discovery" data-set-open style="--foto:url(/assets/discovery-front-800.webp)">
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Discovery Set</b><small>Vijf samples van 10 ml. Kies ze zelf, of laat de geurwijzer kiezen</small></span>
           </a>
@@ -74,7 +73,7 @@
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Huisparfum</b><small>Pure Malaki, 400 ml voor je interieur</small></span>
           </a>
-          <a class="sh-cat sh-cat-foto" href="experience.html#cadeau" style="--foto:url(/assets/angelo-werkt.webp)">
+          <a class="sh-cat sh-cat-foto" href="experience.html#cadeau" style="--foto:url(/assets/angelo-werkt-800.webp)">
             <span class="sh-cat-art" aria-hidden="true"></span>
             <span class="sh-cat-body"><b>Cadeau</b><small>Een privé-Experience met Angelo, als bon</small></span>
           </a>
@@ -226,6 +225,28 @@
         <div class="sh-huis-grid" id="shHuis"></div>
       </div>
     </section>
+
+    <!-- ══════════ COLLECTIES ══════════ -->
+    <nav class="sh-collecties wrap" aria-label="Collecties">
+      <h2 class="sh-h2">Kies een collectie</h2>
+      <p>
+        <a href="/collectie/damesparfum">Damesparfum</a>
+        <a href="/collectie/herenparfum">Herenparfum</a>
+        <a href="/collectie/unisex-parfum">Unisex parfum</a>
+        <a href="/collectie/arabische-parfum">Arabische parfum</a>
+        <a href="/collectie/oud-parfum">Oud parfum</a>
+        <a href="/collectie/amber-parfum">Amber parfum</a>
+        <a href="/collectie/vanille-parfum">Vanille parfum</a>
+        <a href="/collectie/zoete-parfum">Zoete parfum</a>
+        <a href="/collectie/bloemige-parfum">Bloemige parfum</a>
+        <a href="/collectie/frisse-parfum">Frisse parfum</a>
+        <a href="/collectie/kruidige-parfum">Kruidige parfum</a>
+        <a href="/collectie/houtachtige-parfum">Houtachtige parfum</a>
+        <a href="/collectie/musk-parfum">Musk parfum</a>
+        <a href="/collectie/fruitige-parfum">Fruitige parfum</a>
+        <a href="/collectie/leer-en-rook-parfum">Leer en rook</a>
+      </p>
+    </nav>
 
     <!-- ══════════ ONDERAAN ══════════ -->
     <section class="sh-foot">

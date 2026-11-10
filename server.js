@@ -49,9 +49,13 @@ http.createServer((req, res) => {
   // productpagina's: /geur/<slug> -> api/geur.js (op Vercel via een rewrite)
   const geur = reqPath.match(/^\/geur\/([a-z0-9-]+)$/);
   if (geur) req.url = '/api/geur?slug=' + geur[1] + (/[?&]lang=(en|ar)\b/.test(req.url) ? '&lang=' + req.url.match(/[?&]lang=(en|ar)\b/)[1] : '');
+  const collectie = reqPath.match(/^\/collectie\/([a-z0-9-]+)$/);
+  if (collectie) req.url = '/api/geur?collectie=' + collectie[1];
+  const oudProduct = reqPath.match(/^\/(?:home|unisex|heren|vrouwen|dames|kinderen)\/([0-9]+-[^/]+?)(?:\.html)?$/);
+  if (oudProduct) req.url = '/api/geur?oud=' + oudProduct[1];
   const xml = { '/sitemap.xml': 'sitemap', '/robots.txt': 'robots', '/feed.xml': 'feed' }[reqPath];
   if (xml) req.url = '/api/geur?' + xml + '=1';
-  const api = (geur || xml ? '/api/geur' : reqPath).match(/^\/api\/([a-z0-9-]+)$/);
+  const api = (geur || xml || collectie || oudProduct ? '/api/geur' : reqPath).match(/^\/api\/([a-z0-9-]+)$/);
   if (api) {
     const file = path.join(ROOT, 'api', api[1] + '.js');
     if (!fs.existsSync(file)) { res.writeHead(404); return res.end('Niet gevonden'); }

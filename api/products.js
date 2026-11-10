@@ -66,6 +66,14 @@ async function geurwijzer(req, res) {
 
 module.exports = async (req, res) => {
   const u = new URL(req.url, 'http://x');
+  /* zoeken op verborgen termen: geeft alleen namen van Eliandi terug */
+  if (req.method === 'GET' && u.searchParams.has('zoek')) {
+    if (await require('./_lib').teVaak(req, 'zoekterm', 300, 600)) return send(res, 429, { namen: [] });
+    const namen = await require('./_catalog').zoekNamen(String(u.searchParams.get('zoek') || '').slice(0, 80)).catch(() => []);
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.setHeader('Vercel-CDN-Cache-Control', 'max-age=120, stale-while-revalidate=300');
+    return send(res, 200, { namen });
+  }
   if (req.method === 'POST') return u.searchParams.get('geurwijzer') ? geurwijzer(req, res) : meten(req, res);
   if (u.searchParams.get('code')) {
     if (await require('./_lib').teVaak(req, 'code', 20, 600)) return send(res, 429, { error: 'Te veel pogingen. Probeer het over tien minuten opnieuw.' });
@@ -86,7 +94,11 @@ module.exports = async (req, res) => {
   res.setHeader('Vercel-CDN-Cache-Control', 'max-age=15, stale-while-revalidate=45');
   const { oliePrijs } = require('./_catalog');
   send(res, 200, {
-    custom, overrides, namen, abonnement, gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,
+    /* zoektermen zijn intern en gaan nooit mee naar de browser */
+    custom: custom.map(({ tags, ...p }) => p),
+    overrides: Object.fromEntries(Object.entries(overrides).map(([n, { tags, ...o }]) => [n, o]).filter(([, o]) => Object.keys(o).length)),
+    namen, abonnement,
+    betaling: require('./_mollie').enabled() ? (require('./_mollie').testModus() ? 'test' : 'live') : 'geen', gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,
     olie: { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 },
     fotos: require('./_fotos.json'),
     huis: huis.filter(h => !h.hidden).map(h => ({ n: h.n, kort: h.kort, img: h.img, tekst: h.tekst, prijs: h.prijs, op: h.stock === 0 })),

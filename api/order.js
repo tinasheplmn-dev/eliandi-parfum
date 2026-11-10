@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
   const phone = clean(c.phone, 30);
   if (!name) return send(res, 400, { error: 'Vul je naam in.' });
   if (!isEmail(email)) return send(res, 400, { error: 'Vul een geldig e-mailadres in.' });
-  if (!isPhone(phone)) return send(res, 400, { error: 'Vul een geldig telefoonnummer in.' });
+  if (phone && !isPhone(phone)) return send(res, 400, { error: 'Vul een geldig telefoonnummer in.' });
 
   const ship = b.delivery === 'ship';
   let address = '';

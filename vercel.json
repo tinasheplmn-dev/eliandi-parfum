@@ -8,6 +8,14 @@
   "trailingSlash": false,
   "rewrites": [
     {
+      "source": "/collectie/:naam",
+      "destination": "/api/geur?collectie=:naam"
+    },
+    {
+      "source": "/:map(home|unisex|heren|vrouwen|dames|kinderen)/:bestand([0-9]+-[^/]+)",
+      "destination": "/api/geur?oud=:bestand"
+    },
+    {
       "source": "/geur/:slug",
       "destination": "/api/geur?slug=:slug"
     },
@@ -119,6 +127,118 @@
     {
       "path": "/api/admin?taak=dagelijks",
       "schedule": "0 9 * * *"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/10-vrouwen",
+      "destination": "/collectie/damesparfum",
+      "statusCode": 301
+    },
+    {
+      "source": "/11-heren",
+      "destination": "/collectie/herenparfum",
+      "statusCode": 301
+    },
+    {
+      "source": "/13-unisex",
+      "destination": "/collectie/unisex-parfum",
+      "statusCode": 301
+    },
+    {
+      "source": "/12-kinderen",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/2-home",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/home",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/aanbiedingen",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/nieuwe-producten",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/best%20verkochte%20producten",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/prijsverlagingen",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/unisex",
+      "destination": "/collectie/unisex-parfum",
+      "statusCode": 301
+    },
+    {
+      "source": "/brand/:x*",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/zoeken",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/winkelwagen",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/bestelling",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/inloggen",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/mijn-account",
+      "destination": "/shop",
+      "statusCode": 301
+    },
+    {
+      "source": "/contact-opnemen",
+      "destination": "/#bezoek",
+      "statusCode": 301
+    },
+    {
+      "source": "/winkels",
+      "destination": "/#bezoek",
+      "statusCode": 301
+    },
+    {
+      "source": "/content/1-levering_retourbeleid",
+      "destination": "/verzending-retour",
+      "statusCode": 301
+    },
+    {
+      "source": "/content/3-gebruiks-voorwaarden",
+      "destination": "/verzending-retour",
+      "statusCode": 301
+    },
+    {
+      "source": "/content/4-over-ons",
+      "destination": "/#verhaal",
+      "statusCode": 301
     }
   ]
 }

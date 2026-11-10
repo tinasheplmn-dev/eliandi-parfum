@@ -46,6 +46,7 @@
     if (disc) { $('coDiscLabel').textContent = `Korting (${korting.code})`; $('coDisc').textContent = '-' + euro(disc); }
     $('coShip').textContent = ship ? euro(ship) : 'Gratis';
     $('coTotal').textContent = euro(naKorting + ship);
+    $('coPayBedrag').textContent = euro(naKorting + ship);
     const stuks = items.reduce((t, i) => t + i.qty, 0);
     $('coMini').hidden = false;
     $('coMiniTekst').textContent = `Jouw bestelling · ${stuks} ${stuks === 1 ? 'artikel' : 'artikelen'}`;
@@ -71,15 +72,36 @@
     else { korting = { code: d.korting.code, pct: d.korting.pct, bedrag: d.korting.bedrag }; msg.textContent = `✦ ${d.korting.label} toegepast.`; msg.classList.remove('is-bad'); }
     render();
   });
+  $('coCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('coCodeBtn').click(); } });
   document.addEventListener('cart:change', render);
+
+  /* meteen zeggen wat er nog mist, bij het juiste veld */
+  function controleer() {
+    const leeg = id => !$(id).value.trim();
+    const fouten = [];
+    if (leeg('coName')) fouten.push(['coName', 'Vul je naam in.']);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($('coEmail').value.trim())) fouten.push(['coEmail', 'Vul een geldig e-mailadres in.']);
+    if ($('coPhone').value.trim() && $('coPhone').value.replace(/\D/g, '').length < 10) fouten.push(['coPhone', 'Vul een geldig telefoonnummer in, of laat het veld leeg.']);
+    if (delivery() === 'ship') {
+      if (leeg('coStreet')) fouten.push(['coStreet', 'Vul je straat en huisnummer in.']);
+      if (leeg('coPostcode') || ($('coCountry').value === 'NL' && !/^\d{4}\s?[A-Za-z]{2}$/.test($('coPostcode').value.trim()))) fouten.push(['coPostcode', 'Die postcode klopt nog niet.']);
+      if (leeg('coCity')) fouten.push(['coCity', 'Vul je plaats in.']);
+    }
+    document.querySelectorAll('#coForm .is-fout').forEach(el => el.classList.remove('is-fout'));
+    fouten.forEach(([id]) => $(id).classList.add('is-fout'));
+    if (fouten.length) { $('coError').textContent = fouten[0][1]; $(fouten[0][0]).focus(); }
+    return !fouten.length;
+  }
+  ['coName', 'coEmail', 'coPhone', 'coStreet', 'coPostcode', 'coCity'].forEach(id => $(id).addEventListener('input', () => $(id).classList.remove('is-fout')));
 
   $('coForm').addEventListener('submit', async e => {
     e.preventDefault();
     const err = $('coError');
     const btn = $('coPay');
     err.textContent = '';
+    if (!controleer()) return;
     btn.disabled = true;
-    btn.textContent = 'Een moment…';
+    $('coPayTekst').textContent = 'Een moment…';
     try {
       const resp = await fetch('/api/order', {
         method: 'POST',
@@ -103,7 +125,7 @@
     } catch (x) {
       err.textContent = x.message;
       btn.disabled = false;
-      btn.textContent = 'Betalen';
+      $('coPayTekst').textContent = 'Betalen';
     }
   });
 

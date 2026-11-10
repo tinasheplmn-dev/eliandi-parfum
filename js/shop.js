@@ -43,7 +43,7 @@
 
   const state = {
     all: [], q: '', sort: 'aanbevolen', shown: PER_PAGE, view: 'grid', reviews: {}, fotos: {},
-    cmp: [], set: [],
+    cmp: [], set: [], alias: new Set(),
     f: { g: new Set(), n: new Set(), k: new Set(), f: new Set(), p: new Set() },
   };
   const DISCOVERY_PRICE = 54.95; // weergave; de server rekent met DISCOVERY_PRICE_CENTS
@@ -51,7 +51,8 @@
   const bewaar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* privémodus */ } };
   const uitverkocht = (p, k) => Boolean(p.stock && p.stock[k] === 0);
   /* productfoto per doelgroep en maat (api/_fotos.json), kleine versie voor de kaart */
-  const fotoVan = (p, k) => { const f = state.fotos[p.g]; const pad = f && f[String(ML[k])]; return pad ? '/' + pad.replace(/\.webp$/, '-600.webp') : ''; };
+  const fotoVan = (p, k) => { const f = state.fotos[p.g]; const pad = f && f[String(ML[k])]; return pad ? '/' + pad.replace(/\.webp$/, '-320.webp') : ''; };
+  const fotoSet = f => `${f} 320w, ${f.replace('-320.webp', '-600.webp')} 600w`;
   const leverbaar = (p, k) => Boolean((p.v || [])[k]) && !uitverkocht(p, k);
   const sterren = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
   const review = p => { const r = state.reviews[p.n] || []; return r.length ? { n: r.length, avg: r.reduce((a, x) => a + Number(x.sterren || 5), 0) / r.length } : null; };
@@ -70,7 +71,7 @@
       const dims = p.d || {};
       const top = Object.entries(dims).sort((a, b) => b[1] - a[1]).map(([k]) => k);
       const tint = TINT[top[0]] || '#8a6a2a';
-      const tekst = strip([p.n, p.tags || '', (p.f || []).join(' '), (p.k || []).join(' '), (p.t || []).join(' '), (p.h || []).join(' '), (p.b || []).join(' '), p.i || '', p.g,
+      const tekst = strip([p.n, (p.f || []).join(' '), (p.k || []).join(' '), (p.t || []).join(' '), (p.h || []).join(' '), (p.b || []).join(' '), p.i || '', p.g,
         top.map(k => FAMILIE_NAAM[k]).join(' ')].join(' '));
       const karakter = new Set();
       if ((p.w || 0) >= 1) karakter.add('warm'); if ((p.w || 0) <= -1) karakter.add('fris');
@@ -95,7 +96,7 @@
     if (f.k.size) for (const k of f.k) if (!p._k.has(k)) return false;
     if (f.f.size) for (const k of f.f) if (!p._fam.has(k)) return false;
     if (f.p.size) { const max = Math.min(...[...f.p].map(Number)); if (!p.p || p.p > max) return false; }
-    if (state.q) {
+    if (state.q && !state.alias.has(p.n)) {
       const woorden = strip(state.q).split(/\s+/).filter(Boolean);
       for (const w of woorden) if (!p._tekst.includes(w)) return false;
     }
@@ -139,7 +140,7 @@
         <span class="sh-card-tag">${esc(p.g)}</span>
         ${p._nieuw ? '<span class="sh-card-tag sh-card-new">Nieuw</span>' : ''}
         ${alleOp ? '<span class="sh-card-tag sh-card-out">Uitverkocht</span>' : ''}
-        ${foto ? `<img class="sh-foto" src="${foto}" alt="${esc(p.n)}" loading="lazy" decoding="async">` : bottle(p._tint)}
+        ${foto ? `<img class="sh-foto" src="${foto}" srcset="${fotoSet(foto)}" sizes="(max-width: 600px) 46vw, 260px" alt="${esc(p.n)}" loading="lazy" decoding="async">` : bottle(p._tint)}
       </a>
       <div class="sh-card-body">
         <h3><a href="/geur/${slugify(p.n)}">${esc(p.n)}</a></h3>
@@ -238,15 +239,37 @@
 
   /* ── gebeurtenissen ── */
   let timer, meetTimer;
+  /* De server kent ook geuren op termen die niet op de site staan; hij geeft
+     alleen namen terug. Eén verzoek per pauze in het typen. */
+  const aliasCache = new Map();
+  const aliasVan = q => {
+    const k = strip(q).trim();
+    if (k.length < 2) return Promise.resolve(new Set());
+    if (!aliasCache.has(k)) aliasCache.set(k, fetch('/api/products?zoek=' + encodeURIComponent(k)).then(r => (r.ok ? r.json() : { namen: [] })).then(d => new Set(d.namen || [])).catch(() => new Set()));
+    return aliasCache.get(k);
+  };
+  let aliasTimer;
+  function haalAlias() {
+    clearTimeout(aliasTimer);
+    const q = state.q;
+    if (q.length < 2) { state.alias = new Set(); return; }
+    aliasTimer = setTimeout(() => aliasVan(q).then(s => {
+      if (q !== state.q) return;
+      state.alias = s;
+      if (s.size) { render(true); if (document.activeElement === $('shQuery')) suggest(); }
+    }), 220);
+  }
   $('shQuery').addEventListener('input', e => {
     state.q = e.target.value.trim();
+    state.alias = new Set();
+    haalAlias();
     $('shClear').hidden = !state.q;
     clearTimeout(timer); timer = setTimeout(() => { render(true); remember(); }, 160);
     /* zoekwoord meten zodra iemand even stopt met typen, met of zonder resultaat */
     clearTimeout(meetTimer);
     meetTimer = setTimeout(() => { if (state.q.length >= 2 && window.EliandiMeet) window.EliandiMeet.event('zoek', { q: state.q, leeg: !state.all.some(matches) }); }, 1500);
   });
-  $('shClear').addEventListener('click', () => { state.q = ''; $('shQuery').value = ''; $('shClear').hidden = true; render(true); remember(); $('shQuery').focus(); });
+  $('shClear').addEventListener('click', () => { state.q = ''; state.alias = new Set(); $('shQuery').value = ''; $('shClear').hidden = true; render(true); remember(); $('shQuery').focus(); });
   $('shSort').addEventListener('change', e => { state.sort = e.target.value; render(true); });
   document.querySelectorAll('.sh-chips').forEach(box => box.addEventListener('click', e => {
     const b = e.target.closest('button'); if (b) toggle(box.dataset.filter, b.dataset.v);
@@ -290,7 +313,7 @@
       const p = state.all.find(x => x.n === kaart.dataset.n);
       const img = kaart.querySelector('.sh-foto');
       const f = p && fotoVan(p, +size.dataset.k);
-      if (img && f && img.getAttribute('src') !== f) img.src = f;
+      if (img && f && img.getAttribute('src') !== f) { img.srcset = fotoSet(f); img.src = f; }
       return;
     }
     const add = e.target.closest('.sh-add');
@@ -321,21 +344,20 @@
     const q = strip(state.q);
     if (q.length < 2) { sug.hidden = true; return; }
     const opNaam = p => strip(p.n).includes(q);
-    const opTerm = p => !opNaam(p) && p.tags && strip(p.tags).includes(q);
-    const namen = state.all.filter(p => opNaam(p) || opTerm(p)).sort((a, b) => (opNaam(b) - opNaam(a)) || (strip(a.n).startsWith(q) === strip(b.n).startsWith(q) ? 0 : strip(a.n).startsWith(q) ? -1 : 1)).slice(0, 6);
-    const term = p => { const t = String(p.tags || '').split(/\s*,\s*/).find(x => strip(x).includes(q)); return t || ''; };
+    const opAlias = p => !opNaam(p) && state.alias.has(p.n);
+    const namen = state.all.filter(p => opNaam(p) || opAlias(p)).sort((a, b) => (opNaam(b) - opNaam(a)) || (strip(a.n).startsWith(q) === strip(b.n).startsWith(q) ? 0 : strip(a.n).startsWith(q) ? -1 : 1)).slice(0, 6);
     const woorden = new Map();
     state.all.forEach(p => [...(p.k || []), ...(p.t || []), ...(p.h || []), ...(p.b || []), ...(p.f || [])].forEach(w => { if (strip(w).includes(q)) woorden.set(strip(w), w); }));
     const termen = [...woorden.values()].slice(0, 4);
     if (!namen.length && !termen.length) { sug.hidden = true; return; }
-    sug.innerHTML = namen.map(p => `<li><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}"><i></i><b>${esc(p.n)}</b><small>${opTerm(p) ? 'Zoekterm: ' + esc(term(p)) : esc(p._top.slice(0, 2).join(' · ')) + (p.p ? ' · vanaf ' + euro(p.p) : '')}</small></a></li>`).join('')
+    sug.innerHTML = namen.map(p => `<li><a href="/geur/${slugify(p.n)}" style="--tint:${p._tint}"><i></i><b>${esc(p.n)}</b><small>${esc(p._top.slice(0, 2).join(' · ')) + (p.p ? ' · vanaf ' + euro(p.p) : '')}</small></a></li>`).join('')
       + termen.map(w => `<li><button type="button" data-term="${esc(w)}"><i class="is-term"></i><b>${esc(w)}</b><small>alle geuren met deze noot</small></button></li>`).join('');
     sug.hidden = false;
   }
   sug.addEventListener('mousedown', e => e.preventDefault());
   sug.addEventListener('click', e => {
     const b = e.target.closest('[data-term]'); if (!b) return;
-    state.q = b.dataset.term; $('shQuery').value = state.q; sug.hidden = true; render(true); remember();
+    state.q = b.dataset.term; state.alias = new Set(); $('shQuery').value = state.q; sug.hidden = true; render(true); remember();
   });
   $('shQuery').addEventListener('blur', () => { sug.hidden = true; });
   $('shQuery').addEventListener('focus', suggest);
@@ -449,10 +471,13 @@
   }
   if (setBox) {
     const q = setBox.querySelector('.sh-set-query'), res = setBox.querySelector('.sh-set-results');
+    let setAlias = new Set(), setTimer;
     q.addEventListener('input', () => {
       const t = strip(q.value.trim());
       if (t.length < 2) { res.innerHTML = ''; return; }
-      res.innerHTML = state.all.filter(p => p._tekst.includes(t)).slice(0, 8).map(p => `<button type="button" data-set="${esc(p.n)}" style="--tint:${p._tint}" ${state.set.includes(p.n) ? 'class="is-on"' : ''}><i></i><b>${esc(p.n)}</b><small>${esc(p._top.slice(0, 2).join(' · '))}</small></button>`).join('') || '<p class="sh-set-none">Geen geur met dat woord.</p>';
+      clearTimeout(setTimer);
+      setTimer = setTimeout(() => aliasVan(t).then(s => { if (strip(q.value.trim()) === t && s.size && [...s].some(n => !setAlias.has(n))) { setAlias = s; q.dispatchEvent(new Event('input')); } }), 220);
+      res.innerHTML = state.all.filter(p => p._tekst.includes(t) || setAlias.has(p.n)).slice(0, 8).map(p => `<button type="button" data-set="${esc(p.n)}" style="--tint:${p._tint}" ${state.set.includes(p.n) ? 'class="is-on"' : ''}><i></i><b>${esc(p.n)}</b><small>${esc(p._top.slice(0, 2).join(' · '))}</small></button>`).join('') || '<p class="sh-set-none">Geen geur met dat woord.</p>';
     });
     setBox.addEventListener('click', e => {
       const b = e.target.closest('[data-set]'); if (b) { toggleSet(b.dataset.set); q.dispatchEvent(new Event('input')); return; }
@@ -512,7 +537,7 @@
   function start(list) {
     state.all = prepare(list);
     tellingen();
-    if (!gestart) { restore(); gestart = true; }
+    if (!gestart) { restore(); haalAlias(); gestart = true; }
     render(true);
     renderRecent(); paintSet(); paintCmpBar();
   }

@@ -199,7 +199,7 @@ async function onPaid(session) {
       } catch (e) { console.error('factuurbijlage', e.message); }
       await mail.bestellingBetaald(o, bijlage);
       await mail.melding(`Nieuwe bestelling van ${o.name} (${mail.euro(o.total)})`, [
-        `${o.name} &middot; ${o.phone} &middot; ${o.email}`,
+        [o.name, o.phone, o.email].filter(Boolean).join(' &middot; '),
         (o.items || []).map(i => `${i.qty}x ${i.name}`).join('<br>'),
         o.delivery === 'ophalen' ? 'Haalt af in de winkel' : `Verzenden naar ${o.address}`,
       ]);

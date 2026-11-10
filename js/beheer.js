@@ -662,7 +662,7 @@
         <div class="bh-base-fields">
           ${['30', '50', '100'].map((ml, i) => `<label>Prijs ${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
           ${['30', '50', '100', 'olie 6', 'olie 13'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
-          <label class="bh-tags">Zoektermen<input name="tags" value="${esc(p.tags || '')}" placeholder="bijv. Bleu de Chanel"></label>
+          <label class="bh-tags">Verborgen zoektermen <small>(klanten zien dit nooit)</small><input name="tags" value="${esc(p.tags || '')}" placeholder="bijv. Dior Sauvage, N083"></label>
           <label class="bh-check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> Verbergen</label>
           <label class="bh-check"><input type="checkbox" name="geenAdvies" ${d.geenAdvies ? 'checked' : ''}> Niet aanbevelen in de geurwijzer</label>
           <button class="bh-btn bh-sm bh-gold" type="submit">Opslaan</button>

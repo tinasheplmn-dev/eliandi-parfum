@@ -15,6 +15,8 @@ const { store, newId } = require('./_lib');
 const API = 'https://api.mollie.com/v2';
 const key = () => process.env.MOLLIE_API_KEY || '';
 const enabled = () => Boolean(key());
+/* een testsleutel neemt bestellingen aan zonder dat er echt betaald wordt */
+const testModus = () => key().startsWith('test_');
 const euro = cents => (cents / 100).toFixed(2);
 
 async function call(path, { method = 'GET', body } = {}) {
@@ -176,6 +178,6 @@ async function getPayment(idOrRef) {
 }
 
 module.exports = {
-  enabled, createPayment, getPayment, normalise,
+  enabled, testModus, createPayment, getPayment, normalise,
   createSubscription, startSubscription, abonnementMogelijk,
 };
