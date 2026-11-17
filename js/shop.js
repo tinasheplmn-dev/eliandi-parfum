@@ -8,8 +8,9 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  /* plek 0-2: extrait 30/50/100 ml, plek 3-4: parfumolie 6/13 ml */
-  const ML = [30, 50, 100, 6, 13];
+  /* plek 0-2: extrait 30/50/100 ml, plek 3-4: parfumolie 6/13 ml, plek 5: autoparfum */
+  const ML = [30, 50, 100, 6, 13, 'auto'];
+  const soortVan = k => (k === 5 ? { kind: 'auto' } : k >= 3 ? { kind: 'olie' } : undefined);
   const PER_PAGE = 24;
   const euro = n => '€' + Number(n).toFixed(2).replace('.', ',');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -155,6 +156,9 @@
           </div>
           ${v[3] || v[4] ? `<div class="sh-sizes sh-sizes-olie" role="radiogroup" aria-label="Parfumolie"><span class="sh-olie-label">Olie</span>
             ${[3, 4].filter(k => v[k]).map(k => `<button type="button" class="sh-size${k === sel ? ' is-on' : ''}" data-k="${k}" ${leverbaar(p, k) ? '' : 'disabled'} role="radio" aria-checked="${k === sel}">${ML[k]} ml<small>${leverbaar(p, k) ? euro(v[k]) : 'uitverkocht'}</small></button>`).join('')}
+          </div>` : ''}
+          ${v[5] ? `<div class="sh-sizes sh-sizes-olie sh-sizes-auto" role="radiogroup" aria-label="Autoparfum"><span class="sh-olie-label">Auto</span>
+            <button type="button" class="sh-size${sel === 5 ? ' is-on' : ''}" data-k="5" ${leverbaar(p, 5) ? '' : 'disabled'} role="radio" aria-checked="${sel === 5}">Autoparfum<small>${leverbaar(p, 5) ? euro(v[5]) : 'uitverkocht'}</small></button>
           </div>` : ''}
           <button type="button" class="btn btn-gold sh-add">In winkelmand</button>
         </div>` : alleOp ? `<p class="sh-ask">Tijdelijk uitverkocht. <a href="https://wa.me/31687080256?text=${encodeURIComponent('Hoi Angelo, wanneer is ' + p.n + ' er weer?')}" target="_blank" rel="noopener">App Angelo</a> voor wanneer hij er weer is.</p>`
@@ -322,7 +326,7 @@
     const p = state.all.find(x => x.n === cardEl.dataset.n);
     const k = Number((cardEl.querySelector('.sh-size.is-on') || {}).dataset?.k ?? -1);
     if (!p || k < 0 || !leverbaar(p, k)) return;
-    window.EliandiCart.add(p.n, ML[k], p.v[k], k >= 3 ? { kind: 'olie' } : undefined);
+    window.EliandiCart.add(p.n, k === 5 ? 0 : ML[k], p.v[k], soortVan(k));
     add.textContent = 'Toegevoegd ✓'; add.classList.add('is-done');
     setTimeout(() => { add.textContent = 'In winkelmand'; add.classList.remove('is-done'); }, 1800);
   });
@@ -561,7 +565,7 @@
     });
     const namen = new Set(lijst.map(p => p.n));
     (d.custom || []).forEach(p => { if (!namen.has(p.n)) lijst.push({ ...p, v: metOlie((p.v || []).slice(0, 3)), custom: true }); });
-    function metOlie(v) { return v.some(Boolean) ? [...v, olie[6] || 0, olie[13] || 0] : v; }
+    function metOlie(v) { return v.some(Boolean) ? [...v, olie[6] || 0, olie[13] || 0, olie.auto || 0] : v; }
     return lijst;
   }
   /* eerst de lichte catalogus (snel op het scherm), daarna de volledige

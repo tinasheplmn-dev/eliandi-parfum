@@ -116,7 +116,7 @@ async function voorraadAfboeken(o) {
   const { SIZES, OLIE } = require('./_catalog');
   let gewijzigd = false;
   (o.items || []).forEach(i => {
-    const plek = i.kind === 'olie' ? OLIE[i.ml] : i.kind ? undefined : SIZES[i.ml];
+    const plek = i.kind === 'olie' ? OLIE[i.ml] : i.kind === 'auto' ? require('./_catalog').AUTO : i.kind ? undefined : SIZES[i.ml];
     if (!i.n || plek === undefined) return;
     const ov = overrides[i.n];
     if (!ov || !Array.isArray(ov.stock) || ov.stock[plek] == null) return;

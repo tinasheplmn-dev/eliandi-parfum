@@ -6,7 +6,7 @@
    Bezorgen of ophalen in de winkel.
    Env: SHIPPING_PRICE_CENTS (standaard 495 = €4,95). */
 const { send, readJson, clean, isEmail, isPhone, createPayment, newId, teVaak, vreemdeHerkomst } = require('./_lib');
-const { priceTable, getOverrides, OLIE, oliePrijs, huisLijst, HUIS_ML } = require('./_catalog');
+const { priceTable, getOverrides, OLIE, oliePrijs, AUTO, autoPrijs, huisLijst, HUIS_ML } = require('./_catalog');
 const { saveOrder } = require('./_records');
 const { getBedrijf } = require('./_factuur');
 const korting = require('./_korting');
@@ -55,6 +55,19 @@ module.exports = async (req, res) => {
         if (h.stock < qty) return send(res, 400, { error: `Van ${name} ${h.stock === 1 ? 'is er nog maar één' : 'zijn er nog maar ' + h.stock}.` });
       }
       lines.push({ name: `${name} · ${HUIS_ML} ml`, n: name, ml: HUIS_ML, kind: 'huis', description: 'Huisparfum', cents: Math.round(h.prijs * 100), qty });
+      continue;
+    }
+
+    /* autoparfum: vaste prijs uit het dashboard, gevuld met de olie van deze geur */
+    if (it.kind === 'auto') {
+      const cents = autoPrijs(bedrijf);
+      if (!cents || !PRICES[name]) return send(res, 400, { error: `${name || 'Een product'} is niet leverbaar als autoparfum.` });
+      const vr = overrides[name] && Array.isArray(overrides[name].stock) ? overrides[name].stock[AUTO] : null;
+      if (vr !== null && vr !== undefined) {
+        if (vr <= 0) return send(res, 400, { error: `${name} als autoparfum is op dit moment uitverkocht.` });
+        if (vr < qty) return send(res, 400, { error: `Van ${name} als autoparfum ${vr === 1 ? 'is er nog maar één' : 'zijn er nog maar ' + vr}.` });
+      }
+      lines.push({ name: `${name} · autoparfum`, n: name, ml: 0, kind: 'auto', description: 'Autoparfum', cents, qty });
       continue;
     }
 

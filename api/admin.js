@@ -328,7 +328,7 @@ const actions = {
     const geurwijzer = (await list('idx:geurwijzer', 'geurwijzer:')).sort((a, b) => b.created - a.created).slice(0, 1000);
     const [notities, overrides, oud, huis] = await Promise.all([store.getJson('cms:klant-notities', {}), getOverrides(), store.getJson('cms:klanten-oud', null), huisLijst()]);
     /* voorraad die bijna op is: 2 of minder (0 = uitverkocht) */
-    const MATEN = ['30 ml', '50 ml', '100 ml', 'olie 6 ml', 'olie 13 ml'];
+    const MATEN = ['30 ml', '50 ml', '100 ml', 'olie 6 ml', 'olie 13 ml', 'autoparfum'];
     const voorraadLaag = [];
     Object.entries(overrides).forEach(([n, o]) => (o.stock || []).forEach((x, i) => { if (x !== null && x !== undefined && x <= 2) voorraadLaag.push({ n, maat: MATEN[i], over: x }); }));
     huis.forEach(h => { if (!h.hidden && h.stock !== null && h.stock <= 2) voorraadLaag.push({ n: h.n, maat: '400 ml', over: h.stock }); });
@@ -513,7 +513,7 @@ const actions = {
     const out = {
       ...cur,
       naam: txt('naam', 80), straat: txt('straat', 80), postcode: txt('postcode', 12), plaats: txt('plaats', 60), land: txt('land', 40),
-      tel: txt('tel', 30), email: txt('email', 120), kvk: txt('kvk', 20), btwNummer: txt('btwNummer', 24), iban: txt('iban', 34),
+      tel: txt('tel', 30), email: txt('email', 120), meldingEmail: txt('meldingEmail', 120), kvk: txt('kvk', 20), btwNummer: txt('btwNummer', 24), iban: txt('iban', 34),
       btwPct: Math.max(0, Math.min(30, parseInt(d.btwPct, 10) || cur.btwPct)),
       factuurPrefix: clean(d.factuurPrefix !== undefined ? d.factuurPrefix : cur.factuurPrefix, 6).toUpperCase() || 'IN',
       factuurStart: cur.factuurStart,
@@ -521,6 +521,8 @@ const actions = {
       olie: d.olie !== undefined ? Boolean(d.olie) && d.olie !== 'nee' : cur.olie,
       olie6: d.olie6 !== undefined ? Math.max(0, Math.round(parseFloat(String(d.olie6).replace(',', '.')) * 100) || 0) : cur.olie6,
       olie13: d.olie13 !== undefined ? Math.max(0, Math.round(parseFloat(String(d.olie13).replace(',', '.')) * 100) || 0) : cur.olie13,
+      auto: d.auto !== undefined ? Boolean(d.auto) && d.auto !== 'nee' : cur.auto,
+      autoPrijs: d.autoPrijs !== undefined ? Math.max(0, Math.round(parseFloat(String(d.autoPrijs).replace(',', '.')) * 100) || 0) : cur.autoPrijs,
     };
     /* volgend factuurnummer: alleen omhoog, anders kan een nummer dubbel voorkomen */
     if (d.factuurVolgend !== undefined && String(d.factuurVolgend).trim() !== '') {
@@ -586,6 +588,27 @@ const actions = {
     return [200, { ok: true }];
   },
 
+  /* ── e-mail: waar meldingen heen gaan, wat er uitging, en een testmail ── */
+  async mailStatus() {
+    const mail = require('./_mail');
+    const uit = { aan: mail.enabled(), van: mail.FROM(), meldingAan: await mail.eigenaar(), log: (await store.getJson('mail:log', [])).slice(0, 40) };
+    if (mail.enabled()) {
+      try {
+        const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY } });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) uit.domeinen = (d.data || []).map(x => ({ naam: x.name, status: x.status }));
+      } catch (e) { /* Resend even niet bereikbaar */ }
+    }
+    return [200, uit];
+  },
+  async mailTest() {
+    const mail = require('./_mail');
+    const naar = await mail.eigenaar();
+    if (!naar) return [400, { error: 'Vul eerst een e-mailadres in bij Bedrijf & facturen.' }];
+    const ok = await mail.melding('Testmail van de website', ['Deze mail komt van eliandiparfum.com. Komt hij aan? Dan krijgen klanten hun bevestigingen ook.']);
+    return ok ? [200, { ok: true, naar }] : [502, { error: 'De testmail kon niet worden verstuurd. Kijk in het logboek eronder wat er misging.' }];
+  },
+
   /* ── producten ── */
   async productsList() {
     await zoektermenInladen();
@@ -644,7 +667,7 @@ const actions = {
     const v = Array.isArray(b.v) ? b.v.slice(0, 3).map(money) : null;
     /* voorraad per maat: leeg = onbeperkt, 0 = uitverkocht */
     /* plekken 0-2: 30/50/100 ml extrait, 3-4: parfumolie 6/13 ml */
-    const stock = Array.isArray(b.stock) ? b.stock.slice(0, 5).map(x => (x === '' || x === null || x === undefined ? null : Math.max(0, parseInt(x, 10) || 0))) : null;
+    const stock = Array.isArray(b.stock) ? b.stock.slice(0, 6).map(x => (x === '' || x === null || x === undefined ? null : Math.max(0, parseInt(x, 10) || 0))) : null;
     const prev = overrides[n] || {};
     /* zoektermen: namen waar klanten op kunnen zoeken, bijvoorbeeld de geur waar deze op lijkt */
     const tags = b.tags !== undefined ? clean(b.tags, 600) : (prev.tags || '');
@@ -780,12 +803,12 @@ async function inzichten(dagen) {
   const omzetExperience = boekingen.reduce((t, b) => t + (b.paid || 0), 0);
 
   /* bestsellers en verdeling per soort */
-  const prod = {}, soort = { '30 ml': 0, '50 ml': 0, '100 ml': 0, 'olie 6 ml': 0, 'olie 13 ml': 0, 'Discovery Set': 0, Huisparfum: 0 };
+  const prod = {}, soort = { '30 ml': 0, '50 ml': 0, '100 ml': 0, 'olie 6 ml': 0, 'olie 13 ml': 0, Autoparfum: 0, 'Discovery Set': 0, Huisparfum: 0 };
   betaald.forEach(o => (o.items || []).forEach(i => {
     const naam = i.kind === 'discovery' ? 'Discovery Set' : (i.n || i.name);
     const p = prod[naam] || (prod[naam] = { n: naam, stuks: 0, omzet: 0 });
     p.stuks += i.qty; p.omzet += i.cents * i.qty;
-    const s = i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'olie' ? `olie ${i.ml} ml` : i.kind === 'huis' ? 'Huisparfum' : `${i.ml} ml`;
+    const s = i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'olie' ? `olie ${i.ml} ml` : i.kind === 'huis' ? 'Huisparfum' : i.kind === 'auto' ? 'Autoparfum' : `${i.ml} ml`;
     if (soort[s] !== undefined) soort[s] += i.qty;
   }));
   const kortingen = {};
@@ -849,7 +872,7 @@ async function exportBestand(soort) {
     }, {
       naam: 'Regels', geld: [4, 5],
       kolommen: ['Datum', 'Bestelling', 'Status', 'Product', 'Stukprijs', 'Regeltotaal', 'Aantal', 'Soort'],
-      rijen: orders.flatMap(o => (o.items || []).map(i => [new Date(o.created), o.id.toUpperCase(), o.status, i.name, i.cents / 100, i.cents * i.qty / 100, i.qty, i.kind === 'olie' ? 'parfumolie' : i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'huis' ? 'huisparfum' : 'extrait'])),
+      rijen: orders.flatMap(o => (o.items || []).map(i => [new Date(o.created), o.id.toUpperCase(), o.status, i.name, i.cents / 100, i.cents * i.qty / 100, i.qty, i.kind === 'olie' ? 'parfumolie' : i.kind === 'discovery' ? 'Discovery Set' : i.kind === 'huis' ? 'huisparfum' : i.kind === 'auto' ? 'autoparfum' : 'extrait'])),
     }]) };
   }
   if (soort === 'export-klanten') {
@@ -873,11 +896,11 @@ async function exportBestand(soort) {
   if (soort === 'export-voorraad') {
     const [overrides, custom] = await Promise.all([getOverrides(), getCustom()]);
     const v = (o, i) => (o && o.stock && o.stock[i] != null ? o.stock[i] : 'onbeperkt');
-    const rijen = Object.entries(await basisPrijzen()).map(([n, prijs]) => { const o = overrides[n] || {}; const p = o.v || prijs; return [n, o.hidden ? 'verborgen' : 'zichtbaar', p[0] || '', p[1] || '', p[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), o.tags || '']; })
-      .concat(custom.map(p => { const o = overrides[p.n] || {}; return [p.n + ' (eigen)', 'zichtbaar', p.v[0] || '', p.v[1] || '', p.v[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), p.tags || '']; }));
+    const rijen = Object.entries(await basisPrijzen()).map(([n, prijs]) => { const o = overrides[n] || {}; const p = o.v || prijs; return [n, o.hidden ? 'verborgen' : 'zichtbaar', p[0] || '', p[1] || '', p[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), v(o, 5), o.tags || '']; })
+      .concat(custom.map(p => { const o = overrides[p.n] || {}; return [p.n + ' (eigen)', 'zichtbaar', p.v[0] || '', p.v[1] || '', p.v[2] || '', v(o, 0), v(o, 1), v(o, 2), v(o, 3), v(o, 4), v(o, 5), p.tags || '']; }));
     return { naam: `eliandi-voorraad-${dag(nu)}.xlsx`, data: maakXlsx([{
       naam: 'Voorraad', geld: [2, 3, 4],
-      kolommen: ['Geur', 'Zichtbaar', 'Prijs 30 ml', 'Prijs 50 ml', 'Prijs 100 ml', 'Voorraad 30', 'Voorraad 50', 'Voorraad 100', 'Voorraad olie 6', 'Voorraad olie 13', 'Zoektermen'],
+      kolommen: ['Geur', 'Zichtbaar', 'Prijs 30 ml', 'Prijs 50 ml', 'Prijs 100 ml', 'Voorraad 30', 'Voorraad 50', 'Voorraad 100', 'Voorraad olie 6', 'Voorraad olie 13', 'Voorraad autoparfum', 'Zoektermen'],
       rijen,
     }]) };
   }
@@ -934,7 +957,7 @@ async function administratie(jaar, maand, metPdf = false) {
    eerste niet, dan probeert de dagelijkse taak het de twee dagen erna opnieuw. */
 async function maandmail(nu) {
   if (Number(dag(nu).slice(8, 10)) > 3) return false;
-  const naar = process.env.MAIL_OWNER || process.env.MAIL_BCC;
+  const naar = await require('./_mail').eigenaar();
   if (!naar) return false;
   const [j, m] = dag(nu).split('-').map(Number);
   const jaar = m === 1 ? j - 1 : j, maand = m === 1 ? 12 : m - 1;
@@ -984,10 +1007,10 @@ async function dagelijks() {
   return { herinneringen: verstuurd, videosOpgeruimd, administratieGemaild };
 }
 
-const LEZEN = new Set(['overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'productDetail', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
+const LEZEN = new Set(['mailStatus', 'overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'productDetail', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
 const ACTIE_NAAM = {
   orderStatus: 'status bestelling', orderNote: 'notitie bestelling', creditnota: 'creditnota gemaakt', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
-  productOverride: 'product aangepast', huisSave: 'huisparfum aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
+ mailTest: 'testmail verstuurd', productOverride: 'product aangepast', huisSave: 'huisparfum aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
   kortingSave: 'kortingscode opgeslagen', productHernoem: 'naam geur gewijzigd', tegoedInnen: 'flacontegoed ingewisseld in de winkel', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
   reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
   bookingCancel: 'boeking geannuleerd', bookingAdd: 'boeking toegevoegd', bookingDone: 'boeking afgerond', recordDelete: 'verwijderd',

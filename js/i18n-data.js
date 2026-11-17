@@ -346,6 +346,12 @@ window.ELIANDI_I18N = [
   ["Parfumolie", "Perfume oil", "زيت عطري"],
   ["Of als parfumolie", "Or as perfume oil", "أو كزيت عطري"],
   /* afrekenen, verzending, collecties */
+  ["Autoparfum", "Car perfume", "عطر السيارة"],
+  ["Auto", "Car", "سيارة"],
+  ["Of als autoparfum", "Or as car perfume", "أو كعطر للسيارة"],
+  ["jouw geur, ook onderweg", "your scent, on the road too", "عطرك، أثناء التنقل أيضًا"],
+  ["Over de autoparfum", "About the car perfume", "عن عطر السيارة"],
+  ["autoparfum · parfumolie", "car perfume · perfume oil", "عطر السيارة · زيت عطري"],
   ["Heb je een kortingscode?", "Do you have a discount code?", "هل لديك رمز خصم؟"],
   ["Telefoonnummer (optioneel)", "Phone number (optional)", "رقم الهاتف (اختياري)"],
   ["Vul je naam in.", "Please enter your name.", "يرجى إدخال اسمك."],

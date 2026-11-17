@@ -30,6 +30,8 @@ const BEDRIJF_STANDAARD = {
   olie: true,              // parfumolie aanbieden bij elke geur met een prijs
   olie6: 995,              // parfumolie 6 ml (centen)
   olie13: 1495,            // parfumolie 13 ml (centen)
+  auto: true,              // autoparfum aanbieden bij elke geur met een prijs
+  autoPrijs: 1495,         // autoparfum (centen)
 };
 
 async function getBedrijf() {

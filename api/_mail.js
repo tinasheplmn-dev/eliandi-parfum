@@ -14,12 +14,34 @@
    we niet waarmaken.
    ═══════════════════════════════════════════════════════════════ */
 const KEY = () => process.env.RESEND_API_KEY || '';
-const FROM = () => process.env.MAIL_FROM || 'Eliandi Parfum <info@eliandiparfum.com>';
+/* Het testadres van Resend (…@resend.dev) mag alleen naar de eigenaar van
+   het Resend-account mailen; klanten krijgen dan niets. Ons eigen domein is
+   bij Resend geverifieerd, dus we versturen altijd vanaf eliandiparfum.com. */
+const STANDAARD_FROM = 'Eliandi Parfum <info@eliandiparfum.com>';
+const FROM = () => { const f = String(process.env.MAIL_FROM || '').trim(); return f && !/@resend\.dev\b/i.test(f) ? f : STANDAARD_FROM; };
 const BCC = () => process.env.MAIL_BCC || '';
 /* Antwoordt een klant op de bevestiging, dan moet dat in een mailbox
    landen die echt bestaat. Verstuur je vanaf een domein zonder mail,
    zet dan MAIL_REPLY_TO op het echte adres van Angelo. */
-const REPLY = () => process.env.MAIL_REPLY_TO || process.env.MAIL_OWNER || '';
+const REPLY = () => process.env.MAIL_REPLY_TO || '';
+/* Angelo: meldingen gaan naar het adres dat hij in Beheer > Bedrijf invult
+   (anders het e-mailadres van de zaak), niet naar een adres in de serverinstellingen */
+async function eigenaar() {
+  try {
+    const b = await require('./_factuur').getBedrijf();
+    return String(b.meldingEmail || b.email || '').trim() || process.env.MAIL_OWNER || BCC();
+  } catch (e) { return process.env.MAIL_OWNER || BCC(); }
+}
+/* logboek in het dashboard: wat er uitging en wat niet, adressen afgeschermd */
+const verberg = a => String(a || '').replace(/^(.)[^@]*(@.*)$/, '$1***$2');
+async function logboek(regel) {
+  try {
+    const { store } = require('./_lib');
+    const lijst = await store.getJson('mail:log', []);
+    lijst.unshift({ t: Date.now(), ...regel });
+    await store.setJson('mail:log', lijst.slice(0, 100));
+  } catch (e) { /* logboek is bijzaak */ }
+}
 const enabled = () => Boolean(KEY());
 
 const SITE = () => (process.env.SITE_URL || 'https://eliandiparfum.com').replace(/\/$/, '');
@@ -75,6 +97,7 @@ function omslag({ kop, kicker, regels, knop, naschrift }) {
 /* ── Versturen ── */
 async function verstuur({ to, subject, html, text, attachments, replyTo }) {
   if (!enabled()) { console.log('mail overgeslagen (geen RESEND_API_KEY):', subject, '->', to); return false; }
+  const antwoord = replyTo || REPLY() || await eigenaar();
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -82,15 +105,17 @@ async function verstuur({ to, subject, html, text, attachments, replyTo }) {
       body: JSON.stringify({
         from: FROM(), to: [to], subject, html, text,
         ...(BCC() ? { bcc: [BCC()] } : {}),
-        ...((replyTo || REPLY()) ? { reply_to: replyTo || REPLY() } : {}),
+        ...(antwoord ? { reply_to: antwoord } : {}),
         ...(attachments ? { attachments } : {}),
       }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.message || ('status ' + r.status));
+    await logboek({ aan: verberg(to), onderwerp: String(subject).slice(0, 120), ok: true });
     return true;
   } catch (e) {
     console.error('mail mislukt:', subject, e.message);
+    await logboek({ aan: verberg(to), onderwerp: String(subject).slice(0, 120), ok: false, fout: String(e.message).replace(/[^\s@]+@[^\s@]+/g, '…').slice(0, 200) });
     return false;
   }
 }
@@ -297,7 +322,7 @@ async function winkelmandHerinnering(o) {
 
 /* Korte melding aan Angelo zelf, zodat hij het ook ziet zonder dashboard. */
 async function melding(onderwerp, regels) {
-  const naar = process.env.MAIL_OWNER || BCC();
+  const naar = await eigenaar();
   if (!naar) return false;
   /* klantinvoer (naam, opmerking) mag nooit als HTML in de mail belanden;
      alleen de regelafbreking die we zelf meegeven blijft staan */
@@ -313,6 +338,6 @@ async function melding(onderwerp, regels) {
 }
 
 module.exports = {
-  enabled, verstuur, boekingBevestigd, boekingGeannuleerd, creditnotaVerstuurd,
+  enabled, verstuur, eigenaar, FROM, boekingBevestigd, boekingGeannuleerd, creditnotaVerstuurd,
   bestellingBetaald, bestellingStatus, bonBetaald, winkelmandHerinnering, melding, datum, euro, gezelschap, personen,
 };

@@ -11,7 +11,7 @@
    sterkste geurfamilie. */
 const fs = require('fs');
 const path = require('path');
-const { getCustom, getOverrides, oliePrijs, getNamen, hernoem, catalogus, metInhoud } = require('./_catalog');
+const { getCustom, getOverrides, oliePrijs, autoPrijs, getNamen, hernoem, catalogus, metInhoud } = require('./_catalog');
 const { getBedrijf } = require('./_factuur');
 const { store } = require('./_lib');
 
@@ -155,9 +155,9 @@ async function lijst() {
   return uit.map(p => (videos && videos[p.n] ? { ...p, video: videos[p.n] } : p));
 }
 
-/* maten: plek 0-2 extrait, 3-4 parfumolie */
-const MATEN = [30, 50, 100, 6, 13];
-const label = i => (i >= 3 ? `${MATEN[i]} ml olie` : `${MATEN[i]} ml`);
+/* maten: plek 0-2 extrait, 3-4 parfumolie, 5 autoparfum */
+const MATEN = [30, 50, 100, 6, 13, 'auto'];
+const label = i => (i === 5 ? 'autoparfum' : i >= 3 ? `${MATEN[i]} ml olie` : `${MATEN[i]} ml`);
 
 function pagina(p, alle, site, reviews, olie, lang) {
   lang = lang || 'nl';
@@ -167,7 +167,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
   const extrait = (p.v || []).slice(0, 3);
   const heeftExtrait = extrait.some(Boolean);
   /* parfumolie bij elke geur met een prijs, tegen de vaste prijs uit het dashboard */
-  const prijzen = [...extrait, heeftExtrait ? olie[6] : 0, heeftExtrait ? olie[13] : 0];
+  const prijzen = [...extrait, heeftExtrait ? olie[6] : 0, heeftExtrait ? olie[13] : 0, heeftExtrait ? olie.auto || 0 : 0];
   const op = i => Boolean(p.stock && p.stock[i] === 0);
   /* een uitverkochte maat telt als niet leverbaar */
   const v = prijzen.map((x, i) => (op(i) ? 0 : x));
@@ -213,7 +213,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
     description: ldOmschrijving, brand: { '@type': 'Brand', name: 'Eliandi Parfum' }, url,
     image: [...new Set([0, 1, 2].map(fotoAbs))],
     category: 'Parfum > Extrait de parfum',
-    ...(prijzen.some(Boolean) ? { offers: MATEN.map((ml, i) => (prijzen[i] ? {
+    ...(prijzen.some(Boolean) ? { offers: MATEN.map((ml, i) => (prijzen[i] && i < 5 ? {
       '@type': 'Offer', name: label(i), sku: `${slug(p.n)}-${i >= 3 ? 'olie-' : ''}${ml}`, price: Number(prijzen[i]).toFixed(2), priceCurrency: 'EUR', url,
       availability: op(i) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock', itemCondition: 'https://schema.org/NewCondition',
       seller: { '@type': 'Organization', name: 'Eliandi Parfum' }, shippingDetails: [verzending('NL'), verzending('BE')],
@@ -284,8 +284,8 @@ function pagina(p, alle, site, reviews, olie, lang) {
           <span class="pd-stage-ml" id="pdStageMl">${gekozen >= 0 ? label(gekozen) : ''}</span>
         </div>
         <div class="pd-thumbs${heeftExtrait ? ' has-olie' : ''}${p.video ? ' has-video' : ''}" role="list">
-          ${MATEN.map((ml, i) => (i >= 3 && !heeftExtrait) || (i === 4) ? '' : `<button type="button" class="pd-thumb${i === gekozen || (i === 3 && gekozen === 4) ? ' is-on' : ''}" data-k="${i}" ${v[i] || (i === 3 && v[4]) ? '' : 'disabled'} role="listitem" aria-label="${i >= 3 ? 'Parfumolie' : ml + ' ml'}">
-            ${fotoVan(i === 3 && gekozen === 4 ? 4 : i) ? `<img src="/${esc(fotoVan(i === 3 && gekozen === 4 ? 4 : i).replace(/\.webp$/, '-600.webp'))}" alt="" loading="lazy">` : bottle(tint, 'klein' + i)}<span>${i >= 3 ? 'Olie' : ml + ' ml'}</span></button>`).join('')}
+          ${MATEN.map((ml, i) => (i >= 3 && !heeftExtrait) || (i === 4) || (i === 5 && !prijzen[5]) ? '' : `<button type="button" class="pd-thumb${i === gekozen || (i === 3 && gekozen === 4) ? ' is-on' : ''}" data-k="${i}" ${v[i] || (i === 3 && v[4]) ? '' : 'disabled'} role="listitem" aria-label="${i === 5 ? 'Autoparfum' : i >= 3 ? 'Parfumolie' : ml + ' ml'}">
+            ${fotoVan(i === 3 && gekozen === 4 ? 4 : i) ? `<img src="/${esc(fotoVan(i === 3 && gekozen === 4 ? 4 : i).replace(/\.webp$/, '-600.webp'))}" alt="" loading="lazy">` : bottle(tint, 'klein' + i)}<span>${i === 5 ? 'Auto' : i >= 3 ? 'Olie' : ml + ' ml'}</span></button>`).join('')}
           ${p.video ? `<button type="button" class="pd-thumb pd-thumb-video" id="pdVideoKnop" role="listitem" aria-label="Video bekijken">${p.video.poster ? `<img src="${esc(p.video.poster)}" alt="" loading="lazy">` : ''}<i class="pd-play" aria-hidden="true"></i><span>Video</span></button>` : ''}
         </div>
         <p class="pd-gallery-note">Elke flacon wordt in de winkel gevuld en met de hand afgewerkt. De verpakking verschilt per geur.</p>
@@ -307,6 +307,17 @@ function pagina(p, alle, site, reviews, olie, lang) {
           <div class="pd-sizes pd-sizes-olie" role="radiogroup" aria-label="Parfumolie">
             ${[3, 4].filter(i => prijzen[i]).map(i => `<button type="button" class="pd-size${i === gekozen ? ' is-on' : ''}" data-k="${i}" ${v[i] ? '' : 'disabled'} role="radio" aria-checked="${i === gekozen}"><b>${MATEN[i]} ml</b><span>${v[i] ? euro(v[i]) : 'uitverkocht'}</span></button>`).join('')}
           </div>` : ''}
+          ${prijzen[5] ? `<p class="pd-label pd-label-olie">Of als autoparfum <small>jouw geur, ook onderweg</small></p>
+          <div class="pd-sizes pd-sizes-olie" role="radiogroup" aria-label="Autoparfum">
+            <button type="button" class="pd-size${gekozen === 5 ? ' is-on' : ''}" data-k="5" ${v[5] ? '' : 'disabled'} role="radio" aria-checked="${gekozen === 5}"><b>Autoparfum</b><span>${v[5] ? euro(v[5]) : 'uitverkocht'}</span></button>
+          </div>
+          <details class="pd-auto">
+            <summary>Over de autoparfum</summary>
+            <p><b>Your Favourite Fragrance. Your Car. Your Choice.</b></p>
+            <p>Waarom genoegen nemen met een standaard autogeurtje als je jouw favoriete parfum ook in je auto kunt beleven? Bij Eliandi Parfum kies je zelf de geur die bij jou past: ${esc(p.n)} gaat als pure parfumolie in deze stijlvolle autoparfumhouder.</p>
+            <ul><li>100% pure parfumolie</li><li>Niet verdund</li><li>Geen kant-en-klare standaardgeuren</li><li>Jouw favoriete geur, speciaal voor jouw auto</li><li>Net als je parfum bij te vullen in de winkel</li></ul>
+            <p>Geen gewone luchtverfrisser, maar jouw eigen geurbeleving onderweg. <em>Make Every Journey Personal.</em></p>
+          </details>` : ''}
           <div class="pd-price-row">
             <p class="pd-price" id="pdPrice">${gekozen >= 0 ? euro(v[gekozen]) : ''}</p>
             <button type="button" class="btn btn-gold pd-add" id="pdAdd">In winkelmand</button>
@@ -603,7 +614,7 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   try {
     const [alle, reviews, bedrijf] = await Promise.all([lijst(), store.getJson('cms:reviews', {}).catch(() => ({})), getBedrijf()]);
-    const olie = { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 };
+    const olie = { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100, auto: autoPrijs(bedrijf) / 100 };
     const col = COLLECTIES.find(c => c.slug === u.searchParams.get('collectie'));
     if (col) {
       res.statusCode = 200;

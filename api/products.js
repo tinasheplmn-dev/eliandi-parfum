@@ -99,7 +99,7 @@ module.exports = async (req, res) => {
     overrides: Object.fromEntries(Object.entries(overrides).map(([n, { tags, ...o }]) => [n, o]).filter(([, o]) => Object.keys(o).length)),
     namen, abonnement,
     betaling: require('./_mollie').enabled() ? (require('./_mollie').testModus() ? 'test' : 'live') : 'geen', gratisVanaf: Number(bedrijf.gratisVanaf) || 0, reviews,
-    olie: { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100 },
+    olie: { 6: oliePrijs(bedrijf, 6) / 100, 13: oliePrijs(bedrijf, 13) / 100, auto: require('./_catalog').autoPrijs(bedrijf) / 100 },
     fotos: require('./_fotos.json'),
     huis: huis.filter(h => !h.hidden).map(h => ({ n: h.n, kort: h.kort, img: h.img, tekst: h.tekst, prijs: h.prijs, op: h.stock === 0 })),
   });

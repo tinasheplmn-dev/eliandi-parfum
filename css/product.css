@@ -208,3 +208,10 @@
 .cl-hulp { color: var(--tekst); }
 .cl-hulp a { color: var(--goud-glans); }
 @media (max-width: 480px) { .cl-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
+
+/* autoparfum */
+.pd-auto { margin: 4px 0 14px; font-size: .86rem; line-height: 1.65; color: var(--tekst); }
+.pd-auto summary { cursor: pointer; color: var(--goud-licht); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.pd-auto p, .pd-auto ul { margin: 10px 0 0; }
+.pd-auto ul { padding-left: 18px; }
+.pd-auto b { color: var(--ivoor); font-weight: 500; }

@@ -216,6 +216,9 @@ async function zoekNamen(vraag) {
    (ook in de voorraad-array per product). */
 const SIZES = { 30: 0, 50: 1, 100: 2 };
 const OLIE = { 6: 3, 13: 4 };
+/* autoparfum: hangertje voor in de auto, gevuld met de parfumolie van de geur; plek 5 */
+const AUTO = 5;
+const autoPrijs = bedrijf => (bedrijf && bedrijf.auto !== false ? Number(bedrijf.autoPrijs) || 0 : 0);
 const oliePrijs = (bedrijf, ml) => (bedrijf && bedrijf.olie !== false ? Number(bedrijf[ml === 6 ? 'olie6' : 'olie13']) || 0 : 0);
 
 /* Huisparfum (Pure Malaki, 400 ml): een vaste lijst in api/_huisparfum.json,
@@ -231,4 +234,4 @@ async function huisLijst() {
   });
 }
 
-module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite, HUISPARFUM, HUIS_ML, huisLijst, catalogus, INHOUD, metInhoud, profiel, zoektermenInladen, zoekNamen };
+module.exports = { analyze, getCustom, getOverrides, priceTable, BASE_PRICES, SIZES, OLIE, oliePrijs, AUTO, autoPrijs, getNamen, hernoem, basisPrijzen, verhuisNaam, opSite, HUISPARFUM, HUIS_ML, huisLijst, catalogus, INHOUD, metInhoud, profiel, zoektermenInladen, zoekNamen };

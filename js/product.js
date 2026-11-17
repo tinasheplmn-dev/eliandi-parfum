@@ -3,8 +3,8 @@
   'use strict';
   const P = window.PRODUCT;
   if (!P) return;
-  const ML = [30, 50, 100, 6, 13];
-  const LABEL = i => (i >= 3 ? `${ML[i]} ml olie` : `${ML[i]} ml`);
+  const ML = [30, 50, 100, 6, 13, 'auto'];
+  const LABEL = i => (i === 5 ? 'autoparfum' : i >= 3 ? `${ML[i]} ml olie` : `${ML[i]} ml`);
   const euro = n => '€' + Number(n).toFixed(2).replace('.', ',');
   const $ = id => document.getElementById(id);
   let k = [...document.querySelectorAll('.pd-size')].findIndex(b => b.classList.contains('is-on'));
@@ -18,7 +18,7 @@
     document.querySelectorAll('.pd-thumb').forEach(b => b.classList.toggle('is-on', +b.dataset.k === i || (+b.dataset.k === 3 && i === 4)));
     /* de olie-miniatuur toont de gekozen maat: 6 ml zwarte dop, 13 ml gouden dop */
     const olieMini = document.querySelector('.pd-thumb[data-k="3"] img');
-    if (olieMini && i >= 3 && P.fotos[i]) olieMini.src = '/' + P.fotos[i].replace(/\.webp$/, '-600.webp');
+    if (olieMini && (i === 3 || i === 4) && P.fotos[i]) olieMini.src = '/' + P.fotos[i].replace(/\.webp$/, '-600.webp');
     if ($('pdPrice')) $('pdPrice').textContent = euro(P.v[i]);
     if ($('pdStageMl')) $('pdStageMl').textContent = LABEL(i);
     const stage = $('pdStage');
@@ -65,7 +65,7 @@
   const add = $('pdAdd');
   if (add) add.addEventListener('click', () => {
     if (k < 0 || !window.EliandiCart) return;
-    window.EliandiCart.add(P.n, ML[k], P.v[k], k >= 3 ? { kind: 'olie' } : undefined);
+    window.EliandiCart.add(P.n, k === 5 ? 0 : ML[k], P.v[k], k === 5 ? { kind: 'auto' } : k >= 3 ? { kind: 'olie' } : undefined);
     add.textContent = 'Toegevoegd ✓'; add.classList.add('is-done');
     setTimeout(() => { add.textContent = 'In winkelmand'; add.classList.remove('is-done'); }, 1800);
   });

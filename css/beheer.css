@@ -325,3 +325,9 @@ button.bh-regel { cursor: pointer; } button.bh-regel:hover b { color: var(--glan
   .bh-rij-prijs { grid-column: 1; } .bh-rij-pillen { grid-column: 1 / -1; justify-content: flex-start; }
   .bh-breed2 { grid-column: auto; }
 }
+
+.bh-maillog { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; font-size: 13px; }
+.bh-maillog li { padding: 6px 10px; background: var(--paneel); border: 1px solid var(--rand); }
+.bh-maillog li span { color: var(--dim); margin-right: 6px; }
+.bh-maillog li small { color: var(--dim); }
+.bh-maillog li.is-fout { border-color: #b4453c; }

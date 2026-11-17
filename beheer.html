@@ -297,8 +297,17 @@
           <label>Parfumolie aanbieden<select name="olie"><option value="ja">Ja</option><option value="nee">Nee</option></select></label>
           <label>Prijs olie 6 ml (€)<input name="olie6" inputmode="decimal" placeholder="9,95"></label>
           <label>Prijs olie 13 ml (€)<input name="olie13" inputmode="decimal" placeholder="14,95"></label>
+          <p class="bh-wide bh-hint bh-hint-kop"><b>Autoparfum</b> wordt bij elke geur met een prijs aangeboden: de parfumolie van die geur in de autoparfumhouder. Voorraad per geur stel je in bij Producten.</p>
+          <label>Autoparfum aanbieden<select name="auto"><option value="ja">Ja</option><option value="nee">Nee</option></select></label>
+          <label>Prijs autoparfum (€)<input name="autoPrijs" inputmode="decimal" placeholder="14,95"></label>
+          <p class="bh-wide bh-hint bh-hint-kop"><b>E-mail.</b> Meldingen van nieuwe bestellingen, boekingen en cadeaubonnen gaan naar dit adres. Leeg = het e-mailadres hierboven.</p>
+          <label class="bh-wide">Meldingen sturen naar<input name="meldingEmail" type="email" placeholder="bijvoorbeeld je eigen Gmail"></label>
           <div class="bh-wide bh-actions"><button class="bh-btn bh-gold" type="submit">Opslaan</button></div>
         </form>
+        <h3 class="bh-sub">E-mail</h3>
+        <p class="bh-hint" id="mailStatus">Even kijken…</p>
+        <p><button type="button" class="bh-btn bh-sm" id="mailTestKnop">Stuur een testmail naar mijzelf</button></p>
+        <ul class="bh-maillog" id="mailLog"></ul>
       </section>
 
       <!-- Site bewerken -->

@@ -540,7 +540,25 @@
     f.olie.value = bedrijf.olie === false ? 'nee' : 'ja';
     f.olie6.value = fmt((bedrijf.olie6 || 0) / 100);
     f.olie13.value = fmt((bedrijf.olie13 || 0) / 100);
+    f.auto.value = bedrijf.auto === false ? 'nee' : 'ja';
+    f.autoPrijs.value = fmt((bedrijf.autoPrijs || 0) / 100);
+    f.meldingEmail.value = bedrijf.meldingEmail || '';
+    laadMail();
   }
+  /* e-mail: waar meldingen heen gaan en wat er de laatste tijd uitging */
+  async function laadMail() {
+    try {
+      const m = await api({ action: 'mailStatus' });
+      const dom = (m.domeinen || []).map(d => `${esc(d.naam)}: ${d.status === 'verified' ? 'goedgekeurd' : esc(d.status)}`).join(', ');
+      $('mailStatus').innerHTML = !m.aan ? '<b>E-mail staat uit</b>: er is geen Resend-sleutel ingesteld.'
+        : `Mails gaan uit vanaf <b>${esc(m.van)}</b>${dom ? ` (domein ${dom})` : ''}. Meldingen over bestellingen en boekingen gaan naar <b>${esc(m.meldingAan || 'niemand')}</b>.`;
+      $('mailLog').innerHTML = (m.log || []).length ? m.log.map(r => `<li class="${r.ok ? '' : 'is-fout'}"><span>${date(r.t)}</span> ${r.ok ? '✓' : '✗'} ${esc(r.onderwerp)} <small>aan ${esc(r.aan)}${r.fout ? ' · ' + esc(r.fout) : ''}</small></li>`).join('') : '<li>Nog geen mails verstuurd sinds deze controle erin zit.</li>';
+    } catch (x) { $('mailStatus').textContent = x.message; }
+  }
+  $('mailTestKnop').addEventListener('click', async () => {
+    try { const r = await api({ action: 'mailTest' }); toast('Testmail verstuurd naar ' + r.naar); } catch (x) { toast(x.message, true); }
+    laadMail();
+  });
   $('bedrijfForm').addEventListener('submit', async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
@@ -661,7 +679,7 @@
         </div>
         <div class="bh-base-fields">
           ${['30', '50', '100'].map((ml, i) => `<label>Prijs ${ml} ml<input name="v${i}" value="${fmt(p.v[i])}" inputmode="decimal"></label>`).join('')}
-          ${['30', '50', '100', 'olie 6', 'olie 13'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
+          ${['30', '50', '100', 'olie 6', 'olie 13', 'auto'].map((ml, i) => `<label>Voorraad ${ml}<input name="s${i}" value="${p.stock && p.stock[i] != null ? p.stock[i] : ''}" inputmode="numeric" placeholder="∞"></label>`).join('')}
           <label class="bh-tags">Verborgen zoektermen <small>(klanten zien dit nooit)</small><input name="tags" value="${esc(p.tags || '')}" placeholder="bijv. Dior Sauvage, N083"></label>
           <label class="bh-check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> Verbergen</label>
           <label class="bh-check"><input type="checkbox" name="geenAdvies" ${d.geenAdvies ? 'checked' : ''}> Niet aanbevelen in de geurwijzer</label>
@@ -741,7 +759,7 @@
         if (!confirm(`Naam wijzigen van "${n}" naar "${naam}"?\n\nPrijzen, voorraad, reviews en video gaan mee, en de oude link stuurt door naar de nieuwe.`)) return;
         n = (await api({ action: 'productHernoem', n, nieuw: naam })).n;
       }
-      await api({ action: 'productOverride', n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4], tags: d.tags || '', hidden: Boolean(d.hidden),
+      await api({ action: 'productOverride', n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4, d.s5], tags: d.tags || '', hidden: Boolean(d.hidden),
         inhoud: { g: d.voor, f: d.f, k: d.k, t: d.t, h: d.h, b: d.b, i: d.i, st: d.st, geenAdvies: Boolean(d.geenAdvies) } });
       toast(n !== f.dataset.n ? 'Naam en gegevens opgeslagen' : 'Opgeslagen');
       state.products = await api({ action: 'productsList' });
