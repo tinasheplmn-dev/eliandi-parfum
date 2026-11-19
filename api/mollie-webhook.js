@@ -23,7 +23,8 @@ module.exports = async (req, res) => {
     const p = await getPayment(id);
     if (!p) return send(res, 200, { ok: true });
 
-    if (p.status === 'paid') await onPaid(p);
+    if (p.status === 'authorized') await require('./_mollie').capture(p.id);
+    if (p.status === 'paid' || p.status === 'authorized') await onPaid(p);
     else if (['expired', 'canceled', 'failed'].includes(p.status)) await onExpired(p);
   } catch (e) {
     console.error('mollie-webhook', e.message);

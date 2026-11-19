@@ -153,13 +153,39 @@ async function abonnementMogelijk() {
 function normalise(p) {
   return {
     id: p.id,
-    payment_status: p.status === 'paid' ? 'paid' : 'unpaid',
+    payment_status: p.status === 'paid' || p.status === 'authorized' ? 'paid' : 'unpaid',
+    method: p.method || '',
     status: p.status,
     metadata: p.metadata || {},
     amount: p.amount,
     customerId: p.customerId || '',
     sequenceType: p.sequenceType || '',
   };
+}
+
+/* Klarna (en sommige kaartbetalingen) staan eerst op 'authorized': de klant
+   heeft afgerond, het geld moet nog geïnd worden. We innen meteen. */
+async function capture(id) {
+  try { await call(`/payments/${encodeURIComponent(id)}/captures`, { method: 'POST', body: {} }); return true; }
+  catch (e) { console.error('mollie capture', e.message); return false; }
+}
+
+/* Betaling bij een bestelling terugvinden, ook voor bestellingen van voor
+   we het kenmerk bij de bestelling bewaarden: de laatste 1000 betalingen
+   doorzoeken op het bestelnummer in de metadata. */
+async function zoekBetaling(orderId) {
+  if (!enabled() || !orderId) return null;
+  const voorkeur = ['paid', 'authorized', 'open', 'pending', 'failed', 'canceled', 'expired'];
+  let pad = '/payments?limit=250', gevonden = [];
+  for (let i = 0; i < 4 && pad; i++) {
+    const d = await call(pad);
+    gevonden = gevonden.concat(((d._embedded && d._embedded.payments) || []).filter(p => p.metadata && p.metadata.orderId === orderId));
+    const next = d._links && d._links.next && d._links.next.href;
+    pad = next ? next.replace(API, '') : '';
+  }
+  if (!gevonden.length) return null;
+  gevonden.sort((a, b) => voorkeur.indexOf(a.status) - voorkeur.indexOf(b.status));
+  return normalise(gevonden[0]);
 }
 
 async function getPayment(idOrRef) {
@@ -178,6 +204,6 @@ async function getPayment(idOrRef) {
 }
 
 module.exports = {
-  enabled, testModus, createPayment, getPayment, normalise,
+  enabled, testModus, createPayment, getPayment, normalise, capture, zoekBetaling,
   createSubscription, startSubscription, abonnementMogelijk,
 };

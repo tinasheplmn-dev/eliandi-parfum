@@ -163,6 +163,8 @@ module.exports = async (req, res) => {
       successPath: '/bedankt?type=order',
       cancelPath: '/afrekenen?geannuleerd=1',
     });
+    /* kenmerk bewaren, zodat het dashboard de betaling bij Mollie kan nakijken */
+    order.betaalRef = pay.id; await saveOrder(order);
     if (pay.mock) {
       order.status = 'betaald'; order.mock = true; await saveOrder(order);
       await require('./_records').onPaid({ id: pay.id, metadata: { type: 'order', orderId: order.id } });

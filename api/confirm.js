@@ -10,6 +10,7 @@ module.exports = async (req, res) => {
     const s = await getPayment(sid);
     if (!s) return send(res, 404, { paid: false });
     const paid = s.payment_status === 'paid';
+    if (s.status === 'authorized') await require('./_mollie').capture(s.id);
     if (paid) await onPaid(s);
     send(res, 200, { paid, type: (s.metadata || {}).type || '' });
   } catch (e) {

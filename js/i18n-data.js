@@ -353,7 +353,6 @@ window.ELIANDI_I18N = [
   ["Over de autoparfum", "About the car perfume", "عن عطر السيارة"],
   ["autoparfum · parfumolie", "car perfume · perfume oil", "عطر السيارة · زيت عطري"],
   ["Heb je een kortingscode?", "Do you have a discount code?", "هل لديك رمز خصم؟"],
-  ["Telefoonnummer (optioneel)", "Phone number (optional)", "رقم الهاتف (اختياري)"],
   ["Vul je naam in.", "Please enter your name.", "يرجى إدخال اسمك."],
   ["Vul een geldig e-mailadres in.", "Please enter a valid email address.", "يرجى إدخال بريد إلكتروني صحيح."],
   ["Vul een geldig telefoonnummer in, of laat het veld leeg.", "Please enter a valid phone number, or leave it empty.", "يرجى إدخال رقم هاتف صحيح أو ترك الحقل فارغًا."],

@@ -322,6 +322,12 @@ const actions = {
       if (b.status === 'wacht op betaling' && now - b.created > 35 * 60000) b.status = 'verlopen';
     });
     bookings.sort((a, b) => a.slot.localeCompare(b.slot));
+    /* bestellingen die nog op betaling wachten: bij Mollie nakijken (hooguit
+       acht per keer, en elke bestelling hooguit eens per half uur) */
+    const NAKIJKEN = orders.filter(o => o.status === 'wacht op betaling' && !o.mock && now - o.created > 15 * 60000 && now - o.created < 45 * 86400000
+      && (!o.mollie || (!['expired', 'canceled', 'failed'].includes(o.mollie.status) && now - o.mollie.t > 30 * 60000))).slice(0, 8);
+    const bijgewerkt = await Promise.all(NAKIJKEN.map(o => require('./_records').betaalstatus(o).catch(() => o)));
+    bijgewerkt.forEach(n => { const i = orders.findIndex(o => o.id === n.id); if (i >= 0) orders[i] = n; });
     orders.sort((a, b) => b.created - a.created);
     vouchers.sort((a, b) => b.created - a.created);
     const wachtlijst = (await list('idx:wachtlijst', 'wachtlijst:')).sort((a, b) => b.created - a.created);
@@ -586,6 +592,14 @@ const actions = {
     const id = clean(b.id, 20);
     await store.del('wachtlijst:' + id); await store.srem('idx:wachtlijst', id);
     return [200, { ok: true }];
+  },
+
+  /* één bestelling nu bij Mollie nakijken */
+  async betaalCheck(req, b) {
+    const o = await getOrder(clean(b.id, 20));
+    if (!o) return [404, { error: 'Bestelling niet gevonden.' }];
+    const n = await require('./_records').betaalstatus(o);
+    return [200, { status: n.status, mollie: n.mollie || null }];
   },
 
   /* ── e-mail: waar meldingen heen gaan, wat er uitging, en een testmail ── */
@@ -1010,7 +1024,7 @@ async function dagelijks() {
 const LEZEN = new Set(['mailStatus', 'overview', 'agenda', 'settingsGet', 'kortingList', 'bedrijfGet', 'reviewsList', 'productsList', 'productDetail', 'inzichten', 'beveiliging', 'downloadLink', 'tweestapStart']);
 const ACTIE_NAAM = {
   orderStatus: 'status bestelling', orderNote: 'notitie bestelling', creditnota: 'creditnota gemaakt', klantNotitie: 'notitie klant', klantWissen: 'klantgegevens gewist',
- mailTest: 'testmail verstuurd', productOverride: 'product aangepast', huisSave: 'huisparfum aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
+ mailTest: 'testmail verstuurd', betaalCheck: 'betaling nagekeken bij Mollie', productOverride: 'product aangepast', huisSave: 'huisparfum aangepast', productSave: 'product opgeslagen', productDelete: 'product verwijderd',
   kortingSave: 'kortingscode opgeslagen', productHernoem: 'naam geur gewijzigd', tegoedInnen: 'flacontegoed ingewisseld in de winkel', kortingDelete: 'kortingscode verwijderd', bedrijfSave: 'bedrijfsgegevens opgeslagen',
   reviewSave: 'review toegevoegd', reviewDelete: 'review verwijderd', settingsSave: 'agenda en prijzen opgeslagen',
   bookingCancel: 'boeking geannuleerd', bookingAdd: 'boeking toegevoegd', bookingDone: 'boeking afgerond', recordDelete: 'verwijderd',

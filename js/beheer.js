@@ -261,7 +261,8 @@
           <p class="bh-meta bh-notitie"><b>Privénotitie</b> <small>alleen voor jou</small> <span data-note="${o.id}" contenteditable="true" spellcheck="false" data-leeg="Klik om iets te noteren">${esc(o.note || '')}</span></p>
         </div>
         <div class="bh-card-side">
-          <span class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${o.status}</span>
+          <span class="bh-status bh-s-${o.status.replace(/\s/g, '-')}">${o.status === 'wacht op betaling' && o.mollie && ['expired', 'canceled', 'failed'].includes(o.mollie.status) ? 'niet betaald' : o.status}</span>
+          ${o.status === 'wacht op betaling' ? `<p class="bh-src">${mollieUitleg(o)}</p><button class="bh-btn bh-sm" data-betaalcheck="${o.id}">Nakijken bij Mollie</button>` : ''}
           <p class="bh-money">${euro(o.total)}</p>${terug(o) ? `<p class="bh-src">${euro(terug(o))} terugbetaald</p>` : ''}${o.mock ? '<p class="bh-src">test</p>' : ''}
           ${o.status !== 'wacht op betaling' ? `<div class="bh-card-actions bh-statusrow">
             <select class="bh-select" data-status="${o.id}">${statussen.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select>
@@ -545,6 +546,29 @@
     f.meldingEmail.value = bedrijf.meldingEmail || '';
     laadMail();
   }
+  /* wat Mollie zegt over een bestelling die nog op betaling wacht */
+  function mollieUitleg(o) {
+    const m = o.mollie;
+    if (!m) return 'Nog niet nagekeken bij Mollie.';
+    const via = m.methode ? ` (${esc(m.methode)})` : '';
+    return ({
+      open: 'Mollie: de klant heeft de betaling nog niet afgerond',
+      pending: 'Mollie: betaling wordt verwerkt',
+      expired: 'Mollie: verlopen, de klant heeft niet betaald',
+      canceled: 'Mollie: afgebroken door de klant',
+      failed: 'Mollie: betaling mislukt',
+      authorized: 'Mollie: Klarna goedgekeurd, wordt geïnd',
+      paid: 'Mollie: betaald',
+      onbekend: 'Geen betaling gevonden bij Mollie: de klant is niet tot betalen gekomen',
+    }[m.status] || 'Mollie: ' + esc(m.status)) + via + ` · nagekeken ${date(m.t)}`;
+  }
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-betaalcheck]'); if (!b) return;
+    b.disabled = true; b.textContent = 'Even kijken…';
+    try { await api({ action: 'betaalCheck', id: b.dataset.betaalcheck }); await loadOverview(); toast('Nagekeken bij Mollie'); }
+    catch (x) { toast(x.message, true); b.disabled = false; b.textContent = 'Nakijken bij Mollie'; }
+  });
+
   /* e-mail: waar meldingen heen gaan en wat er de laatste tijd uitging */
   async function laadMail() {
     try {

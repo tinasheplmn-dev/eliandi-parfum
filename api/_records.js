@@ -236,6 +236,21 @@ async function onPaid(session) {
   }
 }
 
+/* Wat zegt Mollie over een bestelling die nog op betaling wacht?
+   Bewaard als o.mollie, zodat het dashboard het kan laten zien. */
+async function betaalstatus(o) {
+  const mollie = require('./_mollie');
+  if (!mollie.enabled() || !o || o.mock) return o;
+  let p = null;
+  try { p = o.betaalRef ? await mollie.getPayment(o.betaalRef) : null; if (!p) p = await mollie.zoekBetaling(o.id); }
+  catch (e) { console.error('betaalstatus', e.message); return o; }
+  o.mollie = { status: p ? p.status : 'onbekend', methode: p ? p.method : '', t: Date.now() };
+  await saveOrder(o);
+  if (p && p.status === 'authorized') await mollie.capture(p.id);
+  if (p && (p.status === 'paid' || p.status === 'authorized')) { await onPaid(p); return getOrder(o.id); }
+  return o;
+}
+
 async function onExpired(session) {
   const m = session.metadata || {};
   if (m.type === 'experience' && m.bookingId) {
@@ -246,5 +261,5 @@ async function onExpired(session) {
 
 module.exports = {
   saveBooking, getBooking, setBookingStatus, holdSlots,
-  saveOrder, getOrder, setOrderStatus, ORDER_STATUSSEN, newVoucherCode, saveVoucher, getVoucher, onPaid, onExpired,
+  saveOrder, getOrder, setOrderStatus, betaalstatus, ORDER_STATUSSEN, newVoucherCode, saveVoucher, getVoucher, onPaid, onExpired,
 };
