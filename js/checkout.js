@@ -80,7 +80,8 @@
   function controleer() {
     const leeg = id => !$(id).value.trim();
     const fouten = [];
-    if (leeg('coName')) fouten.push(['coName', 'Vul je naam in.']);
+    if (leeg('coName')) fouten.push(['coName', 'Vul je voor- en achternaam in.']);
+    else if ($('coName').value.trim().split(/\s+/).length < 2) fouten.push(['coName', 'Vul ook je achternaam in.']);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($('coEmail').value.trim())) fouten.push(['coEmail', 'Vul een geldig e-mailadres in.']);
     if ($('coPhone').value.trim() && $('coPhone').value.replace(/\D/g, '').length < 10) fouten.push(['coPhone', 'Vul een geldig telefoonnummer in, of laat het veld leeg.']);
     if (delivery() === 'ship') {
