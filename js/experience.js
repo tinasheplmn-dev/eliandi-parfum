@@ -193,20 +193,23 @@
   function summary() {
     const o = option(state.people);
     if (!o) return;
-    const code = !$('xpVoucherBox').hidden && $('xpVoucher').value.trim();
+    const c = state.code && state.code.people === state.people ? state.code : null;
+    const code = c && c.soort === 'cadeaubon';
+    const kort = c && c.soort === 'korting' ? c : null;
+    const prijs = kort ? kort.price : o.price, aanbetaling = kort ? kort.deposit : o.deposit;
     $('sumTitle').textContent = label(state.people);
     if (state.slot) {
       const l = dayLabel(state.date);
       $('sumWhen').textContent = `${l.long.charAt(0).toUpperCase() + l.long.slice(1)} · ${state.slot.slice(11)} (${o.minutes} min)`;
     } else $('sumWhen').textContent = 'Kies een dag en tijd';
-    $('sumTotal').textContent = euro(o.price);
+    $('sumTotal').innerHTML = kort ? `<s>${euro(o.price)}</s> ${euro(prijs)}` : euro(o.price);
     $('sumDepLabel').textContent = code ? 'Cadeaubon' : `Nu aanbetalen (${state.data.depositPct}%)`;
-    $('sumDep').textContent = code ? 'volledig betaald' : euro(o.deposit);
-    $('sumRest').textContent = code ? '€0,00' : euro(o.price - o.deposit);
+    $('sumDep').textContent = code ? 'volledig betaald' : euro(aanbetaling);
+    $('sumRest').textContent = code ? '€0,00' : euro(prijs - aanbetaling);
     const btn = $('xpPay');
     btn.disabled = !state.slot;
     zetBalk(o);
-    btn.textContent = !state.slot ? 'Kies eerst een moment' : code ? 'Boek met cadeaubon' : `Reserveer en betaal ${euro(o.deposit)}`;
+    btn.textContent = !state.slot ? 'Kies eerst een moment' : code ? 'Boek met cadeaubon' : `Reserveer en betaal ${euro(aanbetaling)}`;
   }
 
   /* telefoon: na het kiezen van een moment een balk onderin naar de laatste stap */
@@ -243,7 +246,23 @@
     if (!$('xpVoucherBox').hidden) $('xpVoucher').focus();
     summary();
   });
-  $('xpVoucher').addEventListener('input', summary);
+  /* code controleren bij de server: cadeaubon of kortingscode */
+  async function pasCodeToe() {
+    const code = $('xpVoucher').value.trim().toUpperCase(), msg = $('xpCodeMsg');
+    state.code = null; msg.textContent = ''; msg.classList.remove('is-bad');
+    if (!code) { summary(); return; }
+    try {
+      const r = await fetch(`/api/book?code=${encodeURIComponent(code)}&people=${state.people}`);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Deze code kennen we niet.');
+      state.code = { ...d, people: state.people, code };
+      msg.textContent = d.soort === 'cadeaubon' ? '✦ Cadeaubon herkend: je Experience is al betaald.' : `✦ ${d.label} toegepast.`;
+    } catch (x) { msg.textContent = x.message; msg.classList.add('is-bad'); }
+    summary();
+  }
+  $('xpCodeBtn').addEventListener('click', pasCodeToe);
+  $('xpVoucher').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pasCodeToe(); } });
+  $('xpVoucher').addEventListener('input', () => { state.code = null; $('xpCodeMsg').textContent = ''; summary(); });
 
   /* gegevens en geurprofiel uit de geurwijzer meenemen */
   let profile = [], top5 = [];
@@ -261,7 +280,7 @@
   /* met een cadeaubon in de link: code invullen en het gezelschap van de bon overnemen */
   const bon = new URLSearchParams(location.search).get('bon');
   if (bon) {
-    $('xpVoucherBox').hidden = false; $('xpVoucher').value = bon;
+    $('xpVoucherBox').hidden = false; $('xpVoucher').value = bon; setTimeout(() => (state.data ? pasCodeToe() : setTimeout(pasCodeToe, 800)), 300);
     fetch('/api/voucher?code=' + encodeURIComponent(bon)).then(r => (r.ok ? r.json() : null)).then(v => {
       if (v && v.people) { const wait = () => (state.data ? setPeople(v.people) : setTimeout(wait, 150)); wait(); }
     }).catch(() => {});

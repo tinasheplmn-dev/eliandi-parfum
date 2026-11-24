@@ -54,9 +54,18 @@
     euro,
   };
   api.gratisVanaf = 0;
+  /* actiekorting (Black Friday) zoals de server hem rekent: per flacon, duurste eerst */
+  api.actie = null;
+  api.actieKorting = () => {
+    const a = api.actie; if (!a) return 0;
+    const flacons = read().filter(i => !i.kind).flatMap(i => Array(i.qty).fill(Math.round(i.p * 100))).sort((x, y) => y - x);
+    return flacons.reduce((t, c, k) => t + Math.round(c * a.staffel[Math.min(k, a.staffel.length - 1)] / 100), 0) / 100;
+  };
   window.EliandiCart = api;
   fetch('/api/products', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(d => {
-    if (d && d.gratisVanaf) { api.gratisVanaf = d.gratisVanaf / 100; render(); }
+    if (d && d.gratisVanaf) api.gratisVanaf = d.gratisVanaf / 100;
+    if (d && d.actie) api.actie = d.actie;
+    render(); document.dispatchEvent(new CustomEvent('cart:change', { detail: read() }));
   }).catch(() => {});
 
   /* ── knop + lade, in huisstijl ── */
@@ -77,6 +86,7 @@
     <ul class="cart-lines"></ul>
     <div class="cart-foot">
       <p class="cart-free"></p>
+      <p class="cart-actie" hidden><span class="cart-actie-naam"></span><b class="cart-actie-bedrag"></b></p>
       <p class="cart-sum"><span>Subtotaal</span><b class="cart-total"></b></p>
       <a class="btn btn-gold cart-go" href="${basis}afrekenen.html">Afrekenen</a>
     </div>`;
@@ -108,7 +118,10 @@
         </div>
         <p class="cart-line-price">${euro(i.p * i.qty)}</p>
       </li>`).join('') : '<li class="cart-empty">Nog leeg. Kies een geur uit jouw selectie.</li>';
-    drawer.querySelector('.cart-total').textContent = euro(api.total());
+    const ak = api.actieKorting();
+    drawer.querySelector('.cart-actie').hidden = !ak;
+    if (ak) { drawer.querySelector('.cart-actie-naam').textContent = `${api.actie.naam}-korting`; drawer.querySelector('.cart-actie-bedrag').textContent = '-' + euro(ak); }
+    drawer.querySelector('.cart-total').textContent = euro(api.total() - ak);
     drawer.querySelector('.cart-foot').hidden = !items.length;
     const free = drawer.querySelector('.cart-free');
     if (api.gratisVanaf && items.length) {

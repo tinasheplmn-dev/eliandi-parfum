@@ -1390,3 +1390,8 @@ a { color: inherit; }
   .oath-nr { margin-bottom: 6px; }
   .oath-item h3 { margin-bottom: 6px; }
 }
+
+/* actiebalk (Black Friday) */
+.actie-balk { display: block; position: relative; z-index: 60; padding: 9px 16px; text-align: center; background: #d4a73c; color: #141412; font: 500 12.5px/1.4 Montserrat, system-ui, sans-serif; text-decoration: none; letter-spacing: .02em; }
+.actie-balk b { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-right: 4px; }
+.cart-actie { display: flex; justify-content: space-between; font-size: .85rem; color: #e9c767; margin: 6px 0; }

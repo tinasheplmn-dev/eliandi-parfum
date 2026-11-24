@@ -33,6 +33,7 @@
   </script>
   <script src="js/taal.js"></script>
   <script src="js/meet.js" defer></script>
+  <script src="js/actie.js" defer></script>
 </head>
 <body class="xp" data-page="experience">
 
@@ -201,9 +202,10 @@
               <label class="xp-field xp-wide"><span>Vragen of opmerkingen <i>(optioneel)</i></span>
                 <textarea id="xpNote" maxlength="600" rows="3" placeholder="Laat het Angelo gerust weten"></textarea></label>
             </div>
-            <button type="button" class="xp-voucher-toggle" id="xpVoucherToggle">Ik heb een cadeaubon</button>
-            <label class="xp-field xp-voucher" id="xpVoucherBox" hidden><span>Code van je cadeaubon</span>
-              <input type="text" id="xpVoucher" placeholder="ELI-XXXX-XXXX" autocapitalize="characters"></label>
+            <button type="button" class="xp-voucher-toggle" id="xpVoucherToggle">Ik heb een kortingscode of cadeaubon</button>
+            <div class="xp-field xp-voucher" id="xpVoucherBox" hidden><label for="xpVoucher"><span>Kortingscode of cadeaubon</span></label>
+              <div class="xp-code-row"><input type="text" id="xpVoucher" placeholder="CODE" autocapitalize="characters" autocomplete="off"><button type="button" class="btn btn-ghost" id="xpCodeBtn">Toepassen</button></div>
+              <p class="xp-code-msg" id="xpCodeMsg" aria-live="polite"></p></div>
             <p class="xp-profile" id="xpProfile" hidden></p>
           </form>
         </div>

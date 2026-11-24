@@ -12,7 +12,38 @@ const dayLabel = slot => new Date(slot.slice(0, 10) + 'T12:00:00Z').toLocaleDate
   weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
 });
 
+/* Cadeaubon of kortingscode? Een kortingscode gaat van de totaalprijs af;
+   de aanbetaling zakt naar verhouding mee. Flacontegoed telt hier niet. */
+async function codeVoor(cfg, people, code) {
+  if (!code) return {};
+  const voucher = await getVoucher(code);
+  if (voucher) {
+    if (voucher.status === 'pending') return { fout: 'Deze cadeaubon is nog niet betaald.' };
+    if (voucher.status === 'used') return { fout: 'Deze cadeaubon is al gebruikt.' };
+    const vp = peopleFrom(cfg, voucher.people !== undefined ? voucher.people : voucher.variant);
+    if (vp !== people) return { fout: `Deze cadeaubon is voor ${label(vp).toLowerCase()}. Kies dat aantal, dan klopt het.` };
+    return { voucher };
+  }
+  const { price, deposit } = priceOf(cfg, people);
+  const k = await require('./_korting').bereken(code, price, false);
+  if (!k) return {};
+  if (k.fout) return { fout: /flacon/i.test(k.fout) ? 'Flacontegoed geldt in de winkel en bij een flacon, niet bij The Experience.' : k.fout };
+  const nieuw = Math.max(0, price - k.cents);
+  return { korting: { code: k.code, cents: k.cents, label: k.label }, price: nieuw, deposit: Math.min(nieuw, Math.round(deposit * nieuw / price)) };
+}
+
 module.exports = async (req, res) => {
+  /* GET /api/book?code=…&people=… — code controleren voor de samenvatting */
+  if (req.method === 'GET') {
+    const u = new URL(req.url, 'http://x');
+    if (await teVaak(req, 'code', 20, 600)) return send(res, 429, { error: 'Te veel pogingen. Probeer het over tien minuten opnieuw.' });
+    const cfg = await getSettings();
+    const r = await codeVoor(cfg, peopleFrom(cfg, u.searchParams.get('people')), clean(u.searchParams.get('code'), 30).toUpperCase());
+    if (r.fout) return send(res, 400, { error: r.fout });
+    if (r.voucher) return send(res, 200, { soort: 'cadeaubon' });
+    if (r.korting) return send(res, 200, { soort: 'korting', label: r.korting.label, price: r.price, deposit: r.deposit });
+    return send(res, 400, { error: 'Deze code kennen we niet.' });
+  }
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
   if (vreemdeHerkomst(req)) return send(res, 403, { error: 'Geen toegang.' });
   if (await teVaak(req, 'book', 15, 600)) return send(res, 429, { error: 'Te veel pogingen achter elkaar. Probeer het over een paar minuten opnieuw.' });
@@ -42,7 +73,7 @@ module.exports = async (req, res) => {
   const email = clean(b.email, 120);
   const phone = clean(b.phone, 30);
   const note = clean(b.note, 600);
-  const code = clean(b.voucher, 20).toUpperCase();
+  const code = clean(b.voucher, 30).toUpperCase();
   const profile = Array.isArray(b.profile) ? b.profile.map(s => clean(s, 40)).slice(0, 10).join(', ') : '';
   const top5 = Array.isArray(b.top5) ? b.top5.map(s => clean(s, 80)).slice(0, 5).join(' · ') : '';
 
@@ -52,14 +83,10 @@ module.exports = async (req, res) => {
   if (!isEmail(email)) return send(res, 400, { error: 'Vul een geldig e-mailadres in.' });
   if (!isPhone(phone)) return send(res, 400, { error: 'Vul een geldig telefoonnummer in.' });
 
-  let voucher = null;
-  if (code) {
-    voucher = await getVoucher(code);
-    if (!voucher || voucher.status === 'pending') return send(res, 400, { error: 'Deze cadeaubon is onbekend of nog niet betaald.' });
-    if (voucher.status === 'used') return send(res, 400, { error: 'Deze cadeaubon is al gebruikt.' });
-    const vp = peopleFrom(cfg, voucher.people !== undefined ? voucher.people : voucher.variant);
-    if (vp !== people) return send(res, 400, { error: `Deze cadeaubon is voor ${label(vp).toLowerCase()}. Kies dat aantal, dan klopt het.` });
-  }
+  const gekozen = await codeVoor(cfg, people, code);
+  if (gekozen.fout) return send(res, 400, { error: gekozen.fout });
+  if (code && !gekozen.voucher && !gekozen.korting) return send(res, 400, { error: 'Deze code kennen we niet.' });
+  const voucher = gekozen.voucher || null;
 
   /* staat er in de agenda van Angelo al iets op dit moment, dan kan
      het niet. De site verbergt die tijden al, maar dit is de controle
@@ -71,7 +98,10 @@ module.exports = async (req, res) => {
     if (botst) return send(res, 409, { error: 'Dit moment is net vervallen. Kies een ander moment.' });
   }
 
-  const { price, deposit, minutes } = priceOf(cfg, people);
+  const standaard = priceOf(cfg, people);
+  const { minutes } = standaard;
+  const price = gekozen.korting ? gekozen.price : standaard.price;
+  const deposit = gekozen.korting ? gekozen.deposit : standaard.deposit;
   const id = newId(6);
   if (!(await holdSlots(keys, id, HOLD_SECONDS))) {
     return send(res, 409, { error: 'Net te laat: dit moment is zojuist geboekt. Kies een ander moment.' });
@@ -80,7 +110,7 @@ module.exports = async (req, res) => {
   const booking = {
     id, people, minutes, slot, slots: keys, name, email, phone, note, profile, top5,
     price, deposit, paid: 0, status: 'wacht op betaling', source: 'website',
-    voucher: code || '', created: Date.now(),
+    voucher: voucher ? code : '', ...(gekozen.korting ? { korting: gekozen.korting } : {}), created: Date.now(),
   };
   await saveBooking(booking);
   const success = `/bedankt?type=experience&slot=${encodeURIComponent(slot)}&people=${people}`;
@@ -99,6 +129,7 @@ module.exports = async (req, res) => {
       lines: [{
         name: `The Eliandi Experience ${label(people)} · ${dayLabel(slot)} om ${slot.slice(11)}`,
         description: `${minutes} minuten privé met Angelo voor ${label(people).toLowerCase()}, inclusief 50 ml extrait de parfum op maat per persoon. `
+          + (gekozen.korting ? `Met ${gekozen.korting.label} (${gekozen.korting.code}). ` : '')
           + `Aanbetaling ${cfg.depositPct}%; het restant betaal je in de winkel.`,
         cents: deposit,
         qty: 1,

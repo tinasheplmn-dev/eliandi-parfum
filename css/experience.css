@@ -373,3 +373,8 @@
   body.xp-balk-aan .wa-widget { bottom: 86px; }
   .xp-form input, .xp-form textarea { font-size: 16px; }
 }
+
+.xp-code-row { display: flex; gap: 8px; }
+.xp-code-row input { flex: 1; min-width: 0; }
+.xp-code-msg { margin-top: 6px; font-size: .82rem; color: #e9c767; min-height: 1em; }
+.xp-code-msg.is-bad { color: #e08a80; }

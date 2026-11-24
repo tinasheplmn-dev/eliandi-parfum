@@ -169,6 +169,10 @@ async function onPaid(session) {
   if (m.type === 'experience' && m.bookingId) {
     const b = await getBooking(m.bookingId);
     if (b && b.status !== 'geboekt') await setBookingStatus(b.id, 'geboekt', { paid: b.deposit, sid: session.id });
+    /* kortingscode bij een Experience: één keer afboeken */
+    if (b && b.korting && b.korting.code && await eenmalig('korting:boeking:' + b.id)) {
+      try { await require('./_korting').gebruikt(b.korting.code, 'experience', b.id); } catch (e) { /* niet erg */ }
+    }
   }
   if (m.type === 'order' && m.orderId) {
     const o = await store.getJson('order:' + m.orderId);

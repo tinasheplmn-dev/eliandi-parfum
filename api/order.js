@@ -124,6 +124,10 @@ module.exports = async (req, res) => {
     if (k && k.fout) return send(res, 400, { error: k.fout });
     if (k) kort = { code: k.code, cents: k.cents, label: k.label };
   }
+  /* actie (Black Friday): niet te combineren met een code, de hoogste korting telt */
+  const actie = require('./_actie');
+  const actieCents = actie.korting(lines);
+  if (actieCents && (!kort || actieCents >= kort.cents)) kort = { code: actie.ACTIE.naam.toUpperCase().replace(/\s+/g, ''), cents: actieCents, label: `${actie.ACTIE.naam}-korting`, actie: true };
   const naKorting = subtotaal - (kort ? kort.cents : 0);
 
   /* verzendkosten, gratis vanaf de drempel uit het dashboard */
@@ -145,7 +149,7 @@ module.exports = async (req, res) => {
   try {
     /* de korting als aparte regel naar de betaalprovider */
     const betaalregels = kort && kort.cents
-      ? [...lines, { name: `Korting (${kort.code})`, cents: -kort.cents, qty: 1 }]
+      ? [...lines, { name: kort.actie ? kort.label : `Korting (${kort.code})`, cents: -kort.cents, qty: 1 }]
       : lines;
     const pay = await createPayment({
       req,

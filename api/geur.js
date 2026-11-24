@@ -264,6 +264,7 @@ function pagina(p, alle, site, reviews, olie, lang) {
   ${vertaald ? `<script type="application/json" id="i18nExtra">${JSON.stringify(paren).replace(/</g, '\\u003c')}</script>` : ''}
   <script src="/js/taal.js"></script>
   <script src="/js/meet.js" defer></script>
+  <script src="/js/actie.js" defer></script>
 </head>
 <body class="shoppage productpage" data-page="geur">
   <header class="qnav sh-nav">
@@ -497,6 +498,7 @@ function collectiePagina(c, alle, site) {
   <script type="application/ld+json">${JSON.stringify(kruimel).replace(/</g, '\\u003c')}</script>
   <script src="/js/taal.js"></script>
   <script src="/js/meet.js" defer></script>
+  <script src="/js/actie.js" defer></script>
 </head>
 <body class="shoppage productpage" data-page="collectie">
   <header class="qnav sh-nav">

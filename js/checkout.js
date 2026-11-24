@@ -38,13 +38,17 @@
         : i.ml + ' ml &middot; extrait de parfum'}</small></span>
       <b>${euro(i.p * i.qty)}</b></li>`).join('');
     const sub = cart.total();
-    const disc = korting ? Math.min(sub, korting.pct ? sub * korting.pct / 100 : korting.bedrag) : 0;
+    const codeDisc = korting ? Math.min(sub, korting.pct ? sub * korting.pct / 100 : korting.bedrag) : 0;
+    const actieDisc = cart.actieKorting ? cart.actieKorting() : 0;
+    const disc = Math.max(codeDisc, actieDisc);
+    const actieTelt = actieDisc > 0 && actieDisc >= codeDisc;
     const naKorting = sub - disc;
     const gratis = gratisVanaf && naKorting >= gratisVanaf;
     const ship = delivery() === 'ship' ? (gratis ? 0 : SHIP) : 0;
     $('coSub').textContent = euro(sub);
     $('coDiscRow').hidden = !disc;
-    if (disc) { $('coDiscLabel').textContent = `Korting (${korting.code})`; $('coDisc').textContent = '-' + euro(disc); }
+    if (disc) { $('coDiscLabel').textContent = actieTelt ? `${cart.actie.naam}-korting` : `Korting (${korting.code})`; $('coDisc').textContent = '-' + euro(disc); }
+    if (korting && actieTelt && $('coCodeMsg')) $('coCodeMsg').textContent = `De ${cart.actie.naam}-korting is hoger dan je code; die telt nu.`;
     $('coShip').textContent = ship ? euro(ship) : 'Gratis';
     $('coTotal').textContent = euro(naKorting + ship);
     $('coPayBedrag').textContent = euro(naKorting + ship);
