@@ -117,6 +117,7 @@
     n = Math.max(1, Math.min(maxPeople(), n));
     if (scope === 'gift') {
       state.giftPeople = n;
+      if ($('gKorting') && $('gKorting').value.trim()) setTimeout(bonKorting, 0); // korting opnieuw berekenen voor het nieuwe aantal
       paintSteppers('gift', n);
       gcUpdate();
       return;
@@ -345,10 +346,29 @@
     $('gcTo').textContent = $('gTo').value.trim() ? 'Voor ' + $('gTo').value.trim() : 'Voor jou';
     $('gcMsg').textContent = $('gMsg').value.trim() || 'Jouw persoonlijke boodschap verschijnt hier.';
     $('gcFrom').textContent = $('gName').value.trim() ? 'Van ' + $('gName').value.trim() : '';
-    $('gPay').textContent = o ? `Koop de cadeaubon · ${euro(o.price)}` : 'Koop de cadeaubon';
+    const gk = state.giftKorting && state.giftKorting.people === n ? state.giftKorting : null;
+    $('gPay').textContent = o ? `Koop de cadeaubon · ${gk ? euro(gk.price) : euro(o.price)}` : 'Koop de cadeaubon';
     if ($('gPeopleHint')) $('gPeopleHint').innerHTML = o ? `<b>${o.minutes} minuten</b> &middot; ${euro(o.price)}, volledig betaald` : '';
   }
   ['gTo', 'gMsg', 'gName'].forEach(id => $(id).addEventListener('input', gcUpdate));
+  /* kortingscode op de cadeaubon */
+  async function bonKorting() {
+    const code = $('gKorting').value.trim().toUpperCase(), msg = $('gKortingMsg');
+    state.giftKorting = null; msg.textContent = ''; msg.classList.remove('is-bad');
+    if (code) {
+      try {
+        const r = await fetch(`/api/voucher?korting=${encodeURIComponent(code)}&people=${state.giftPeople}`);
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'Deze kortingscode kennen we niet.');
+        state.giftKorting = { ...d, people: state.giftPeople };
+        msg.textContent = `✦ ${d.label} toegepast.`;
+      } catch (x) { msg.textContent = x.message; msg.classList.add('is-bad'); }
+    }
+    gcUpdate();
+  }
+  $('gKortingBtn').addEventListener('click', bonKorting);
+  $('gKorting').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); bonKorting(); } });
+  $('gKorting').addEventListener('input', () => { state.giftKorting = null; $('gKortingMsg').textContent = ''; gcUpdate(); });
 
   $('gForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -363,6 +383,7 @@
         body: JSON.stringify({
           people: state.giftPeople, recipient: $('gTo').value, message: $('gMsg').value,
           name: $('gName').value, email: $('gEmail').value, phone: $('gPhone').value,
+          korting: $('gKorting').value.trim(),
         }),
       });
       const data = await r.json();

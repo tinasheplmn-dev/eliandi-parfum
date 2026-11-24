@@ -11,6 +11,22 @@ const { newVoucherCode, saveVoucher, getVoucher } = require('./_records');
 module.exports = async (req, res) => {
   if (req.method === 'POST' && vreemdeHerkomst(req)) return send(res, 403, { error: 'Geen toegang.' });
   if (await teVaak(req, 'voucher', 30, 600)) return send(res, 429, { error: 'Te veel pogingen. Probeer het over tien minuten opnieuw.' });
+  /* kortingscode op een cadeaubon: van de prijs af, flacontegoed telt niet */
+  const metKorting = async (cfg, people, code) => {
+    const { price } = priceOf(cfg, people);
+    if (!code) return { price };
+    const k = await require('./_korting').bereken(code, price, false);
+    if (!k) return { price };
+    if (k.fout) return { fout: /flacon/i.test(k.fout) ? 'Flacontegoed geldt in de winkel en bij een flacon, niet bij een cadeaubon.' : k.fout };
+    return { price: Math.max(0, price - k.cents), korting: { code: k.code, cents: k.cents, label: k.label } };
+  };
+  if (req.method === 'GET' && new URL(req.url, 'http://x').searchParams.has('korting')) {
+    const u = new URL(req.url, 'http://x'), cfg = await getSettings();
+    const r = await metKorting(cfg, peopleFrom(cfg, u.searchParams.get('people')), clean(u.searchParams.get('korting'), 30).toUpperCase());
+    if (r.fout) return send(res, 400, { error: r.fout });
+    if (!r.korting) return send(res, 400, { error: 'Deze kortingscode kennen we niet.' });
+    return send(res, 200, { label: r.korting.label, price: r.price });
+  }
   if (req.method === 'GET') {
     const code = new URL(req.url, 'http://x').searchParams.get('code') || '';
     const v = await getVoucher(code);
@@ -35,9 +51,14 @@ module.exports = async (req, res) => {
   if (!isEmail(buyer.email)) return send(res, 400, { error: 'Vul een geldig e-mailadres in.' });
   if (!isPhone(buyer.phone)) return send(res, 400, { error: 'Vul een geldig telefoonnummer in.' });
 
-  const { price, minutes } = priceOf(cfg, people);
+  const { minutes } = priceOf(cfg, people);
+  const kortingscode = clean(b.korting, 30).toUpperCase();
+  const r = await metKorting(cfg, people, kortingscode);
+  if (r.fout) return send(res, 400, { error: r.fout });
+  if (kortingscode && !r.korting) return send(res, 400, { error: 'Deze kortingscode kennen we niet.' });
+  const price = r.price;
   const code = newVoucherCode();
-  const voucher = { code, people, minutes, price, buyer, recipient, message, status: 'pending', created: Date.now() };
+  const voucher = { code, people, minutes, price, buyer, recipient, message, ...(r.korting ? { korting: r.korting } : {}), status: 'pending', created: Date.now() };
   await saveVoucher(voucher);
 
   try {
@@ -46,7 +67,7 @@ module.exports = async (req, res) => {
       email: buyer.email,
       lines: [{
         name: `Cadeaubon The Eliandi Experience · ${label(people)}`,
-        description: `${minutes} minuten privé met Angelo voor ${label(people).toLowerCase()}, inclusief 50 ml extrait de parfum op maat per persoon. Volledig betaald.`,
+        description: `${minutes} minuten privé met Angelo voor ${label(people).toLowerCase()}, inclusief 50 ml extrait de parfum op maat per persoon. Volledig betaald.${r.korting ? ` Met ${r.korting.label} (${r.korting.code}).` : ''}`,
         cents: price,
         qty: 1,
       }],

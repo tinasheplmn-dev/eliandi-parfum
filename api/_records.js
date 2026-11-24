@@ -230,6 +230,9 @@ async function onPaid(session) {
   if (m.type === 'voucher' && m.code) {
     const v = await getVoucher(m.code);
     if (v && v.status === 'pending') { v.status = 'paid'; v.sid = session.id; await saveVoucher(v); }
+    if (v && v.korting && v.korting.code && await eenmalig('korting:bon:' + v.code)) {
+      try { await require('./_korting').gebruikt(v.korting.code, 'cadeaubon', v.code); } catch (e) { /* niet erg */ }
+    }
     if (v && await eenmalig('mail-bon:' + m.code)) {
       await mail.bonBetaald(v, process.env.SITE_URL);
       await mail.melding(`Cadeaubon verkocht: ${v.code}`, [

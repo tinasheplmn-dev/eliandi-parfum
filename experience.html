@@ -264,6 +264,9 @@
             <label class="xp-field"><span>Jouw e-mail</span><input type="email" id="gEmail" autocomplete="email" required></label>
             <label class="xp-field"><span>Jouw telefoon</span><input type="tel" id="gPhone" autocomplete="tel" required></label>
           </div>
+          <div class="xp-field xp-voucher"><label for="gKorting"><span>Kortingscode <i>(als je die hebt)</i></span></label>
+            <div class="xp-code-row"><input type="text" id="gKorting" placeholder="CODE" autocapitalize="characters" autocomplete="off"><button type="button" class="btn btn-ghost" id="gKortingBtn">Toepassen</button></div>
+            <p class="xp-code-msg" id="gKortingMsg" aria-live="polite"></p></div>
           <button class="btn btn-gold xp-pay" type="submit" id="gPay">Koop de cadeaubon</button>
           <p class="xp-error" id="gError" role="alert"></p>
         </form>

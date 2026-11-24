@@ -361,6 +361,7 @@ window.ELIANDI_I18N = [
   ["Alles in één keer betalen", "Pay everything at once", "ادفع المبلغ كاملًا مرة واحدة"],
   ["Nu betalen", "Pay now", "ادفع الآن"],
   ["Inclusief 50 ml extrait de parfum op maat per persoon. Je hebt alles al betaald.", "Including 50 ml bespoke extrait de parfum per person. You have paid in full.", "يشمل 50 مل من خلاصة العطر حسب الطلب لكل شخص. لقد دفعت المبلغ كاملًا."],
+  ["Kortingscode (als je die hebt)", "Discount code (if you have one)", "رمز الخصم (إن وجد)"],
   ["Toepassen", "Apply", "تطبيق"],
   ["Heb je een kortingscode?", "Do you have a discount code?", "هل لديك رمز خصم؟"],
   ["Vul je naam in.", "Please enter your name.", "يرجى إدخال اسمك."],
