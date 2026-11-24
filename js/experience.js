@@ -196,14 +196,18 @@
     const c = state.code && state.code.people === state.people ? state.code : null;
     const code = c && c.soort === 'cadeaubon';
     const kort = c && c.soort === 'korting' ? c : null;
-    const prijs = kort ? kort.price : o.price, aanbetaling = kort ? kort.deposit : o.deposit;
+    const volledig = document.querySelector('input[name="xpBetaal"]:checked')?.value === 'volledig';
+    const prijs = kort ? kort.price : o.price;
+    const aanbetaling = volledig ? prijs : (kort ? kort.deposit : o.deposit);
+    $('xpBetaalKeuze').hidden = Boolean(code);
+    $('xpSumNote').textContent = volledig ? 'Inclusief 50 ml extrait de parfum op maat per persoon. Je hebt alles al betaald.' : 'Inclusief 50 ml extrait de parfum op maat per persoon. Het restant betaal je in de winkel.';
     $('sumTitle').textContent = label(state.people);
     if (state.slot) {
       const l = dayLabel(state.date);
       $('sumWhen').textContent = `${l.long.charAt(0).toUpperCase() + l.long.slice(1)} · ${state.slot.slice(11)} (${o.minutes} min)`;
     } else $('sumWhen').textContent = 'Kies een dag en tijd';
     $('sumTotal').innerHTML = kort ? `<s>${euro(o.price)}</s> ${euro(prijs)}` : euro(o.price);
-    $('sumDepLabel').textContent = code ? 'Cadeaubon' : `Nu aanbetalen (${state.data.depositPct}%)`;
+    $('sumDepLabel').textContent = code ? 'Cadeaubon' : volledig ? 'Nu betalen' : `Nu aanbetalen (${state.data.depositPct}%)`;
     $('sumDep').textContent = code ? 'volledig betaald' : euro(aanbetaling);
     $('sumRest').textContent = code ? '€0,00' : euro(prijs - aanbetaling);
     const btn = $('xpPay');
@@ -261,6 +265,7 @@
     summary();
   }
   $('xpCodeBtn').addEventListener('click', pasCodeToe);
+  document.querySelectorAll('input[name="xpBetaal"]').forEach(r => r.addEventListener('change', summary));
   $('xpVoucher').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pasCodeToe(); } });
   $('xpVoucher').addEventListener('input', () => { state.code = null; $('xpCodeMsg').textContent = ''; summary(); });
 
@@ -299,6 +304,7 @@
           people: state.people, slot: state.slot,
           name: $('xpName').value, email: $('xpEmail').value, phone: $('xpPhone').value, note: $('xpNote').value,
           voucher: $('xpVoucherBox').hidden ? '' : $('xpVoucher').value, profile, top5,
+          volledig: document.querySelector('input[name="xpBetaal"]:checked')?.value === 'volledig',
         }),
       });
       const data = await r.json();

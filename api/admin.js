@@ -388,8 +388,17 @@ const actions = {
   async bookingAdd(req, b) {
     const cfg = await getSettings();
     const people = peopleFrom(cfg, b.people !== undefined ? b.people : b.variant);
-    const slot = clean(b.slot, 16);
-    const keys = slotsFor({ ...cfg, leadMinutes: 0 }, slot, people); // handmatig mag ook op korte termijn
+    /* Angelo mag ook een eigen dag en tijd kiezen, buiten de vaste agenda */
+    const eigen = /^\d{4}-\d{2}-\d{2}$/.test(String(b.eigenDatum || '')) && /^\d{2}:\d{2}$/.test(String(b.eigenTijd || ''));
+    if (b.eigenDatum && !eigen) return [400, { error: 'Vul bij een eigen moment zowel de dag als de tijd in.' }];
+    const slot = eigen ? `${b.eigenDatum}T${b.eigenTijd}` : clean(b.slot, 16);
+    let keys;
+    if (eigen) {
+      if (!/:(00|30)$/.test(slot)) return [400, { error: 'Kies een tijd op het hele of halve uur, bijvoorbeeld 19:00 of 19:30.' }];
+      const { plus30 } = require('./_slots');
+      keys = [slot];
+      for (let i = 1, t = slot.slice(11); i < priceOf(cfg, people).slots; i++) { t = plus30(t); keys.push(`${slot.slice(0, 10)}T${t}`); }
+    } else keys = slotsFor({ ...cfg, leadMinutes: 0 }, slot, people); // handmatig mag ook op korte termijn
     if (!keys) return [400, { error: `Dit moment past niet voor ${people} ${people === 1 ? 'persoon' : 'personen'}: het valt buiten de agenda of er zijn te weinig halfuren achter elkaar.` }];
     const name = clean(b.name, 80);
     if (!name) return [400, { error: 'Vul een naam in.' }];

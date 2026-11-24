@@ -378,3 +378,10 @@
 .xp-code-row input { flex: 1; min-width: 0; }
 .xp-code-msg { margin-top: 6px; font-size: .82rem; color: #e9c767; min-height: 1em; }
 .xp-code-msg.is-bad { color: #e08a80; }
+.met-actie .xp-nav { top: var(--actie-h, 0px); }
+
+.xp-betaalkeuze { display: grid; gap: 8px; margin: 16px 0 4px; font-size: .86rem; }
+.xp-betaalkeuze[hidden] { display: none; }
+.xp-betaalkeuze label { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid rgba(184,134,11,.3); cursor: pointer; }
+.xp-betaalkeuze label:has(input:checked) { border-color: #d4a73c; background: rgba(212,167,60,.08); }
+.xp-betaalkeuze input { accent-color: #d4a73c; }

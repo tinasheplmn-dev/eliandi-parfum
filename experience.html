@@ -219,9 +219,13 @@
             <p><span id="sumDepLabel">Nu aanbetalen (50%)</span><b class="xp-gold" id="sumDep">€37,50</b></p>
             <p><span>In de winkel</span><b id="sumRest">€37,50</b></p>
           </div>
+          <div class="xp-betaalkeuze" id="xpBetaalKeuze" role="radiogroup" aria-label="Hoe wil je betalen">
+            <label><input type="radio" name="xpBetaal" value="aanbetaling" checked> <span>Nu aanbetalen, de rest in de winkel</span></label>
+            <label><input type="radio" name="xpBetaal" value="volledig"> <span>Alles in één keer betalen</span></label>
+          </div>
           <button class="btn btn-gold xp-pay" id="xpPay" type="button" disabled>Kies eerst een moment</button>
           <p class="xp-error" id="xpError" role="alert"></p>
-          <p class="xp-sum-note">Inclusief 50 ml extrait de parfum op maat per persoon. Het restant betaal je in de winkel.</p>
+          <p class="xp-sum-note" id="xpSumNote">Inclusief 50 ml extrait de parfum op maat per persoon. Het restant betaal je in de winkel.</p>
         </aside>
       </div>
     </section>

@@ -101,7 +101,9 @@ module.exports = async (req, res) => {
   const standaard = priceOf(cfg, people);
   const { minutes } = standaard;
   const price = gekozen.korting ? gekozen.price : standaard.price;
-  const deposit = gekozen.korting ? gekozen.deposit : standaard.deposit;
+  /* de klant kiest: aanbetalen of alles in één keer */
+  const volledig = b.volledig === true;
+  const deposit = volledig ? price : (gekozen.korting ? gekozen.deposit : standaard.deposit);
   const id = newId(6);
   if (!(await holdSlots(keys, id, HOLD_SECONDS))) {
     return send(res, 409, { error: 'Net te laat: dit moment is zojuist geboekt. Kies een ander moment.' });
@@ -130,7 +132,7 @@ module.exports = async (req, res) => {
         name: `The Eliandi Experience ${label(people)} · ${dayLabel(slot)} om ${slot.slice(11)}`,
         description: `${minutes} minuten privé met Angelo voor ${label(people).toLowerCase()}, inclusief 50 ml extrait de parfum op maat per persoon. `
           + (gekozen.korting ? `Met ${gekozen.korting.label} (${gekozen.korting.code}). ` : '')
-          + `Aanbetaling ${cfg.depositPct}%; het restant betaal je in de winkel.`,
+          + (volledig ? 'Volledig betaald.' : `Aanbetaling ${cfg.depositPct}%; het restant betaal je in de winkel.`),
         cents: deposit,
         qty: 1,
       }],

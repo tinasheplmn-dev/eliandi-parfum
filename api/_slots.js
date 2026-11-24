@@ -134,6 +134,7 @@ const slotStoreKey = key => 'exp:' + key;
 const slotEnd = key => `${key.slice(0, 10)}T${plus30(key.slice(11))}`;
 
 module.exports = {
+  plus30,
   DEFAULTS, HOLD_SECONDS, TZ, getSettings, peopleFrom, priceOf, priceTable, label,
   allSlots, slotsFor, slotStoreKey, amsKey, slotEnd, plus30,
 };
