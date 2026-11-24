@@ -11,5 +11,8 @@
     balk.innerHTML = `<b>${a.naam}</b> t/m ${tot}: 1e fles ${d1}%, 2e fles ${d2}%, 3e fles en verder ${d3}% korting`;
     document.body.prepend(balk);
     document.body.classList.add('met-actie');
+    /* vaste kopbalken schuiven onder de actiebalk */
+    const hoogte = () => document.documentElement.style.setProperty('--actie-h', balk.offsetHeight + 'px');
+    hoogte(); addEventListener('resize', hoogte, { passive: true });
   }).catch(() => {});
 })();
