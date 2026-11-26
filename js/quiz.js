@@ -50,7 +50,7 @@
       if (o.hidden) { ELIANDI_CATALOG.splice(i, 1); continue; }
       if (o.v) { p.v = o.v; const ps = o.v.filter(Boolean); p.p = ps.length ? Math.min(...ps) : p.p; }
       /* noten, doelgroep en "niet aanbevelen" uit het dashboard */
-      ['g', 'f', 'k', 't', 'h', 'b', 'i', 'd', 'w', 's', 'x', 'o', 'geenAdvies'].forEach(k => { if (o[k] !== undefined) p[k] = o[k]; });
+      ['g', 'f', 'k', 't', 'h', 'b', 'i', 'd', 'w', 's', 'x', 'o', 'geenAdvies', 'nietVoor'].forEach(k => { if (o[k] !== undefined) p[k] = o[k]; });
     }
     const names = new Set(ELIANDI_CATALOG.map(p => p.n));
     (d.custom || []).forEach(p => { if (!names.has(p.n)) ELIANDI_CATALOG.push(p); });
@@ -403,7 +403,9 @@
     const u = buildProfile();
     state.profileChips = u.chips;
 
-    let pool = ELIANDI_CATALOG.filter(p => !p.geenAdvies);
+    const eigen = u.genders && u.genders.find(g => g !== 'unisex');
+    /* nietVoor: wel in de shop, maar niet aanraden aan dames of juist heren */
+    let pool = ELIANDI_CATALOG.filter(p => !p.geenAdvies && !(eigen && p.nietVoor === eigen));
     if (u.genders) pool = pool.filter(p => u.genders.includes(p.g));
 
     /* een geur met noten uit bijna elke familie lijkt op elk profiel en
@@ -413,7 +415,7 @@
       return { p, ...r, score: r.score - Math.max(0, Object.keys(p.d || {}).length - 4) * 0.45 };
     });
     scored.sort((a, b) => b.score - a.score);
-    const top = kiesTop(scored, u.genders && u.genders.find(g => g !== 'unisex'));
+    const top = kiesTop(scored, eigen);
 
     const best = top[0] ? top[0].score : 1;
     top.forEach((r, i) => {

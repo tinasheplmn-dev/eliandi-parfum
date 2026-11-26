@@ -137,7 +137,7 @@ function verwant(p, alle) {
     s -= Math.abs((q.w || 0) - (p.w || 0)) * .5 + Math.abs((q.s || 0) - (p.s || 0)) * .5;
     return s;
   };
-  return alle.filter(q => !q.geenAdvies).map(q => [score(q), q]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]).slice(0, 4).map(([, q]) => q);
+  return alle.filter(q => !q.geenAdvies && !(q.nietVoor && q.nietVoor === p.g)).map(q => [score(q), q]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]).slice(0, 4).map(([, q]) => q);
 }
 
 async function lijst() {

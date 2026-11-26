@@ -707,6 +707,7 @@
           <label class="bh-tags">Verborgen zoektermen <small>(klanten zien dit nooit)</small><input name="tags" value="${esc(p.tags || '')}" placeholder="bijv. Dior Sauvage, N083"></label>
           <label class="bh-check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> Verbergen</label>
           <label class="bh-check"><input type="checkbox" name="geenAdvies" ${d.geenAdvies ? 'checked' : ''}> Niet aanbevelen in de geurwijzer</label>
+          <label>Geurwijzer: niet aanraden aan<select name="nietVoor">${[['', 'Iedereen mag hem krijgen'], ['heren', 'Niet aan mannen'], ['dames', 'Niet aan vrouwen']].map(([v, t]) => `<option value="${v}" ${d.nietVoor === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
           <button class="bh-btn bh-sm bh-gold" type="submit">Opslaan</button>
         </div>
         ${videoBlok(p.n)}
@@ -784,7 +785,7 @@
         n = (await api({ action: 'productHernoem', n, nieuw: naam })).n;
       }
       await api({ action: 'productOverride', n, v: [d.v0, d.v1, d.v2], stock: [d.s0, d.s1, d.s2, d.s3, d.s4, d.s5], tags: d.tags || '', hidden: Boolean(d.hidden),
-        inhoud: { g: d.voor, f: d.f, k: d.k, t: d.t, h: d.h, b: d.b, i: d.i, st: d.st, geenAdvies: Boolean(d.geenAdvies) } });
+        inhoud: { g: d.voor, f: d.f, k: d.k, t: d.t, h: d.h, b: d.b, i: d.i, st: d.st, geenAdvies: Boolean(d.geenAdvies), nietVoor: d.nietVoor } });
       toast(n !== f.dataset.n ? 'Naam en gegevens opgeslagen' : 'Opgeslagen');
       state.products = await api({ action: 'productsList' });
       zonderPrijs();

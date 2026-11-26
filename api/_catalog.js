@@ -83,7 +83,7 @@ function catalogus() {
    cms:product-overrides: voor wie, families, noten, teksten (st = verhaal),
    het geurprofiel dat daaruit volgt en "niet aanbevelen" in de geurwijzer.
    Alleen wat afwijkt van de sheet wordt bewaard. */
-const INHOUD = ['g', 'f', 'k', 't', 'h', 'b', 'i', 'st', 'd', 'w', 's', 'x', 'o', 'geenAdvies'];
+const INHOUD = ['g', 'f', 'k', 't', 'h', 'b', 'i', 'st', 'd', 'w', 's', 'x', 'o', 'geenAdvies', 'nietVoor'];
 const metInhoud = (p, o) => {
   if (!o) return p;
   const uit = { ...p };

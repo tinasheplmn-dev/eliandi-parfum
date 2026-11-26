@@ -202,6 +202,8 @@ async function nieuweInhoud(n, inv, prev) {
   }
   const geenAdvies = Boolean(inv.geenAdvies);
   if (geenAdvies !== Boolean(basis.geenAdvies)) uit.geenAdvies = geenAdvies;
+  const nietVoor = ['heren', 'dames'].includes(inv.nietVoor) ? inv.nietVoor : '';
+  if (nietVoor !== (basis.nietVoor || '')) uit.nietVoor = nietVoor;
   return uit;
 }
 
@@ -680,7 +682,7 @@ const actions = {
     const basis = hernoem(catalogus(), await getNamen()).find(p => p.n === n);
     if (!basis) return [404, { error: 'Product niet gevonden.' }];
     const p = metInhoud({ ...basis, st: sheetVerhaal(basis) }, (await getOverrides())[n]);
-    return [200, { n, g: p.g, f: p.f || [], k: p.k || [], t: p.t || [], h: p.h || [], b: p.b || [], i: p.i || '', st: p.st || [], geenAdvies: Boolean(p.geenAdvies) }];
+    return [200, { n, g: p.g, f: p.f || [], k: p.k || [], t: p.t || [], h: p.h || [], b: p.b || [], i: p.i || '', st: p.st || [], geenAdvies: Boolean(p.geenAdvies), nietVoor: p.nietVoor || '' }];
   },
   async productOverride(req, b) {
     const n = clean(b.n, 120);
